@@ -1,0 +1,81 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="p-5">
+                <h1 class="display-5 mb-4">Connect to Salesforce</h1>
+                <p class="lead">
+                    To get started, authorize this application to access your Salesforce org.
+                </p>
+                
+                {% if not config.SALESFORCE_CLIENT_ID or not config.SALESFORCE_CLIENT_SECRET or not config.OPENAI_API_KEY %}
+                <div class="alert alert-danger mt-4">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Configuration Missing
+                    </h5>
+                    <p>This application requires proper configuration before it can connect to Salesforce and generate data:</p>
+                    <ul class="text-start">
+                        {% if not config.SALESFORCE_CLIENT_ID or not config.SALESFORCE_CLIENT_SECRET %}
+                        <li><strong>Salesforce Connected App Credentials</strong> - Please set SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET</li>
+                        {% endif %}
+                        {% if not config.OPENAI_API_KEY %}
+                        <li><strong>OpenAI API Key</strong> - Please set OPENAI_API_KEY</li>
+                        {% endif %}
+                    </ul>
+                    <p>Please configure these environment variables to continue.</p>
+                </div>
+                {% else %}
+                <div class="card bg-dark mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Authentication Information</h5>
+                        <p class="card-text">
+                            This application uses OAuth 2.0 to securely connect to your Salesforce org. 
+                            We will only access the data necessary to generate test records. 
+                            No data will be modified without your explicit permission.
+                        </p>
+                        
+                        <h6 class="mt-4">Permissions Required:</h6>
+                        <ul class="list-group list-group-flush text-start mb-4">
+                            <li class="list-group-item bg-dark">Access basic information (your user identity)</li>
+                            <li class="list-group-item bg-dark">Access and manage your data (to read schema and insert test data)</li>
+                            <li class="list-group-item bg-dark">Perform requests on your behalf at any time</li>
+                        </ul>
+                        
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('salesforce_auth') }}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-cloud-arrow-up-fill me-2"></i>
+                                Connect to Salesforce
+                            </a>
+                        </div>
+                        
+                        <p class="mt-3 small text-secondary">
+                            You'll be redirected to Salesforce to authorize this application.
+                        </p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <div class="alert alert-info mt-4">
+                    <h5 class="alert-heading">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        Environment Setup
+                    </h5>
+                    <p>
+                        This application requires proper configuration of Salesforce Connected App credentials.
+                        Make sure the following environment variables are set:
+                    </p>
+                    <ul class="text-start">
+                        <li><code>SALESFORCE_CLIENT_ID</code> - Your Connected App's Consumer Key</li>
+                        <li><code>SALESFORCE_CLIENT_SECRET</code> - Your Connected App's Consumer Secret</li>
+                        <li><code>SALESFORCE_REDIRECT_URI</code> - The callback URL for OAuth</li>
+                        <li><code>OPENAI_API_KEY</code> - Your OpenAI API Key for ChatGPT</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
