@@ -13,6 +13,7 @@ from salesforce_utils import (
     get_object_describe, insert_records
 )
 from openai_utils import generate_test_data_with_gpt
+from salesforce_config_utils import analyze_prompt_for_configuration, apply_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,106 @@ def init_routes(app):
             flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
             return redirect(url_for('index'))
     
+    @app.route('/configure', methods=['GET', 'POST'])
+    def configure():
+        """Configure Salesforce with natural language prompts"""
+        if 'salesforce_org_id' not in session:
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+            
+        # Check if OpenAI API key is configured
+        if not app.config.get('OPENAI_API_KEY'):
+            flash('OpenAI API key not configured. Please add your API key to use this feature.', 'warning')
+        
+        # Handle POST request (form submission)
+        if request.method == 'POST':
+            prompt = request.form.get('prompt', '')
+            
+            if not prompt:
+                flash('Please enter a prompt', 'warning')
+                return redirect(url_for('configure'))
+                
+            try:
+                # Get Salesforce connection
+                sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+                
+                # Get org schema information for context
+                objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                
+                # Simplified org info for context
+                org_info = {
+                    'objects': objects
+                }
+                
+                # Analyze prompt to determine configuration
+                config = analyze_prompt_for_configuration(prompt, org_info)
+                
+                if 'error' in config:
+                    flash(f'Error analyzing prompt: {config["error"]}', 'danger')
+                    return render_template('configure.html', prompt=prompt, results={
+                        'success': False,
+                        'message': config['error'],
+                        'details': config
+                    })
+                
+                # Return the configuration for review
+                return render_template('configure.html', prompt=prompt, results={
+                    'success': True,
+                    'message': 'Configuration generated successfully. Please review before applying.',
+                    'details': config
+                })
+                
+            except Exception as e:
+                logger.error(f"Error configuring Salesforce: {str(e)}")
+                flash(f'Error configuring Salesforce: {str(e)}', 'danger')
+                return render_template('configure.html', prompt=prompt, results={
+                    'success': False,
+                    'message': str(e),
+                    'details': {'error': str(e)}
+                })
+        
+        # GET request - show form
+        return render_template('configure.html')
+    
+    @app.route('/apply-config', methods=['POST'])
+    def apply_config():
+        """Apply a generated configuration to Salesforce"""
+        if 'salesforce_org_id' not in session:
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+            
+        try:
+            # Get Salesforce connection
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            # Get the configuration from the form
+            config_json = request.form.get('configuration', '')
+            if not config_json:
+                flash('No configuration provided', 'warning')
+                return redirect(url_for('configure'))
+                
+            config = json.loads(config_json)
+            
+            # Apply the configuration
+            result = apply_configuration(sf_org.instance_url, sf_org.access_token, config)
+            
+            if 'success' in result and result['success']:
+                flash('Configuration applied successfully', 'success')
+            else:
+                flash(f'Error applying configuration: {result["message"] if "message" in result else "Unknown error"}', 'danger')
+                
+            # Return to configure page with the result
+            return render_template('configure.html', results={
+                'success': result['success'] if 'success' in result else False,
+                'message': result['message'] if 'message' in result else 'Configuration applied.',
+                'details': result
+            })
+            
+        except Exception as e:
+            logger.error(f"Error applying configuration: {str(e)}")
+            flash(f'Error applying configuration: {str(e)}', 'danger')
+            return redirect(url_for('configure'))
+            
     @app.route('/api/chat', methods=['POST'])
     def chat():
         """Conversational endpoint for GPT interaction"""

@@ -37,6 +37,12 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('generate') %}active{% endif %}" href="{{ url_for('generate') }}">Generate Data</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('configure') %}active{% endif %}" href="{{ url_for('configure') }}">Configure Salesforce</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('configure') %}active{% endif %}" href="{{ url_for('configure') }}">Configure Salesforce</a>
+                    </li>
                     {% endif %}
                 </ul>
                 
