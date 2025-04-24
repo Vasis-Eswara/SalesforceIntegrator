@@ -9,7 +9,16 @@ logger = logging.getLogger(__name__)
 # Salesforce OAuth configuration
 SF_CLIENT_ID = os.environ.get('SALESFORCE_CLIENT_ID', '')
 SF_CLIENT_SECRET = os.environ.get('SALESFORCE_CLIENT_SECRET', '')
-SF_REDIRECT_URI = os.environ.get('SALESFORCE_REDIRECT_URI', 'http://localhost:5000/salesforce/callback')
+
+# Format the redirect URI properly
+redirect_uri = os.environ.get('SALESFORCE_REDIRECT_URI', '')
+if redirect_uri and not redirect_uri.startswith(('http://', 'https://')):
+    # This handles the case where someone provides just a domain like 'login.salesforce.com'
+    SF_REDIRECT_URI = f"https://{redirect_uri}/services/oauth2/callback"
+    logger.debug(f"Formatted redirect URI from '{redirect_uri}' to '{SF_REDIRECT_URI}'")
+else:
+    SF_REDIRECT_URI = redirect_uri or 'http://localhost:5000/salesforce/callback'
+
 SF_LOGIN_URL = os.environ.get('SALESFORCE_LOGIN_URL', 'https://login.salesforce.com')
 
 def get_auth_url():
