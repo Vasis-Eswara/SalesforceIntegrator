@@ -163,28 +163,78 @@ class SalesforceSOAPClient:
             raise ValueError("Not authenticated. Call login_with_soap or login_with_oauth_token first.")
         
         try:
-            # Get and parse the Enterprise WSDL
-            enterprise_wsdl = self._get_enterprise_wsdl()
-            transport = Transport(cache=SqliteCache())
-            transport.session.headers = self.headers
+            # Direct SOAP request
+            endpoint = f"{self.instance_url}/services/Soap/u/58.0"
             
-            client = Client(enterprise_wsdl, transport=transport)
-            result = client.service.getUserInfo()
+            # XML request template for getUserInfo
+            soap_request = f'''
+            <?xml version="1.0" encoding="utf-8" ?>
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xmlns:urn="urn:partner.soap.sforce.com">
+                <soapenv:Header>
+                    <urn:SessionHeader>
+                        <urn:sessionId>{self.session_id}</urn:sessionId>
+                    </urn:SessionHeader>
+                </soapenv:Header>
+                <soapenv:Body>
+                    <urn:getUserInfo />
+                </soapenv:Body>
+            </soapenv:Envelope>
+            '''.strip()
             
-            return {
-                'user_id': result.userId,
-                'org_id': result.organizationId,
-                'username': result.userName,
-                'email': result.userEmail,
-                'full_name': f"{result.userFullName}",
-                'language': result.userLanguage,
-                'locale': result.userLocale,
-                'timezone': result.userTimeZone,
+            headers = {
+                'Content-Type': 'text/xml; charset=UTF-8',
+                'SOAPAction': '""'
             }
             
-        except Fault as e:
-            logger.error(f"SOAP getUserInfo fault: {str(e)}")
-            raise Exception(f"Failed to get user info via SOAP: {str(e)}")
+            response = requests.post(endpoint, data=soap_request, headers=headers)
+            
+            # Check for errors
+            if response.status_code != 200:
+                error_message = f"SOAP getUserInfo failed with status {response.status_code}: {response.text}"
+                logger.error(error_message)
+                raise Exception(error_message)
+            
+            # Parse XML response manually
+            import xml.etree.ElementTree as ET
+            # Add namespace prefix mapping
+            namespaces = {
+                'soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+                'partner': 'urn:partner.soap.sforce.com'
+            }
+            
+            root = ET.fromstring(response.content)
+            
+            # Find the result element
+            result = root.find('.//partner:getUserInfoResponse/partner:result', namespaces)
+            
+            if result is None:
+                raise Exception("Could not find getUserInfo result in SOAP response")
+            
+            # Extract user info fields
+            user_id = result.find('./partner:userId', namespaces)
+            org_id = result.find('./partner:organizationId', namespaces)
+            username = result.find('./partner:userName', namespaces)
+            email = result.find('./partner:userEmail', namespaces)
+            full_name = result.find('./partner:userFullName', namespaces)
+            language = result.find('./partner:userLanguage', namespaces)
+            locale = result.find('./partner:userLocale', namespaces)
+            timezone = result.find('./partner:userTimeZone', namespaces)
+            
+            user_info = {
+                'user_id': user_id.text if user_id is not None else None,
+                'org_id': org_id.text if org_id is not None else None,
+                'username': username.text if username is not None else None,
+                'email': email.text if email is not None else None,
+                'full_name': full_name.text if full_name is not None else None,
+                'language': language.text if language is not None else None,
+                'locale': locale.text if locale is not None else None,
+                'timezone': timezone.text if timezone is not None else None,
+            }
+            
+            return user_info
+            
         except Exception as e:
             logger.error(f"Error getting user info via SOAP: {str(e)}")
             raise Exception(f"SOAP getUserInfo error: {str(e)}")
@@ -782,11 +832,17 @@ class SalesforceSOAPClient:
             </binding>
             <service name="SforceEnterpriseService">
                 <port name="Soap" binding="tns:SoapBinding">
-                    <soap:address location="https://yourInstance.salesforce.com/services/Soap/c/58.0/ORGID"/>
+                    <soap:address location="${self.instance_url}/services/Soap/u/58.0"/>
                 </port>
             </service>
         </definitions>
         '''
+        
+        # Replace the placeholders with instance URL
+        enterprise_wsdl_content = enterprise_wsdl_content.replace(
+            '${self.instance_url}',
+            self.instance_url
+        )
         
         # Create a temporary file for the WSDL
         with tempfile.NamedTemporaryFile(mode='w', suffix='.wsdl', delete=False) as temp:
