@@ -69,11 +69,22 @@
                         <!-- Object Relationship Diagram Section -->
                         <div id="schema-diagram" style="display:none;" class="mt-4">
                             <div class="card">
-                                <div class="card-header">
+                                <div class="card-header d-flex justify-content-between align-items-center">
                                     <h4 id="diagram-title">Object Relationship Diagram</h4>
+                                    <div>
+                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-smaller">
+                                            <i class="bi bi-dash-circle"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-larger">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" id="toggle-diagram">
+                                            <i class="bi bi-chevron-up"></i>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="card-body">
-                                    <div id="object-diagram" class="mermaid-diagram" style="height: 500px; overflow: auto;"></div>
+                                <div class="card-body" id="diagram-body">
+                                    <div id="object-diagram" class="mermaid-diagram" style="height: 400px; overflow: auto;"></div>
                                 </div>
                             </div>
                         </div>
@@ -398,8 +409,52 @@
                 if (schemaContainer) {
                     console.log('Making schema diagram visible');
                     schemaContainer.style.display = 'block';
+                    
+                    // Initialize diagram controls
+                    initDiagramControls();
                 }
             }, 200);
+        }
+        
+        // Initialize diagram controls for collapsing and resizing
+        function initDiagramControls() {
+            const toggleButton = document.getElementById('toggle-diagram');
+            const resizeSmallerButton = document.getElementById('resize-smaller');
+            const resizeLargerButton = document.getElementById('resize-larger');
+            const diagramBody = document.getElementById('diagram-body');
+            const diagramContainer = document.getElementById('object-diagram');
+            
+            // Toggle diagram visibility
+            if (toggleButton && diagramBody) {
+                toggleButton.addEventListener('click', function() {
+                    if (diagramBody.style.display === 'none') {
+                        diagramBody.style.display = 'block';
+                        toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
+                    } else {
+                        diagramBody.style.display = 'block';
+                        diagramBody.style.display = 'none';
+                        toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    }
+                });
+            }
+            
+            // Resize diagram smaller
+            if (resizeSmallerButton && diagramContainer) {
+                resizeSmallerButton.addEventListener('click', function() {
+                    const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+                    if (currentHeight > 200) {
+                        diagramContainer.style.height = (currentHeight - 100) + 'px';
+                    }
+                });
+            }
+            
+            // Resize diagram larger
+            if (resizeLargerButton && diagramContainer) {
+                resizeLargerButton.addEventListener('click', function() {
+                    const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+                    diagramContainer.style.height = (currentHeight + 100) + 'px';
+                });
+            }
         }
         
         // Function to generate and display object relationship diagram
