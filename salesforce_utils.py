@@ -22,9 +22,11 @@ if SF_REDIRECT_URI.endswith('/'):
     SF_REDIRECT_URI = SF_REDIRECT_URI[:-1]
 
 
-# For sandbox or developer orgs with My Domain, use the specific domain URL
-# For this specific instance, we know it's smartcart-dev-ed.develop.my.salesforce.com
-SF_LOGIN_URL = os.environ.get('SALESFORCE_LOGIN_URL', 'https://smartcart-dev-ed.develop.my.salesforce.com')
+# Let's try the default Salesforce login URL again with more debugging
+# Try with standard login.salesforce.com - the OAuth flow should redirect to the correct instance
+# For sandbox or developer orgs, use test.salesforce.com
+# For production orgs, use login.salesforce.com
+SF_LOGIN_URL = 'https://login.salesforce.com'
 
 def generate_code_verifier():
     """Generate a code_verifier for PKCE"""
@@ -75,6 +77,8 @@ def get_access_token(code):
         raise Exception("Code verifier missing from session. Please restart the authentication process.")
     
     token_url = f"{SF_LOGIN_URL}/services/oauth2/token"
+    
+    # Construct payload with all required parameters
     payload = {
         'grant_type': 'authorization_code',
         'client_id': SF_CLIENT_ID,
@@ -84,17 +88,34 @@ def get_access_token(code):
         'code_verifier': code_verifier
     }
     
+    # Log the request details (remove sensitive info from logs)
+    sanitized_payload = payload.copy()
+    sanitized_payload['client_secret'] = '[REDACTED]'
+    sanitized_payload['code_verifier'] = f"{sanitized_payload['code_verifier'][:10]}...[REDACTED]"
+    sanitized_payload['code'] = f"{sanitized_payload['code'][:10]}...[REDACTED]" if len(sanitized_payload['code']) > 10 else '[REDACTED]'
+    logger.debug(f"Token request URL: {token_url}")
+    logger.debug(f"Token request payload: {sanitized_payload}")
+    
     # Clear the code_verifier from session once used
     session.pop('sf_code_verifier', None)
     
     response = None
     try:
         response = requests.post(token_url, data=payload)
+        
+        # Enhanced logging of response
+        if response.status_code != 200:
+            logger.error(f"Token request failed with status code {response.status_code}")
+            logger.error(f"Response headers: {dict(response.headers)}")
+            logger.error(f"Response body: {response.text}")
+            
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Error getting access token: {str(e)}")
         if response is not None:
+            logger.error(f"Response status code: {response.status_code}")
+            logger.error(f"Response headers: {dict(response.headers)}")
             logger.error(f"Response: {response.text}")
         raise Exception(f"Failed to get access token: {str(e)}")
 

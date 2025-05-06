@@ -49,6 +49,14 @@ def init_routes(app):
         # Log all request information to help debug
         logger.debug(f"Callback received. Request URL: {request.url}")
         logger.debug(f"Request args: {request.args}")
+        logger.debug(f"Request headers: {dict(request.headers)}")
+        logger.debug(f"Session contents: {session}")
+        
+        # Log the PKCE code verifier from session
+        if 'sf_code_verifier' in session:
+            logger.debug(f"PKCE code_verifier found in session: {session['sf_code_verifier'][:10]}...")
+        else:
+            logger.debug("No PKCE code_verifier found in session")
         
         code = request.args.get('code')
         error = request.args.get('error')
