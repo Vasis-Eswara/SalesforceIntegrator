@@ -156,6 +156,17 @@
                                                 <p class="mb-0 text-muted">Failed Records</p>
                                             </div>
                                             {% endif %}
+                                            
+                                            <div class="ms-auto">
+                                                <div class="btn-group" role="group" aria-label="Export Options">
+                                                    <button type="button" class="btn btn-outline-secondary" id="export-csv">
+                                                        <i class="bi bi-filetype-csv me-1"></i> Export CSV
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline-secondary" id="export-json">
+                                                        <i class="bi bi-filetype-json me-1"></i> Export JSON
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
                                         
                                         {% if results.created_ids %}

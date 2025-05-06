@@ -1,8 +1,10 @@
 import os
 import json
+import csv
+import io
 import logging
 from urllib.parse import urlencode
-from flask import render_template, request, redirect, url_for, session, jsonify, flash, send_file
+from flask import render_template, request, redirect, url_for, session, jsonify, flash, send_file, Response
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 
@@ -684,4 +686,81 @@ def init_routes(app):
             
         except Exception as e:
             logger.error(f"Error in chat endpoint: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+            
+    @app.route('/api/export/csv/<int:job_id>', methods=['GET'])
+    def export_csv(job_id):
+        """Export generated data to CSV format"""
+        if 'salesforce_org_id' not in session:
+            return jsonify({'error': 'Not connected to Salesforce'}), 401
+            
+        try:
+            # Retrieve the job from the database
+            job = GenerationJob.query.get_or_404(job_id)
+            
+            # Get the object details to use field names as headers
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, job.object_name)
+            
+            # Fields to use as headers (excluding system fields)
+            field_names = [field['name'] for field in object_info['fields'] 
+                           if not field.get('systemModstamp') and not field.get('isCalculated')]
+            
+            # Get the results data
+            if job.results:
+                results_data = json.loads(job.results)
+                records = results_data.get('records', [])
+                
+                # Create a CSV in memory
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=field_names)
+                writer.writeheader()
+                
+                for record in records:
+                    # Filter the record to only include the fields we want
+                    filtered_record = {k: v for k, v in record.items() if k in field_names}
+                    writer.writerow(filtered_record)
+                
+                # Return the CSV as a file download
+                output.seek(0)
+                return Response(
+                    output.getvalue(),
+                    mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment;filename={job.object_name}_data.csv'}
+                )
+            else:
+                flash('No data available for export', 'warning')
+                return redirect(url_for('combined'))
+                
+        except Exception as e:
+            logger.error(f"Error exporting CSV: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+            
+    @app.route('/api/export/json/<int:job_id>', methods=['GET'])
+    def export_json(job_id):
+        """Export generated data to JSON format"""
+        if 'salesforce_org_id' not in session:
+            return jsonify({'error': 'Not connected to Salesforce'}), 401
+            
+        try:
+            # Retrieve the job from the database
+            job = GenerationJob.query.get_or_404(job_id)
+            
+            # Get the results data
+            if job.results:
+                results_data = json.loads(job.results)
+                records = results_data.get('records', [])
+                
+                # Return the JSON as a file download
+                return Response(
+                    json.dumps(records, indent=2),
+                    mimetype='application/json',
+                    headers={'Content-Disposition': f'attachment;filename={job.object_name}_data.json'}
+                )
+            else:
+                flash('No data available for export', 'warning')
+                return redirect(url_for('combined'))
+                
+        except Exception as e:
+            logger.error(f"Error exporting JSON: {str(e)}")
             return jsonify({'error': str(e)}), 500
