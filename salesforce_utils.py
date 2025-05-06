@@ -22,11 +22,17 @@ if SF_REDIRECT_URI.endswith('/'):
     SF_REDIRECT_URI = SF_REDIRECT_URI[:-1]
 
 
-# Let's try the default Salesforce login URL again with more debugging
-# Try with standard login.salesforce.com - the OAuth flow should redirect to the correct instance
-# For sandbox or developer orgs, use test.salesforce.com
-# For production orgs, use login.salesforce.com
-SF_LOGIN_URL = 'https://login.salesforce.com'
+# Attempt to auto-detect the appropriate Salesforce URL
+SF_CLIENT_DOMAIN = os.environ.get('SALESFORCE_DOMAIN', '')
+
+# If a specific client domain is provided, use it directly
+if SF_CLIENT_DOMAIN and SF_CLIENT_DOMAIN.strip():
+    SF_LOGIN_URL = f"https://{SF_CLIENT_DOMAIN.strip()}"
+    logger.debug(f"Using custom Salesforce domain: {SF_LOGIN_URL}")
+else:
+    # Fallback to standard login URL (for production orgs)
+    SF_LOGIN_URL = 'https://login.salesforce.com'
+    logger.debug(f"Using standard Salesforce login URL: {SF_LOGIN_URL}")
 
 def generate_code_verifier():
     """Generate a code_verifier for PKCE"""
@@ -52,13 +58,24 @@ def get_auth_url():
     from flask import session
     session['sf_code_verifier'] = code_verifier
     
+    # Print all environmental variables and configuration
+    logger.debug(f"Current login URL: {SF_LOGIN_URL}")
+    logger.debug(f"Redirect URI: {SF_REDIRECT_URI}")
+    logger.debug(f"Client ID: {SF_CLIENT_ID[:5]}...{SF_CLIENT_ID[-5:] if len(SF_CLIENT_ID) > 10 else ''}")
+    logger.debug(f"Code verifier generated: {code_verifier[:10]}...")
+    logger.debug(f"Code challenge generated: {code_challenge[:10]}...")
+    
+    # Try using the documented Salesforce flow parameters exactly
     params = {
         'client_id': SF_CLIENT_ID,
         'redirect_uri': SF_REDIRECT_URI,
         'response_type': 'code',
+        'display': 'page',  # Force full page display
+        'immediate': 'false',  # Don't attempt immediate authentication
         'scope': 'api refresh_token offline_access',
         'code_challenge': code_challenge,
-        'code_challenge_method': 'S256'
+        'code_challenge_method': 'S256',
+        'prompt': 'login consent'  # Force login prompt and consent screen
     }
     auth_url = f"{SF_LOGIN_URL}/services/oauth2/authorize?{urlencode(params)}"
     logger.debug(f"Generated auth URL with PKCE: {auth_url}")
