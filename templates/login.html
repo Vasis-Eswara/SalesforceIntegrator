@@ -28,32 +28,83 @@
                     <p>Please configure these environment variables to continue.</p>
                 </div>
                 {% else %}
-                <div class="card bg-dark mt-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Authentication Information</h5>
-                        <p class="card-text">
-                            This application uses OAuth 2.0 to securely connect to your Salesforce org. 
-                            We will only access the data necessary to generate test records. 
-                            No data will be modified without your explicit permission.
-                        </p>
-                        
-                        <h6 class="mt-4">Permissions Required:</h6>
-                        <ul class="list-group list-group-flush text-start mb-4">
-                            <li class="list-group-item bg-dark">Access basic information (your user identity)</li>
-                            <li class="list-group-item bg-dark">Access and manage your data (to read schema and insert test data)</li>
-                            <li class="list-group-item bg-dark">Perform requests on your behalf at any time</li>
-                        </ul>
-                        
-                        <div class="d-grid gap-2">
-                            <a href="{{ url_for('salesforce_auth') }}" class="btn btn-primary btn-lg">
-                                <i class="bi bi-cloud-arrow-up-fill me-2"></i>
-                                Connect to Salesforce
-                            </a>
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-4">
+                        <div class="card bg-dark h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">OAuth 2.0 Authentication</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">
+                                    Connect using OAuth 2.0 to securely access your Salesforce org.
+                                    This is the recommended method for most users.
+                                </p>
+                                
+                                <h6 class="mt-4">Permissions Required:</h6>
+                                <ul class="list-group list-group-flush text-start mb-4">
+                                    <li class="list-group-item bg-dark">Access basic information (your user identity)</li>
+                                    <li class="list-group-item bg-dark">Access and manage your data (to read schema and insert test data)</li>
+                                    <li class="list-group-item bg-dark">Perform requests on your behalf at any time</li>
+                                </ul>
+                                
+                                <div class="d-grid gap-2">
+                                    <a href="{{ url_for('salesforce_auth') }}" class="btn btn-primary">
+                                        <i class="bi bi-cloud-arrow-up-fill me-2"></i>
+                                        Connect with OAuth
+                                    </a>
+                                </div>
+                                
+                                <p class="mt-3 small text-secondary">
+                                    You'll be redirected to Salesforce to authorize this application.
+                                </p>
+                            </div>
                         </div>
-                        
-                        <p class="mt-3 small text-secondary">
-                            You'll be redirected to Salesforce to authorize this application.
-                        </p>
+                    </div>
+                    
+                    <div class="col-md-6 mb-4">
+                        <div class="card bg-dark h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Direct SOAP API Login</h5>
+                            </div>
+                            <div class="card-body">
+                                <p class="card-text">
+                                    Connect directly using your Salesforce username and password via the SOAP API.
+                                    This is an alternative if OAuth isn't working for your organization.
+                                </p>
+                                
+                                <form method="post" action="{{ url_for('login') }}" class="text-start">
+                                    <input type="hidden" name="login_type" value="direct">
+                                    
+                                    <div class="mb-3">
+                                        <label for="username" class="form-label">Username</label>
+                                        <input type="email" class="form-control" id="username" name="username" 
+                                               placeholder="your.email@example.com" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="password" class="form-label">Password</label>
+                                        <input type="password" class="form-control" id="password" name="password" required>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="security_token" class="form-label">Security Token (if required)</label>
+                                        <input type="password" class="form-control" id="security_token" name="security_token">
+                                        <div class="form-text">Leave empty if your IP is whitelisted or your token is appended to your password</div>
+                                    </div>
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button type="submit" class="btn btn-secondary">
+                                            <i class="bi bi-key-fill me-2"></i>
+                                            Login with SOAP API
+                                        </button>
+                                    </div>
+                                </form>
+                                
+                                <p class="mt-3 small text-secondary">
+                                    Your credentials are used only for authentication and never stored.
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 {% endif %}

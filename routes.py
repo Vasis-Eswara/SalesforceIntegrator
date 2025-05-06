@@ -7,11 +7,20 @@ from datetime import datetime, timedelta
 
 from app import db
 from models import SalesforceOrg, SchemaObject, SchemaField, GenerationJob
+
+# Import both REST and SOAP utilities
 from salesforce_utils import (
     get_auth_url, get_access_token, refresh_access_token, 
     get_salesforce_objects, get_object_fields, 
     get_object_describe, insert_records
 )
+
+# Import SOAP-based implementations
+from salesforce_soap_utils import (
+    login_with_username_password, get_salesforce_objects_soap,
+    get_object_describe_soap, insert_records_soap
+)
+
 from openai_utils import generate_test_data_with_gpt
 from salesforce_config_utils import analyze_prompt_for_configuration, apply_configuration
 
@@ -25,9 +34,53 @@ def init_routes(app):
         sf_connected = 'salesforce_org_id' in session
         return render_template('index.html', sf_connected=sf_connected)
     
-    @app.route('/login')
+    @app.route('/login', methods=['GET', 'POST'])
     def login():
-        """Salesforce login page"""
+        """Salesforce login page with both OAuth and direct SOAP login options"""
+        if request.method == 'POST':
+            login_type = request.form.get('login_type')
+            
+            # Direct login with username and password via SOAP API
+            if login_type == 'direct':
+                username = request.form.get('username')
+                password = request.form.get('password')
+                security_token = request.form.get('security_token', '')
+                
+                if not username or not password:
+                    flash('Username and password are required', 'danger')
+                    return redirect(url_for('login'))
+                
+                try:
+                    # Attempt login with username/password via SOAP API
+                    logger.debug(f"Attempting SOAP login for username: {username}")
+                    login_result = login_with_username_password(username, password, security_token)
+                    
+                    # Store connection in database
+                    sf_org = SalesforceOrg(
+                        instance_url=login_result.get('instance_url'),
+                        access_token=login_result.get('access_token'),
+                        org_id=login_result.get('user_info', {}).get('org_id'),
+                        user_id=login_result.get('user_info', {}).get('user_id')
+                    )
+                    
+                    db.session.add(sf_org)
+                    db.session.commit()
+                    logger.debug(f"Saved Salesforce org connection to database with ID: {sf_org.id}")
+                    
+                    # Store in session
+                    session['salesforce_org_id'] = sf_org.id
+                    session['salesforce_instance_url'] = sf_org.instance_url
+                    session['salesforce_access_token'] = sf_org.access_token
+                    
+                    flash('Successfully connected to Salesforce via SOAP API', 'success')
+                    return redirect(url_for('schema'))
+                    
+                except Exception as e:
+                    logger.error(f"SOAP login error: {str(e)}")
+                    flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
+                    return redirect(url_for('login'))
+                    
+        # GET request - show login form
         return render_template('login.html')
     
     @app.route('/salesforce/auth')
@@ -154,8 +207,15 @@ def init_routes(app):
                     db.session.commit()
                     session['salesforce_access_token'] = sf_org.access_token
             
-            # Get objects from Salesforce
-            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            # Get objects from Salesforce - try REST API first
+            try:
+                objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
+            except Exception as rest_error:
+                # If REST API fails, try SOAP API as fallback
+                logger.warning(f"REST API failed, falling back to SOAP: {str(rest_error)}")
+                objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(objects)} objects via SOAP API")
             
             return render_template('schema.html', objects=objects)
             
@@ -174,8 +234,15 @@ def init_routes(app):
         try:
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
             
-            # Get object describe info
-            object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
+            # Get object describe info - try REST API first
+            try:
+                object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
+                logger.debug(f"Successfully retrieved object details for {object_name} via REST API")
+            except Exception as rest_error:
+                # If REST API fails, try SOAP API as fallback
+                logger.warning(f"REST API failed for object detail, falling back to SOAP: {str(rest_error)}")
+                object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, object_name)
+                logger.debug(f"Successfully retrieved object details for {object_name} via SOAP API")
             
             return jsonify(object_info)
             
@@ -201,8 +268,14 @@ def init_routes(app):
             try:
                 sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
                 
-                # Get object describe info
-                object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
+                # Get object describe info - try REST API first, then SOAP as fallback
+                try:
+                    object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
+                    logger.debug(f"Successfully retrieved object details for {object_name} via REST API")
+                except Exception as rest_error:
+                    logger.warning(f"REST API failed for object detail, falling back to SOAP: {str(rest_error)}")
+                    object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, object_name)
+                    logger.debug(f"Successfully retrieved object details for {object_name} via SOAP API")
                 
                 # Create job record
                 job = GenerationJob(
@@ -217,8 +290,14 @@ def init_routes(app):
                 # Generate data with GPT
                 generated_data = generate_test_data_with_gpt(object_info, record_count)
                 
-                # Insert records to Salesforce
-                results = insert_records(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
+                # Insert records to Salesforce - try REST API first, then SOAP as fallback
+                try:
+                    results = insert_records(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
+                    logger.debug(f"Successfully inserted {len(generated_data)} records via REST API")
+                except Exception as rest_error:
+                    logger.warning(f"REST API failed for record insertion, falling back to SOAP: {str(rest_error)}")
+                    results = insert_records_soap(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
+                    logger.debug(f"Successfully inserted {len(generated_data)} records via SOAP API")
                 
                 # Update job with results
                 job.status = 'completed'
