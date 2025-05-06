@@ -286,7 +286,9 @@ class SalesforceSOAPClient:
             
             # Get the query more info
             done_elem = result.find('./partner:done', namespaces)
-            done = (done_elem is not None and done_elem.text.lower() == 'true')
+            done = False
+            if done_elem is not None and done_elem.text:
+                done = done_elem.text.lower() == 'true'
             query_locator_elem = result.find('./partner:queryLocator', namespaces)
             query_locator = query_locator_elem.text if query_locator_elem is not None else None
             
@@ -352,7 +354,9 @@ class SalesforceSOAPClient:
                 
                 # Update pagination info
                 done_elem = result.find('./partner:done', namespaces)
-                done = (done_elem is not None and done_elem.text.lower() == 'true')
+                done = False
+                if done_elem is not None and done_elem.text:
+                    done = done_elem.text.lower() == 'true'
                 query_locator_elem = result.find('./partner:queryLocator', namespaces)
                 query_locator = query_locator_elem.text if query_locator_elem is not None else None
                 
@@ -468,15 +472,34 @@ class SalesforceSOAPClient:
                 field_defaultValue = field.find('./partner:defaultValue', namespaces)
                 
                 if field_name is not None:
+                    # Define field properties safely with None checks
+                    is_required = False
+                    if field_nillable is not None and field_nillable.text:
+                        nillable = field_nillable.text.lower() == 'false'
+                        if field_defaultedOnCreate is not None and field_defaultedOnCreate.text:
+                            defaulted = field_defaultedOnCreate.text.lower() == 'false'
+                            is_required = nillable and defaulted
+                    
+                    is_unique = False
+                    if field_unique is not None and field_unique.text:
+                        is_unique = field_unique.text.lower() == 'true'
+                    
+                    is_custom = False
+                    if field_custom is not None and field_custom.text:
+                        is_custom = field_custom.text.lower() == 'true'
+                    
+                    is_updateable = False
+                    if field_updatable is not None and field_updatable.text:
+                        is_updateable = field_updatable.text.lower() == 'true'
+                    
                     field_info = {
                         'name': field_name.text,
                         'label': field_label.text if field_label is not None else field_name.text,
                         'type': field_type.text if field_type is not None else 'string',
-                        'required': (field_nillable is not None and field_nillable.text.lower() == 'false' and 
-                                    field_defaultedOnCreate is not None and field_defaultedOnCreate.text.lower() == 'false'),
-                        'unique': field_unique is not None and field_unique.text.lower() == 'true',
-                        'custom': field_custom is not None and field_custom.text.lower() == 'true',
-                        'updateable': field_updatable is not None and field_updatable.text.lower() == 'true',
+                        'required': is_required,
+                        'unique': is_unique,
+                        'custom': is_custom,
+                        'updateable': is_updateable,
                         'defaultValue': field_defaultValue.text if field_defaultValue is not None else None
                     }
                     
@@ -500,7 +523,11 @@ class SalesforceSOAPClient:
                             value = pv.find('./partner:value', namespaces)
                             active = pv.find('./partner:active', namespaces)
                             
-                            if value is not None and active is not None and active.text.lower() == 'true':
+                            is_active = False
+                            if active is not None and active.text:
+                                is_active = active.text.lower() == 'true'
+                                
+                            if value is not None and is_active:
                                 field_info['picklistValues'].append(value.text)
                     
                     # Add length for string fields
@@ -619,8 +646,8 @@ class SalesforceSOAPClient:
             # Process result
             success_elem = result.find('./partner:success', namespaces)
             success = False
-            if success_elem is not None and success_elem.text.lower() == 'true':
-                success = True
+            if success_elem is not None and success_elem.text:
+                success = success_elem.text.lower() == 'true'
                 
             if success:
                 id_elem = result.find('./partner:id', namespaces)
