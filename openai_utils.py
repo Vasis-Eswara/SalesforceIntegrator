@@ -39,6 +39,9 @@ def generate_test_data_with_gpt(object_info, record_count):
         Return ONLY a valid JSON array containing the generated records.
         """
         
+        # Check if there are natural language requirements
+        nlp_requirements = object_info.get('nlp_requirements', '')
+        
         # Create a user message that includes the object schema and requirements
         user_message = f"""
         Please generate {record_count} test records for the Salesforce object: {object_info['name']} ({object_info['label']}).
@@ -54,6 +57,19 @@ def generate_test_data_with_gpt(object_info, record_count):
         - Generate realistic data for each field based on field name and type
         - Ensure dates and times are properly formatted
         - Do not include the "Id" field in the generated records
+        """
+        
+        # Add the natural language requirements if provided
+        if nlp_requirements:
+            user_message += f"""
+            
+            CUSTOM REQUIREMENTS FROM USER:
+            {nlp_requirements}
+            
+            Please follow these specific requirements while generating the data.
+            """
+            
+        user_message += f"""
         
         Return a JSON array of {record_count} records with appropriate field values.
         """

@@ -465,6 +465,7 @@ def init_routes(app):
         if request.method == 'POST':
             object_name = request.form.get('object_name')
             record_count = int(request.form.get('record_count', 5))
+            nlp_requirements = request.form.get('nlp_requirements', '')
             
             if not object_name:
                 flash('Please select an object', 'warning')
@@ -492,6 +493,13 @@ def init_routes(app):
                 db.session.add(job)
                 db.session.commit()
                 
+                # Add NLP requirements if provided
+                if nlp_requirements:
+                    logger.info(f"Natural language requirements for {object_name}: {nlp_requirements}")
+                    # Add the NLP requirements to the object_info for processing by GPT
+                    if isinstance(object_info, dict):
+                        object_info['nlp_requirements'] = nlp_requirements
+                    
                 # Generate data with GPT
                 generated_data = generate_test_data_with_gpt(object_info, record_count)
                 

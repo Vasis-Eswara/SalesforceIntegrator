@@ -110,9 +110,15 @@
                     <div class="form-text">How many test records would you like to generate? (1-100)</div>
                 </div>
                 
+                <div class="mb-3">
+                    <label for="nlp-requirements" class="form-label">Natural Language Requirements (Optional)</label>
+                    <textarea class="form-control" id="nlp-requirements" name="nlp_requirements" rows="3" placeholder="Describe specific requirements for the data generation, such as: 'Generate contacts mostly in California with phone numbers' or 'Create accounts with high annual revenue in tech industry'"></textarea>
+                    <div class="form-text">Use plain English to describe special requirements for the data. Our AI will interpret your needs.</div>
+                </div>
+                
                 <div class="alert alert-info">
                     <i class="bi bi-info-circle-fill me-2"></i>
-                    The application will analyze the object schema and generate realistic test data that respects all constraints and relationships.
+                    The application will analyze the object schema and generate realistic test data that respects all constraints and relationships. Use the natural language input to customize the data generation further.
                 </div>
                 
                 <div class="d-grid">
