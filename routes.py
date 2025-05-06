@@ -700,16 +700,75 @@ def init_routes(app):
             
             # Get the object details to use field names as headers
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-            object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, job.object_name)
             
-            # Fields to use as headers (excluding system fields)
-            field_names = [field['name'] for field in object_info['fields'] 
-                           if not field.get('systemModstamp') and not field.get('isCalculated')]
+            try:
+                object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, job.object_name)
+                logger.debug(f"Successfully retrieved object details for {job.object_name} via REST API")
+            except Exception as rest_error:
+                logger.warning(f"REST API failed for object detail, falling back to SOAP: {str(rest_error)}")
+                object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, job.object_name)
+                logger.debug(f"Successfully retrieved object details for {job.object_name} via SOAP API")
             
-            # Get the results data
+            # Get the raw generated data from the job
             if job.results:
+                # Parse the job results
                 results_data = json.loads(job.results)
-                records = results_data.get('records', [])
+                
+                # Check if we have any successful records
+                if not results_data:
+                    flash('No data available for export', 'warning')
+                    return redirect(url_for('combined'))
+                
+                # Determine if the results have raw records or just success counts
+                # Different formats depending on how the data was generated
+                records = []
+                
+                # First try to get records from composite API format
+                if 'compositeResponse' in results_data:
+                    for response in results_data.get('compositeResponse', []):
+                        if response.get('httpStatusCode') == 201:  # Created
+                            body = response.get('body', {})
+                            if 'id' in body:
+                                # This is just the ID, not the full record
+                                # We'd need another API call to get the full record
+                                # For now, just add the ID
+                                records.append({'Id': body.get('id')})
+                
+                # Try to get records from standard format
+                elif isinstance(results_data, dict) and 'records' in results_data:
+                    records = results_data.get('records', [])
+                
+                # Try to get raw generated data
+                elif isinstance(results_data, list):
+                    records = results_data
+                
+                # If we have no records but have raw_data, use that
+                if not records and hasattr(job, 'raw_data') and job.raw_data:
+                    try:
+                        raw_records = json.loads(job.raw_data)
+                        if isinstance(raw_records, list):
+                            records = raw_records
+                    except:
+                        pass
+                
+                # If we still have no records, check if the generated data is in the results
+                if not records and 'generated_data' in results_data:
+                    generated_data = results_data.get('generated_data')
+                    if isinstance(generated_data, list):
+                        records = generated_data
+                
+                # If we have no valid records, return a message
+                if not records:
+                    flash('No data records available for export', 'warning')
+                    return redirect(url_for('combined'))
+                
+                # Get field names for headers
+                if records and isinstance(records[0], dict):
+                    # Use the keys from the first record as field names
+                    field_names = list(records[0].keys())
+                else:
+                    # If we don't have valid records, try to get field names from object info
+                    field_names = [field['name'] for field in object_info.get('fields', [])]
                 
                 # Create a CSV in memory
                 output = io.StringIO()
@@ -717,9 +776,10 @@ def init_routes(app):
                 writer.writeheader()
                 
                 for record in records:
-                    # Filter the record to only include the fields we want
-                    filtered_record = {k: v for k, v in record.items() if k in field_names}
-                    writer.writerow(filtered_record)
+                    if isinstance(record, dict):
+                        # Filter the record to only include the fields we want
+                        filtered_record = {k: v for k, v in record.items() if k in field_names}
+                        writer.writerow(filtered_record)
                 
                 # Return the CSV as a file download
                 output.seek(0)
@@ -728,13 +788,15 @@ def init_routes(app):
                     mimetype='text/csv',
                     headers={'Content-Disposition': f'attachment;filename={job.object_name}_data.csv'}
                 )
-            else:
-                flash('No data available for export', 'warning')
-                return redirect(url_for('combined'))
+            
+            # No results available
+            flash('No data available for export', 'warning')
+            return redirect(url_for('combined'))
                 
         except Exception as e:
             logger.error(f"Error exporting CSV: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            flash(f'Error exporting CSV: {str(e)}', 'danger')
+            return redirect(url_for('combined'))
             
     @app.route('/api/export/json/<int:job_id>', methods=['GET'])
     def export_json(job_id):
@@ -748,8 +810,53 @@ def init_routes(app):
             
             # Get the results data
             if job.results:
+                # Parse the job results
                 results_data = json.loads(job.results)
-                records = results_data.get('records', [])
+                
+                # Check if we have any successful records
+                if not results_data:
+                    flash('No data available for export', 'warning')
+                    return redirect(url_for('combined'))
+                
+                # Determine if the results have raw records or just success counts
+                # Different formats depending on how the data was generated
+                records = []
+                
+                # First try to get records from composite API format
+                if 'compositeResponse' in results_data:
+                    for response in results_data.get('compositeResponse', []):
+                        if response.get('httpStatusCode') == 201:  # Created
+                            body = response.get('body', {})
+                            if 'id' in body:
+                                records.append({'Id': body.get('id')})
+                
+                # Try to get records from standard format
+                elif isinstance(results_data, dict) and 'records' in results_data:
+                    records = results_data.get('records', [])
+                
+                # Try to get raw generated data
+                elif isinstance(results_data, list):
+                    records = results_data
+                
+                # If we have no records but have raw_data, use that
+                if not records and hasattr(job, 'raw_data') and job.raw_data:
+                    try:
+                        raw_records = json.loads(job.raw_data)
+                        if isinstance(raw_records, list):
+                            records = raw_records
+                    except:
+                        pass
+                
+                # If we still have no records, check if the generated data is in the results
+                if not records and 'generated_data' in results_data:
+                    generated_data = results_data.get('generated_data')
+                    if isinstance(generated_data, list):
+                        records = generated_data
+                
+                # If we have no valid records, return a message
+                if not records:
+                    flash('No data records available for export', 'warning')
+                    return redirect(url_for('combined'))
                 
                 # Return the JSON as a file download
                 return Response(
@@ -757,10 +864,12 @@ def init_routes(app):
                     mimetype='application/json',
                     headers={'Content-Disposition': f'attachment;filename={job.object_name}_data.json'}
                 )
-            else:
-                flash('No data available for export', 'warning')
-                return redirect(url_for('combined'))
+            
+            # No results available
+            flash('No data available for export', 'warning')
+            return redirect(url_for('combined'))
                 
         except Exception as e:
             logger.error(f"Error exporting JSON: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            flash(f'Error exporting JSON: {str(e)}', 'danger')
+            return redirect(url_for('combined'))

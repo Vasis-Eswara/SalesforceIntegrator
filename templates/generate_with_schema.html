@@ -249,6 +249,41 @@
 {% block scripts %}
 <!-- Include Mermaid.js for diagram generation -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+<!-- Export functionality -->
+<script>
+    // Data export functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add event listeners to export buttons if they exist
+        const exportCsvBtn = document.getElementById('export-csv');
+        const exportJsonBtn = document.getElementById('export-json');
+        
+        if (exportCsvBtn && exportJsonBtn) {
+            // We need to get the job ID from the page
+            // This assumes the job ID is stored somewhere in the page
+            // For this implementation, we'll add a data attribute to the export buttons
+            
+            // First, let's find the last job ID from the page context
+            // We'll extract it from the results section if available
+            const jobId = {{ job.id if job else 'null' }};
+            
+            if (jobId) {
+                exportCsvBtn.addEventListener('click', function() {
+                    window.location.href = `/api/export/csv/${jobId}`;
+                });
+                
+                exportJsonBtn.addEventListener('click', function() {
+                    window.location.href = `/api/export/json/${jobId}`;
+                });
+            } else {
+                // If no job ID is available, disable the buttons
+                exportCsvBtn.disabled = true;
+                exportCsvBtn.title = 'No data available to export';
+                exportJsonBtn.disabled = true;
+                exportJsonBtn.title = 'No data available to export';
+            }
+        }
+    });
+</script>
 <script>
     mermaid.initialize({
         startOnLoad: true,

@@ -92,7 +92,8 @@ class GenerationJob(db.Model):
     record_count = db.Column(db.Integer, default=0)
     status = db.Column(db.String(50), default='pending')
     error_message = db.Column(db.Text)
-    results = db.Column(db.Text)
+    results = db.Column(db.Text)  # Results from Salesforce insertion
+    raw_data = db.Column(db.Text)  # Raw generated data before insertion
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
     
