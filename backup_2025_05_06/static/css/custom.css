@@ -1,0 +1,146 @@
+/* Custom styling beyond Bootstrap defaults */
+
+/* Chat interface styling */
+.chat-container {
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: var(--bs-dark-bg-subtle);
+    border-radius: 0.5rem;
+}
+
+.chat-message {
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+}
+
+.chat-message.user {
+    flex-direction: row-reverse;
+}
+
+.chat-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 0.5rem;
+}
+
+.chat-content {
+    max-width: 80%;
+    padding: 0.75rem;
+    border-radius: 1rem;
+    background-color: var(--bs-secondary-bg);
+}
+
+.chat-message.user .chat-content {
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+.chat-message.assistant .chat-content {
+    background-color: var(--bs-secondary-bg-subtle);
+}
+
+.chat-message.system .chat-content {
+    background-color: var(--bs-danger-bg-subtle);
+}
+
+.chat-message.thinking .chat-content {
+    color: var(--bs-secondary-color);
+    font-style: italic;
+}
+
+.chat-input-container {
+    padding: 1rem 0;
+}
+
+/* Schema explorer styling */
+.object-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.object-list li {
+    cursor: pointer;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+}
+
+.object-list li:hover {
+    background-color: var(--bs-secondary-bg-subtle);
+}
+
+.object-list li.active {
+    background-color: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+}
+
+/* Custom badge for object types */
+.badge-custom {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    margin-left: 0.5rem;
+}
+
+.badge-standard {
+    background-color: var(--bs-secondary);
+}
+
+.badge-custom-object {
+    background-color: var(--bs-success);
+}
+
+/* Sidebar styles */
+.sidebar {
+    position: sticky;
+    top: 0;
+    height: calc(100vh - 56px);
+    padding-top: 1.5rem;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+/* Make tables more readable */
+.table-responsive {
+    overflow-x: auto;
+}
+
+/* Loading indicators */
+.loading-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    flex-direction: column;
+}
+
+/* Results styling */
+.results-container {
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 1rem 0;
+    background-color: var(--bs-dark-bg-subtle);
+}
+
+.results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+/* Tooltips */
+.field-tooltip {
+    cursor: help;
+    border-bottom: 1px dotted var(--bs-secondary);
+}

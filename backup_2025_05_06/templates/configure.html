@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+
+{% block title %}Configure Salesforce{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="card-title mb-0">Configure Salesforce with Natural Language</h3>
+                </div>
+                <div class="card-body">
+                    {% if not session.get('sf_instance_url') %}
+                        <div class="alert alert-warning">
+                            <strong>Please connect to Salesforce first.</strong> You need to connect to a Salesforce organization before you can configure it.
+                            <p class="mt-2"><a href="{{ url_for('login') }}" class="btn btn-primary">Connect to Salesforce</a></p>
+                        </div>
+                    {% else %}
+                        {% if not config.get('OPENAI_API_KEY') %}
+                            <div class="alert alert-warning">
+                                <strong>OpenAI API key not configured.</strong> Please add your OpenAI API key to enable this feature.
+                            </div>
+                        {% else %}
+                            {% if results %}
+                                <div class="alert {% if results.get('success', False) %}alert-success{% else %}alert-danger{% endif %}">
+                                    <strong>{{ results.get('message') }}</strong>
+                                </div>
+                                
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Configuration Details</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <h6>Prompt</h6>
+                                        <div class="bg-light p-3 mb-3 rounded">
+                                            <p class="mb-0">{{ prompt }}</p>
+                                        </div>
+                                        
+                                        <h6>Generated Configuration</h6>
+                                        <div class="bg-light p-3 rounded">
+                                            <pre class="mb-0"><code>{{ results.get('details')|tojson(indent=2) }}</code></pre>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {% if results.get('success', False) %}
+                                    <div class="card mb-4">
+                                        <div class="card-header">
+                                            <h5 class="mb-0">Apply Configuration</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <p>Review the configuration above and click "Apply Changes" to implement these changes in your Salesforce organization.</p>
+                                            <form action="{{ url_for('apply_config') }}" method="post">
+                                                <input type="hidden" name="configuration" value="{{ results.get('details')|tojson }}">
+                                                <button type="submit" class="btn btn-success">Apply Changes</button>
+                                                <a href="{{ url_for('configure') }}" class="btn btn-secondary">Start Over</a>
+                                            </form>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <a href="{{ url_for('configure') }}" class="btn btn-primary">Try Again</a>
+                                {% endif %}
+                            {% else %}
+                                <form action="{{ url_for('configure') }}" method="post">
+                                    <div class="mb-3">
+                                        <label for="configPrompt" class="form-label">Describe what you want to configure in Salesforce</label>
+                                        <textarea 
+                                            class="form-control" 
+                                            id="configPrompt" 
+                                            name="prompt" 
+                                            rows="5" 
+                                            placeholder="Example: Create a custom object called Customer Support Case with fields for case number, subject, description, status, and priority"
+                                            required
+                                        ></textarea>
+                                        <div class="form-text">
+                                            Be as specific as possible about what objects, fields, validation rules, or other components you want to create or modify.
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Generate Configuration</button>
+                                </form>
+                            {% endif %}
+                            
+                            <div class="mt-5">
+                                <h5>Example prompts you can try:</h5>
+                                <ul class="list-group">
+                                    <li class="list-group-item">
+                                        Create a custom object called Project with fields for name, start date, end date, budget, status, and description.
+                                    </li>
+                                    <li class="list-group-item">
+                                        Add a validation rule to Account to require phone number when type is Customer.
+                                    </li>
+                                    <li class="list-group-item">
+                                        Create a trigger on Opportunity that updates the related Account's total opportunity amount when an opportunity is created or updated.
+                                    </li>
+                                    <li class="list-group-item">
+                                        Add a custom field called Customer Satisfaction Score to the Case object. It should be a number from 1 to 10 with a default value of 5.
+                                    </li>
+                                </ul>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
