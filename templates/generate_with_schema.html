@@ -71,14 +71,14 @@
                             <div class="card">
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <h4 id="diagram-title">Object Relationship Diagram</h4>
-                                    <div>
-                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-smaller">
+                                    <div class="diagram-controls">
+                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-smaller" title="Decrease height">
                                             <i class="bi bi-dash-circle"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-larger">
+                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-larger" title="Increase height">
                                             <i class="bi bi-plus-circle"></i>
                                         </button>
-                                        <button class="btn btn-sm btn-outline-primary" id="toggle-diagram">
+                                        <button class="btn btn-sm btn-outline-primary" id="toggle-diagram" title="Toggle diagram">
                                             <i class="bi bi-chevron-up"></i>
                                         </button>
                                     </div>
@@ -424,6 +424,11 @@
             const diagramBody = document.getElementById('diagram-body');
             const diagramContainer = document.getElementById('object-diagram');
             
+            // Make sure the diagram body is visible initially
+            if (diagramBody) {
+                diagramBody.style.display = 'block';
+            }
+            
             // Toggle diagram visibility
             if (toggleButton && diagramBody) {
                 toggleButton.addEventListener('click', function() {
@@ -431,7 +436,6 @@
                         diagramBody.style.display = 'block';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
                     } else {
-                        diagramBody.style.display = 'block';
                         diagramBody.style.display = 'none';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
                     }
@@ -500,6 +504,9 @@
                         try {
                             console.log('Running mermaid rendering');
                             mermaid.run();
+                            
+                            // Re-initialize controls after diagram is rendered
+                            initDiagramControls();
                         } catch (e) {
                             console.error('Mermaid error:', e);
                         }

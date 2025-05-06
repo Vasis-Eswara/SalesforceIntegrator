@@ -144,3 +144,25 @@
     cursor: help;
     border-bottom: 1px dotted var(--bs-secondary);
 }
+
+/* Diagram Controls */
+.diagram-controls {
+    display: flex;
+    align-items: center;
+}
+
+.diagram-controls button {
+    transition: all 0.2s ease;
+}
+
+.diagram-controls button:hover {
+    transform: scale(1.1);
+}
+
+/* Mermaid Diagram Customization */
+.mermaid-diagram {
+    background-color: var(--bs-dark-bg-subtle);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    transition: height 0.3s ease;
+}
