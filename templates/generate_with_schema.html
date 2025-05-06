@@ -233,7 +233,7 @@
 
 {% block scripts %}
 <!-- Include Mermaid.js for diagram generation -->
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10.0.2/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 <script>
     mermaid.initialize({
         startOnLoad: true,
@@ -391,6 +391,15 @@
             `;
             
             container.innerHTML = html;
+            
+            // Ensure diagram display
+            setTimeout(() => {
+                const schemaContainer = document.getElementById('schema-diagram');
+                if (schemaContainer) {
+                    console.log('Making schema diagram visible');
+                    schemaContainer.style.display = 'block';
+                }
+            }, 200);
         }
         
         // Function to generate and display object relationship diagram
@@ -399,7 +408,7 @@
             const diagramContainer = document.getElementById('object-diagram');
             const diagramTitle = document.getElementById('diagram-title');
             
-            // Show the diagram section within Schema Viewer tab
+            // Make sure the diagram section is visible
             schemaContainer.style.display = 'block';
             diagramTitle.textContent = `Relationship Diagram: ${objectName}`;
             
@@ -413,18 +422,36 @@
                 </div>
             `;
             
+            console.log('Loading diagram for:', objectName); // Debug log
+            
             // Fetch object details to generate diagram
             fetch('/schema/' + objectName)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Diagram data received:', Object.keys(data)); // Debug log
+                    
                     // Generate mermaid diagram syntax
                     const diagramCode = generateMermaidDiagram(data);
+                    console.log('Generated diagram code length:', diagramCode.length); // Debug log
+                    
+                    // Create the mermaid diagram
                     diagramContainer.innerHTML = `<div class="mermaid">${diagramCode}</div>`;
                     
-                    // Render the diagram
-                    mermaid.run();
+                    // Force diagram to be visible
+                    schemaContainer.style.display = 'block';
+                    
+                    // Render the diagram with a slight delay to ensure DOM is ready
+                    setTimeout(() => {
+                        try {
+                            console.log('Running mermaid rendering');
+                            mermaid.run();
+                        } catch (e) {
+                            console.error('Mermaid error:', e);
+                        }
+                    }, 100);
                 })
                 .catch(error => {
+                    console.error('Error loading diagram:', error); // Debug log
                     diagramContainer.innerHTML = `
                         <div class="alert alert-danger">
                             <h4 class="alert-heading">Error</h4>
