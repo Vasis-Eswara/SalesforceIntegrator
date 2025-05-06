@@ -2,8 +2,9 @@ import os
 import json
 import logging
 from urllib.parse import urlencode
-from flask import render_template, request, redirect, url_for, session, jsonify, flash
+from flask import render_template, request, redirect, url_for, session, jsonify, flash, send_file
 from datetime import datetime, timedelta
+from werkzeug.utils import secure_filename
 
 from app import db
 from models import SalesforceOrg, SchemaObject, SchemaField, GenerationJob, SalesforceCredential
@@ -23,6 +24,7 @@ from salesforce_soap_utils import (
 
 from openai_utils import generate_test_data_with_gpt
 from salesforce_config_utils import analyze_prompt_for_configuration, apply_configuration
+from excel_utils import generate_object_template, process_excel_configuration
 
 logger = logging.getLogger(__name__)
 
@@ -610,6 +612,69 @@ def init_routes(app):
         
         # GET request - show form
         return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key)
+    
+    @app.route('/excel-template')
+    def excel_template():
+        """Download Excel template for Salesforce configuration"""
+        try:
+            # Generate the template
+            template_path = generate_object_template()
+            return send_file(template_path, as_attachment=True)
+        except Exception as e:
+            logger.error(f"Error generating Excel template: {str(e)}")
+            flash(f'Error generating Excel template: {str(e)}', 'danger')
+            return redirect(url_for('configure'))
+    
+    @app.route('/upload-excel', methods=['POST'])
+    def upload_excel():
+        """Upload and process Excel configuration file"""
+        # Ensure the user is logged in
+        is_logged_in = 'salesforce_org_id' in session
+        if not is_logged_in:
+            logger.warning("User attempted to upload Excel config without being logged in")
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+            
+        has_openai_key = bool(os.environ.get('OPENAI_API_KEY'))
+        
+        if 'config_file' not in request.files:
+            flash('No file part', 'warning')
+            return redirect(url_for('configure'))
+            
+        file = request.files['config_file']
+        if file.filename == '':
+            flash('No selected file', 'warning')
+            return redirect(url_for('configure'))
+            
+        try:
+            # Save the uploaded file temporarily
+            uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+            if not os.path.exists(uploads_dir):
+                os.makedirs(uploads_dir)
+                
+            file_path = os.path.join(uploads_dir, secure_filename(file.filename))
+            file.save(file_path)
+            
+            # Process the file
+            config = process_excel_configuration(file_path)
+            
+            # Clean up
+            os.remove(file_path)
+            
+            return render_template('configure.html', prompt="Excel configuration", results={
+                'success': True,
+                'message': 'Excel configuration processed successfully. Please review before applying.',
+                'details': config
+            }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
+            
+        except Exception as e:
+            logger.error(f"Error processing Excel configuration: {str(e)}")
+            flash(f'Error processing Excel configuration: {str(e)}', 'danger')
+            return render_template('configure.html', results={
+                'success': False,
+                'message': str(e),
+                'details': {'error': str(e)}
+            }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
     
     @app.route('/apply-config', methods=['POST'])
     def apply_config():
