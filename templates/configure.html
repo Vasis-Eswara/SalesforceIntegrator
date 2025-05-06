@@ -62,24 +62,62 @@
                                     <a href="{{ url_for('configure') }}" class="btn btn-primary">Try Again</a>
                                 {% endif %}
                             {% else %}
-                                <form action="{{ url_for('configure') }}" method="post">
-                                    <div class="mb-3">
-                                        <label for="configPrompt" class="form-label">Describe what you want to configure in Salesforce</label>
-                                        <textarea 
-                                            class="form-control" 
-                                            id="configPrompt" 
-                                            name="prompt" 
-                                            rows="5" 
-                                            style="min-height: 120px; resize: vertical;"
-                                            placeholder="Example: Create a custom object called Customer Support Case with fields for case number, subject, description, status, and priority"
-                                            required
-                                        ></textarea>
-                                        <div class="form-text">
-                                            Be as specific as possible about what objects, fields, validation rules, or other components you want to create or modify.
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">NLP Configuration</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form action="{{ url_for('configure') }}" method="post">
+                                            <div class="mb-3">
+                                                <label for="configPrompt" class="form-label">Describe what you want to configure in Salesforce</label>
+                                                <textarea 
+                                                    class="form-control" 
+                                                    id="configPrompt" 
+                                                    name="prompt" 
+                                                    rows="5" 
+                                                    style="min-height: 120px; resize: vertical;"
+                                                    placeholder="Example: Create a custom object called Customer Support Case with fields for case number, subject, description, status, and priority"
+                                                    required
+                                                ></textarea>
+                                                <div class="form-text">
+                                                    Be as specific as possible about what objects, fields, validation rules, or other components you want to create or modify.
+                                                </div>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">Generate Configuration</button>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Excel-based Configuration</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-3">
+                                            <h6>1. Download Excel Template</h6>
+                                            <p>Download a template file to define your Salesforce configuration.</p>
+                                            <a href="{{ url_for('excel_template') }}" class="btn btn-outline-primary">
+                                                <i class="bi bi-file-earmark-excel me-1"></i> Download Template
+                                            </a>
+                                        </div>
+                                        <hr>
+                                        <div class="mb-0">
+                                            <h6>2. Upload Completed Template</h6>
+                                            <p>Upload your completed Excel configuration template.</p>
+                                            <form action="{{ url_for('upload_excel') }}" method="post" enctype="multipart/form-data">
+                                                <div class="mb-3">
+                                                    <input type="file" class="form-control" id="configFile" name="config_file" accept=".xlsx">
+                                                    <div class="form-text">
+                                                        Only .xlsx files are supported.
+                                                    </div>
+                                                </div>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="bi bi-cloud-upload me-1"></i> Upload and Process
+                                                </button>
+                                            </form>
                                         </div>
                                     </div>
-                                    <button type="submit" class="btn btn-primary">Generate Configuration</button>
-                                </form>
+                                </div>
                             {% endif %}
                             
                             <div class="mt-5">

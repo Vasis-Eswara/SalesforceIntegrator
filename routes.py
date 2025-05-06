@@ -30,11 +30,38 @@ logger = logging.getLogger(__name__)
 
 def init_routes(app):
     
+    # Helper function to get org information for templates
+    def get_org_info():
+        """Get Salesforce org information for templates"""
+        org_info = {
+            'connected': False,
+            'name': None,
+            'instance': None,
+            'id': None
+        }
+        
+        if 'salesforce_org_id' in session:
+            try:
+                sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+                if sf_org:
+                    org_info['connected'] = True
+                    # Extract org name from instance URL (simplified)
+                    instance_parts = sf_org.instance_url.split('.')
+                    if len(instance_parts) >= 2:
+                        org_info['name'] = instance_parts[0].replace('https://', '')
+                    org_info['instance'] = sf_org.instance_url
+                    org_info['id'] = sf_org.org_id
+            except Exception as e:
+                logger.error(f"Error getting org info: {str(e)}")
+        
+        return org_info
+
     @app.route('/')
     def index():
         """Homepage with connection status and navigation"""
         sf_connected = 'salesforce_org_id' in session
-        return render_template('index.html', sf_connected=sf_connected)
+        org_info = get_org_info()
+        return render_template('index.html', sf_connected=sf_connected, org_info=org_info)
     
     @app.route('/login', methods=['GET', 'POST'])
     def login():
@@ -183,10 +210,12 @@ def init_routes(app):
         # GET request - show login form with saved credentials
         saved_credentials = SalesforceCredential.query.order_by(SalesforceCredential.last_used.desc().nullslast()).all()
         default_credential = SalesforceCredential.query.filter_by(default=True).first()
+        org_info = get_org_info()
         
         return render_template('login.html', 
                            saved_credentials=saved_credentials,
-                           default_credential=default_credential)
+                           default_credential=default_credential,
+                           org_info=org_info)
     
     @app.route('/salesforce/auth')
     def salesforce_auth():
@@ -383,7 +412,8 @@ def init_routes(app):
                 
         # GET request - show all credentials
         credentials = SalesforceCredential.query.order_by(SalesforceCredential.name).all()
-        return render_template('credentials.html', credentials=credentials)
+        org_info = get_org_info()
+        return render_template('credentials.html', credentials=credentials, org_info=org_info)
     
     @app.route('/logout')
     def logout():
@@ -611,7 +641,8 @@ def init_routes(app):
                 }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
         
         # GET request - show form
-        return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key)
+        org_info = get_org_info()
+        return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key, org_info=org_info)
     
     @app.route('/excel-template')
     def excel_template():
@@ -661,11 +692,12 @@ def init_routes(app):
             # Clean up
             os.remove(file_path)
             
+            org_info = get_org_info()
             return render_template('configure.html', prompt="Excel configuration", results={
                 'success': True,
                 'message': 'Excel configuration processed successfully. Please review before applying.',
                 'details': config
-            }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
+            }, is_logged_in=is_logged_in, has_openai_key=has_openai_key, org_info=org_info)
             
         except Exception as e:
             logger.error(f"Error processing Excel configuration: {str(e)}")
