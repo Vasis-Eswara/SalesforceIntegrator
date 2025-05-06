@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 SF_CLIENT_ID = os.environ.get('SALESFORCE_CLIENT_ID', '')
 SF_CLIENT_SECRET = os.environ.get('SALESFORCE_CLIENT_SECRET', '')
 
-# Use the exact redirect URI as provided
-SF_REDIRECT_URI = os.environ.get('SALESFORCE_REDIRECT_URI', 'http://localhost:5000/salesforce/callback')
+# Hard-code the redirect URI for now
+SF_REDIRECT_URI = 'https://2dbf6f12-560a-4cb9-8ca7-c2cd30a7fe4e-00-2kbskpp6fbk9s.worf.replit.dev/salesforce/callback'
 logger.debug(f"Using redirect URI: '{SF_REDIRECT_URI}'")
 
 
