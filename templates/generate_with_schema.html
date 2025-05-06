@@ -395,27 +395,28 @@
         
         // Function to generate and display object relationship diagram
         function loadObjectDiagram(objectName) {
+            const schemaContainer = document.getElementById('schema-diagram');
             const diagramContainer = document.getElementById('object-diagram');
-            const diagramPlaceholder = document.getElementById('diagram-placeholder');
-            const diagramWrapper = document.getElementById('diagram-container');
+            const diagramTitle = document.getElementById('diagram-title');
+            
+            // Show the diagram section within Schema Viewer tab
+            schemaContainer.style.display = 'block';
+            diagramTitle.textContent = `Relationship Diagram: ${objectName}`;
             
             // Show loading indicator
-            diagramPlaceholder.style.display = 'block';
-            diagramWrapper.style.display = 'none';
-            diagramPlaceholder.innerHTML = `
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
+            diagramContainer.innerHTML = `
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="lead mt-3">Generating relationship diagram...</p>
                 </div>
-                <p class="lead mt-3">Generating relationship diagram...</p>
             `;
             
             // Fetch object details to generate diagram
             fetch('/schema/' + objectName)
                 .then(response => response.json())
                 .then(data => {
-                    diagramPlaceholder.style.display = 'none';
-                    diagramWrapper.style.display = 'block';
-                    
                     // Generate mermaid diagram syntax
                     const diagramCode = generateMermaidDiagram(data);
                     diagramContainer.innerHTML = diagramCode;
@@ -424,9 +425,7 @@
                     mermaid.init(undefined, document.querySelector('.mermaid-diagram'));
                 })
                 .catch(error => {
-                    diagramPlaceholder.style.display = 'block';
-                    diagramWrapper.style.display = 'none';
-                    diagramPlaceholder.innerHTML = `
+                    diagramContainer.innerHTML = `
                         <div class="alert alert-danger">
                             <h4 class="alert-heading">Error</h4>
                             <p>Failed to generate diagram: ${error.message}</p>
