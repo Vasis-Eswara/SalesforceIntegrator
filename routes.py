@@ -455,6 +455,33 @@ def init_routes(app):
             logger.error(f"Error fetching object detail: {str(e)}")
             return jsonify({'error': str(e)}), 500
     
+    @app.route('/combined', methods=['GET', 'POST'])
+    def combined():
+        """Combined schema viewer and data generation page"""
+        if 'salesforce_org_id' not in session:
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+        
+        # Handle generation results display
+        job = None
+        results = None
+        object_name = None
+        
+        if request.method == 'POST':
+            # Process data generation request the same way as in the generate route
+            return generate()
+        
+        # GET request - show combined interface
+        try:
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            return render_template('generate_with_schema.html', objects=objects,
+                                  job=job, results=results, object_name=object_name)
+        except Exception as e:
+            logger.error(f"Error fetching objects: {str(e)}")
+            flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
+            return redirect(url_for('index'))
+
     @app.route('/generate', methods=['GET', 'POST'])
     def generate():
         """Generate test data for a Salesforce object"""
@@ -519,12 +546,27 @@ def init_routes(app):
                 db.session.commit()
                 
                 flash(f'Successfully generated and inserted {record_count} records for {object_name}', 'success')
-                return render_template('generate.html', job=job, results=results, object_name=object_name)
+                
+                # Check the referer to determine return page
+                referer = request.headers.get('Referer', '')
+                if 'combined' in referer:
+                    # If coming from combined view, return to that view with results
+                    sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+                    objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                    return render_template('generate_with_schema.html', objects=objects, job=job, results=results, object_name=object_name)
+                else:
+                    # Otherwise return to the standard generate page
+                    return render_template('generate.html', job=job, results=results, object_name=object_name)
                 
             except Exception as e:
                 logger.error(f"Error generating data: {str(e)}")
                 flash(f'Error generating data: {str(e)}', 'danger')
-                return redirect(url_for('generate'))
+                # Check the referer to determine return page
+                referer = request.headers.get('Referer', '')
+                if 'combined' in referer:
+                    return redirect(url_for('combined'))
+                else:
+                    return redirect(url_for('generate'))
         
         # GET request - show form
         try:
