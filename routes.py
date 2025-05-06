@@ -110,7 +110,7 @@ def init_routes(app):
                             flash(f'Note: Could not save credentials for future use', 'warning')
                     
                     flash('Successfully connected to Salesforce via SOAP API', 'success')
-                    return redirect(url_for('schema'))
+                    return redirect(url_for('combined'))
                     
                 except Exception as e:
                     logger.error(f"SOAP login error: {str(e)}")
@@ -171,7 +171,7 @@ def init_routes(app):
                     session['salesforce_access_token'] = sf_org.access_token
                     
                     flash(f'Successfully connected to Salesforce using saved credentials', 'success')
-                    return redirect(url_for('schema'))
+                    return redirect(url_for('combined'))
                     
                 except Exception as e:
                     logger.error(f"Error using saved credentials: {str(e)}")
@@ -272,7 +272,7 @@ def init_routes(app):
             session['salesforce_access_token'] = sf_org.access_token
             
             flash('Successfully connected to Salesforce', 'success')
-            return redirect(url_for('schema'))
+            return redirect(url_for('combined'))
             
         except Exception as e:
             logger.error(f"Error during Salesforce callback: {str(e)}")
@@ -392,42 +392,7 @@ def init_routes(app):
         flash('Disconnected from Salesforce', 'info')
         return redirect(url_for('index'))
     
-    @app.route('/schema')
-    def schema():
-        """Show Salesforce schema objects"""
-        if 'salesforce_org_id' not in session:
-            flash('Please connect to Salesforce first', 'warning')
-            return redirect(url_for('login'))
-        
-        try:
-            # Get Salesforce connection
-            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-            
-            # Check if token refresh is needed
-            if sf_org.updated_at < datetime.utcnow() - timedelta(minutes=55):
-                if sf_org.refresh_token:
-                    token_data = refresh_access_token(sf_org.refresh_token)
-                    sf_org.access_token = token_data.get('access_token')
-                    sf_org.updated_at = datetime.utcnow()
-                    db.session.commit()
-                    session['salesforce_access_token'] = sf_org.access_token
-            
-            # Get objects from Salesforce - try REST API first
-            try:
-                objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
-                logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
-            except Exception as rest_error:
-                # If REST API fails, try SOAP API as fallback
-                logger.warning(f"REST API failed, falling back to SOAP: {str(rest_error)}")
-                objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
-                logger.debug(f"Successfully retrieved {len(objects)} objects via SOAP API")
-            
-            return render_template('schema.html', objects=objects)
-            
-        except Exception as e:
-            logger.error(f"Error fetching schema: {str(e)}")
-            flash(f'Error retrieving Salesforce schema: {str(e)}', 'danger')
-            return redirect(url_for('index'))
+    # Schema route has been removed - functionality now available in the combined page
     
     @app.route('/schema/<object_name>')
     def object_detail(object_name):

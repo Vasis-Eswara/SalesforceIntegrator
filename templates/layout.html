@@ -31,9 +31,7 @@
                         <a class="nav-link {% if request.path == url_for('index') %}active{% endif %}" href="{{ url_for('index') }}">Home</a>
                     </li>
                     {% if session.get('salesforce_org_id') %}
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('schema') %}active{% endif %}" href="{{ url_for('schema') }}">Schema Explorer</a>
-                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('generate') %}active{% endif %}" href="{{ url_for('generate') }}">Generate Data</a>
                     </li>
