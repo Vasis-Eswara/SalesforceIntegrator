@@ -27,12 +27,17 @@ SF_CLIENT_DOMAIN = os.environ.get('SALESFORCE_DOMAIN', '')
 
 # If a specific client domain is provided, use it directly
 if SF_CLIENT_DOMAIN and SF_CLIENT_DOMAIN.strip():
-    SF_LOGIN_URL = f"https://{SF_CLIENT_DOMAIN.strip()}"
+    # Check if it's already a full URL or just a domain
+    domain = SF_CLIENT_DOMAIN.strip()
+    if domain.startswith('http'):
+        SF_LOGIN_URL = domain
+    else:
+        SF_LOGIN_URL = f"https://{domain}"
     logger.debug(f"Using custom Salesforce domain: {SF_LOGIN_URL}")
 else:
-    # Fallback to standard login URL (for production orgs)
-    SF_LOGIN_URL = 'https://login.salesforce.com'
-    logger.debug(f"Using standard Salesforce login URL: {SF_LOGIN_URL}")
+    # Try test.salesforce.com first for sandbox environments
+    SF_LOGIN_URL = 'https://test.salesforce.com'
+    logger.debug(f"Using sandbox Salesforce login URL: {SF_LOGIN_URL}")
 
 def generate_code_verifier():
     """Generate a code_verifier for PKCE"""
@@ -72,11 +77,14 @@ def get_auth_url():
         'response_type': 'code',
         'display': 'page',  # Force full page display
         'immediate': 'false',  # Don't attempt immediate authentication
-        'scope': 'api refresh_token offline_access',
+        'scope': 'api refresh_token offline_access custom_permissions',
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256',
         'prompt': 'login consent'  # Force login prompt and consent screen
     }
+    # Log all parameters for debugging
+    logger.debug(f"OAuth params: {params}")
+    
     auth_url = f"{SF_LOGIN_URL}/services/oauth2/authorize?{urlencode(params)}"
     logger.debug(f"Generated auth URL with PKCE: {auth_url}")
     return auth_url

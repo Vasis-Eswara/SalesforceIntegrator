@@ -49,14 +49,19 @@ def init_routes(app):
         # Log all request information to help debug
         logger.debug(f"Callback received. Request URL: {request.url}")
         logger.debug(f"Request args: {request.args}")
+        logger.debug(f"Request method: {request.method}")
         logger.debug(f"Request headers: {dict(request.headers)}")
         logger.debug(f"Session contents: {session}")
+        logger.debug(f"Current Salesforce Login URL: {os.environ.get('SALESFORCE_DOMAIN')}")
         
         # Log the PKCE code verifier from session
         if 'sf_code_verifier' in session:
             logger.debug(f"PKCE code_verifier found in session: {session['sf_code_verifier'][:10]}...")
         else:
             logger.debug("No PKCE code_verifier found in session")
+            # Re-initialize auth flow if code verifier is missing
+            flash('Authentication session expired. Please try connecting again.', 'warning')
+            return redirect(url_for('salesforce_auth'))
         
         code = request.args.get('code')
         error = request.args.get('error')
@@ -76,22 +81,34 @@ def init_routes(app):
         
         try:
             # Exchange code for token
+            logger.debug(f"Attempting to exchange code for token. Code starts with: {code[:10]}...")
             token_data = get_access_token(code)
             
+            # Log token response (sanitized)
+            logger.debug(f"Token response received with keys: {token_data.keys() if token_data else 'None'}")
+            
             if not token_data or 'access_token' not in token_data:
-                flash('Failed to obtain access token', 'danger')
+                logger.error(f"Failed to obtain access token. Response: {token_data}")
+                flash('Failed to obtain access token from Salesforce', 'danger')
                 return redirect(url_for('login'))
+            
+            # Log successful token exchange
+            logger.debug(f"Successfully obtained access token. Instance URL: {token_data.get('instance_url')}")
+            logger.debug(f"Token type: {token_data.get('token_type')}")
+            logger.debug(f"Refresh token obtained: {'Yes' if 'refresh_token' in token_data else 'No'}")
             
             # Store connection in database
             sf_org = SalesforceOrg(
                 instance_url=token_data.get('instance_url'),
                 access_token=token_data.get('access_token'),
                 refresh_token=token_data.get('refresh_token'),
-                org_id=token_data.get('id', '').split('/')[-2] if 'id' in token_data else None
+                org_id=token_data.get('id', '').split('/')[-2] if 'id' in token_data else None,
+                user_id=token_data.get('id', '').split('/')[-1] if 'id' in token_data else None
             )
             
             db.session.add(sf_org)
             db.session.commit()
+            logger.debug(f"Saved Salesforce org connection to database with ID: {sf_org.id}")
             
             # Store in session
             session['salesforce_org_id'] = sf_org.id
@@ -103,6 +120,8 @@ def init_routes(app):
             
         except Exception as e:
             logger.error(f"Error during Salesforce callback: {str(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
             flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
             return redirect(url_for('login'))
     
