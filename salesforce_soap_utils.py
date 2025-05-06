@@ -353,99 +353,97 @@ class SalesforceSOAPClient:
         """
         Generate a login WSDL file for Salesforce authentication
         """
-        login_wsdl_content = '''
-        <?xml version="1.0" encoding="UTF-8"?>
-        <definitions targetNamespace="urn:partner.soap.sforce.com"
-                    xmlns="http://schemas.xmlsoap.org/wsdl/"
-                    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-                    xmlns:tns="urn:partner.soap.sforce.com"
-                    xmlns:xsd="http://www.w3.org/2001/XMLSchema">
-            <types>
-                <schema elementFormDefault="qualified" targetNamespace="urn:partner.soap.sforce.com"
-                        xmlns="http://www.w3.org/2001/XMLSchema">
-                    <element name="login">
-                        <complexType>
-                            <sequence>
-                                <element name="username" type="xsd:string"/>
-                                <element name="password" type="xsd:string"/>
-                            </sequence>
-                        </complexType>
-                    </element>
-                    <element name="loginResponse">
-                        <complexType>
-                            <sequence>
-                                <element name="result" type="tns:LoginResult"/>
-                            </sequence>
-                        </complexType>
-                    </element>
-                    <complexType name="LoginResult">
-                        <sequence>
-                            <element name="metadataServerUrl" type="xsd:string"/>
-                            <element name="passwordExpired" type="xsd:boolean"/>
-                            <element name="sandbox" type="xsd:boolean"/>
-                            <element name="serverUrl" type="xsd:string"/>
-                            <element name="sessionId" type="xsd:string"/>
-                            <element name="userId" type="xsd:string"/>
-                            <element name="userInfo" type="tns:UserInfo" minOccurs="0"/>
-                        </sequence>
-                    </complexType>
-                    <complexType name="UserInfo">
-                        <sequence>
-                            <element name="accessibilityMode" type="xsd:boolean"/>
-                            <element name="currencySymbol" type="xsd:string" nillable="true"/>
-                            <element name="orgAttachmentFileSizeLimit" type="xsd:int"/>
-                            <element name="orgDefaultCurrencyIsoCode" type="xsd:string" nillable="true"/>
-                            <element name="orgDisallowHtmlAttachments" type="xsd:boolean"/>
-                            <element name="orgHasPersonAccounts" type="xsd:boolean"/>
-                            <element name="organizationId" type="xsd:string"/>
-                            <element name="organizationMultiCurrency" type="xsd:boolean"/>
-                            <element name="organizationName" type="xsd:string"/>
-                            <element name="profileId" type="xsd:string"/>
-                            <element name="roleId" type="xsd:string" nillable="true"/>
-                            <element name="userDefaultCurrencyIsoCode" type="xsd:string" nillable="true"/>
-                            <element name="userEmail" type="xsd:string"/>
-                            <element name="userFullName" type="xsd:string"/>
-                            <element name="userId" type="xsd:string"/>
-                            <element name="userLanguage" type="xsd:string"/>
-                            <element name="userLocale" type="xsd:string"/>
-                            <element name="userName" type="xsd:string"/>
-                            <element name="userTimeZone" type="xsd:string"/>
-                            <element name="userType" type="xsd:string"/>
-                        </sequence>
-                    </complexType>
-                </schema>
-            </types>
-            <message name="loginRequest">
-                <part element="tns:login" name="parameters"/>
-            </message>
-            <message name="loginResponse">
-                <part element="tns:loginResponse" name="parameters"/>
-            </message>
-            <portType name="Soap">
-                <operation name="login">
-                    <input message="tns:loginRequest"/>
-                    <output message="tns:loginResponse"/>
-                </operation>
-            </portType>
-            <binding name="SoapBinding" type="tns:Soap">
-                <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
-                <operation name="login">
-                    <soap:operation soapAction=""/>
-                    <input>
-                        <soap:body use="literal"/>
-                    </input>
-                    <output>
-                        <soap:body use="literal"/>
-                    </output>
-                </operation>
-            </binding>
-            <service name="SforceService">
-                <port binding="tns:SoapBinding" name="Soap">
-                    <soap:address location="https://login.salesforce.com/services/Soap/u/58.0"/>
-                </port>
-            </service>
-        </definitions>
-        '''
+        login_wsdl_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<definitions targetNamespace="urn:partner.soap.sforce.com"
+            xmlns="http://schemas.xmlsoap.org/wsdl/"
+            xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+            xmlns:tns="urn:partner.soap.sforce.com"
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+    <types>
+        <schema elementFormDefault="qualified" targetNamespace="urn:partner.soap.sforce.com"
+                xmlns="http://www.w3.org/2001/XMLSchema">
+            <element name="login">
+                <complexType>
+                    <sequence>
+                        <element name="username" type="xsd:string"/>
+                        <element name="password" type="xsd:string"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <element name="loginResponse">
+                <complexType>
+                    <sequence>
+                        <element name="result" type="tns:LoginResult"/>
+                    </sequence>
+                </complexType>
+            </element>
+            <complexType name="LoginResult">
+                <sequence>
+                    <element name="metadataServerUrl" type="xsd:string"/>
+                    <element name="passwordExpired" type="xsd:boolean"/>
+                    <element name="sandbox" type="xsd:boolean"/>
+                    <element name="serverUrl" type="xsd:string"/>
+                    <element name="sessionId" type="xsd:string"/>
+                    <element name="userId" type="xsd:string"/>
+                    <element name="userInfo" type="tns:UserInfo" minOccurs="0"/>
+                </sequence>
+            </complexType>
+            <complexType name="UserInfo">
+                <sequence>
+                    <element name="accessibilityMode" type="xsd:boolean"/>
+                    <element name="currencySymbol" type="xsd:string" nillable="true"/>
+                    <element name="orgAttachmentFileSizeLimit" type="xsd:int"/>
+                    <element name="orgDefaultCurrencyIsoCode" type="xsd:string" nillable="true"/>
+                    <element name="orgDisallowHtmlAttachments" type="xsd:boolean"/>
+                    <element name="orgHasPersonAccounts" type="xsd:boolean"/>
+                    <element name="organizationId" type="xsd:string"/>
+                    <element name="organizationMultiCurrency" type="xsd:boolean"/>
+                    <element name="organizationName" type="xsd:string"/>
+                    <element name="profileId" type="xsd:string"/>
+                    <element name="roleId" type="xsd:string" nillable="true"/>
+                    <element name="userDefaultCurrencyIsoCode" type="xsd:string" nillable="true"/>
+                    <element name="userEmail" type="xsd:string"/>
+                    <element name="userFullName" type="xsd:string"/>
+                    <element name="userId" type="xsd:string"/>
+                    <element name="userLanguage" type="xsd:string"/>
+                    <element name="userLocale" type="xsd:string"/>
+                    <element name="userName" type="xsd:string"/>
+                    <element name="userTimeZone" type="xsd:string"/>
+                    <element name="userType" type="xsd:string"/>
+                </sequence>
+            </complexType>
+        </schema>
+    </types>
+    <message name="loginRequest">
+        <part element="tns:login" name="parameters"/>
+    </message>
+    <message name="loginResponse">
+        <part element="tns:loginResponse" name="parameters"/>
+    </message>
+    <portType name="Soap">
+        <operation name="login">
+            <input message="tns:loginRequest"/>
+            <output message="tns:loginResponse"/>
+        </operation>
+    </portType>
+    <binding name="SoapBinding" type="tns:Soap">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <operation name="login">
+            <soap:operation soapAction=""/>
+            <input>
+                <soap:body use="literal"/>
+            </input>
+            <output>
+                <soap:body use="literal"/>
+            </output>
+        </operation>
+    </binding>
+    <service name="SforceService">
+        <port binding="tns:SoapBinding" name="Soap">
+            <soap:address location="https://login.salesforce.com/services/Soap/u/58.0"/>
+        </port>
+    </service>
+</definitions>'''
         
         # Update the SOAP endpoint to match the configured URL
         login_wsdl_content = login_wsdl_content.replace(
@@ -469,13 +467,12 @@ class SalesforceSOAPClient:
         """
         # TODO: In production, download actual WSDL or use a cached version
         # For now, we'll implement a simplified stub that enables basic operations
-        enterprise_wsdl_content = '''
-        <?xml version="1.0" encoding="UTF-8"?>
-        <definitions xmlns="http://schemas.xmlsoap.org/wsdl/" 
-                    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" 
-                    xmlns:tns="urn:enterprise.soap.sforce.com" 
-                    xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
-                    targetNamespace="urn:enterprise.soap.sforce.com">
+        enterprise_wsdl_content = '''<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://schemas.xmlsoap.org/wsdl/" 
+            xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" 
+            xmlns:tns="urn:enterprise.soap.sforce.com" 
+            xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+            targetNamespace="urn:enterprise.soap.sforce.com">
             <types>
                 <schema xmlns="http://www.w3.org/2001/XMLSchema" 
                          elementFormDefault="qualified" 
