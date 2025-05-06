@@ -2,6 +2,9 @@ import os
 import json
 import logging
 import requests
+import base64
+import hashlib
+import secrets
 from urllib.parse import urlencode
 
 logger = logging.getLogger(__name__)
@@ -21,36 +24,66 @@ if SF_REDIRECT_URI.endswith('/'):
 
 SF_LOGIN_URL = os.environ.get('SALESFORCE_LOGIN_URL', 'https://login.salesforce.com')
 
+def generate_code_verifier():
+    """Generate a code_verifier for PKCE"""
+    code_verifier = secrets.token_urlsafe(64)[:128]
+    return code_verifier
+
+def generate_code_challenge(code_verifier):
+    """Generate a code_challenge from the code_verifier"""
+    code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).decode().rstrip('=')
+    return code_challenge
+
 def get_auth_url():
-    """Generate Salesforce OAuth authorization URL"""
+    """Generate Salesforce OAuth authorization URL with PKCE"""
     # Check if Salesforce credentials are configured
     if not SF_CLIENT_ID:
         raise Exception("Salesforce Client ID not configured. Please set the SALESFORCE_CLIENT_ID environment variable.")
-        
+    
+    # Generate PKCE code verifier and challenge
+    code_verifier = generate_code_verifier()
+    code_challenge = generate_code_challenge(code_verifier)
+    
+    # Store code_verifier in session
+    from flask import session
+    session['sf_code_verifier'] = code_verifier
+    
     params = {
         'client_id': SF_CLIENT_ID,
         'redirect_uri': SF_REDIRECT_URI,
         'response_type': 'code',
-        'scope': 'api refresh_token offline_access'
+        'scope': 'api refresh_token offline_access',
+        'code_challenge': code_challenge,
+        'code_challenge_method': 'S256'
     }
     auth_url = f"{SF_LOGIN_URL}/services/oauth2/authorize?{urlencode(params)}"
-    logger.debug(f"Generated auth URL: {auth_url}")
+    logger.debug(f"Generated auth URL with PKCE: {auth_url}")
     return auth_url
 
 def get_access_token(code):
-    """Exchange authorization code for access token"""
+    """Exchange authorization code for access token using PKCE"""
     # Check if Salesforce credentials are configured
     if not SF_CLIENT_ID or not SF_CLIENT_SECRET:
         raise Exception("Salesforce client credentials not configured. Please set the SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET environment variables.")
-        
+    
+    # Get code_verifier from session
+    from flask import session
+    code_verifier = session.get('sf_code_verifier')
+    if not code_verifier:
+        raise Exception("Code verifier missing from session. Please restart the authentication process.")
+    
     token_url = f"{SF_LOGIN_URL}/services/oauth2/token"
     payload = {
         'grant_type': 'authorization_code',
         'client_id': SF_CLIENT_ID,
         'client_secret': SF_CLIENT_SECRET,
         'redirect_uri': SF_REDIRECT_URI,
-        'code': code
+        'code': code,
+        'code_verifier': code_verifier
     }
+    
+    # Clear the code_verifier from session once used
+    session.pop('sf_code_verifier', None)
     
     response = None
     try:
