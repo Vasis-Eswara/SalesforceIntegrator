@@ -38,7 +38,7 @@
         <!-- Main content area -->
         <div class="col-md-9 col-lg-10">
             <div class="p-3">
-                <h2 class="mb-4">Schema Explorer & Data Generation</h2>
+                <h2 class="mb-4">Schema & Data Gen</h2>
                 
                 <!-- Tabs for Schema and Data Generation -->
                 <ul class="nav nav-tabs" id="main-tabs" role="tablist">
@@ -46,12 +46,6 @@
                         <button class="nav-link active" id="schema-tab" data-bs-toggle="tab" data-bs-target="#schema-content"
                             type="button" role="tab" aria-controls="schema-content" aria-selected="true">
                             <i class="bi bi-diagram-3-fill me-2"></i>Schema Viewer
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="diagram-tab" data-bs-toggle="tab" data-bs-target="#diagram-content"
-                            type="button" role="tab" aria-controls="diagram-content" aria-selected="false">
-                            <i class="bi bi-share-fill me-2"></i>Schema Diagram
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -68,30 +62,24 @@
                         <div id="object-details">
                             <div class="text-center my-5">
                                 <i class="bi bi-arrow-left-circle-fill text-primary" style="font-size: 3rem;"></i>
-                                <p class="lead mt-3">Select an object from the list to view its schema details</p>
+                                <p class="lead mt-3">Select an object from the list to view its schema details and relationships</p>
                             </div>
                         </div>
-                    </div>
-                    
-                    <!-- Schema Diagram Tab -->
-                    <div class="tab-pane fade" id="diagram-content" role="tabpanel" aria-labelledby="diagram-tab">
-                        <div id="schema-diagram">
-                            <div class="text-center my-5" id="diagram-placeholder">
-                                <i class="bi bi-diagram-2-fill text-primary" style="font-size: 3rem;"></i>
-                                <p class="lead mt-3">Select an object from the list to view its relationship diagram</p>
-                            </div>
-                            <div id="diagram-container" style="display:none;">
-                                <div class="card">
-                                    <div class="card-header">
-                                        <h4 id="diagram-title">Object Relationship Diagram</h4>
-                                    </div>
-                                    <div class="card-body">
-                                        <div id="object-diagram" class="mermaid-diagram" style="height: 500px; overflow: auto;"></div>
-                                    </div>
+                        
+                        <!-- Object Relationship Diagram Section -->
+                        <div id="schema-diagram" style="display:none;" class="mt-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 id="diagram-title">Object Relationship Diagram</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="object-diagram" class="mermaid-diagram" style="height: 500px; overflow: auto;"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    
+
                     
                     <!-- Generate Data Tab -->
                     <div class="tab-pane fade" id="generate-content" role="tabpanel" aria-labelledby="generate-tab">
