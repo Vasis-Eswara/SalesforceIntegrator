@@ -47,13 +47,14 @@ def get_access_token(code):
         'code': code
     }
     
+    response = None
     try:
         response = requests.post(token_url, data=payload)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Error getting access token: {str(e)}")
-        if 'response' in locals():
+        if response is not None:
             logger.error(f"Response: {response.text}")
         raise Exception(f"Failed to get access token: {str(e)}")
 
@@ -67,13 +68,14 @@ def refresh_access_token(refresh_token):
         'refresh_token': refresh_token
     }
     
+    response = None
     try:
         response = requests.post(token_url, data=payload)
         response.raise_for_status()
         return response.json()
     except requests.exceptions.RequestException as e:
         logger.error(f"Error refreshing token: {str(e)}")
-        if 'response' in locals():
+        if response is not None:
             logger.error(f"Response: {response.text}")
         raise Exception(f"Failed to refresh token: {str(e)}")
 

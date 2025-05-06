@@ -42,6 +42,7 @@ def init_routes(app):
             return redirect(url_for('login'))
     
     @app.route('/salesforce/callback')
+    @app.route('/services/oauth2/success') # Add support for direct Salesforce callback URL
     def salesforce_callback():
         """Handle Salesforce OAuth callback"""
         code = request.args.get('code')
