@@ -6,7 +6,7 @@ from flask import render_template, request, redirect, url_for, session, jsonify,
 from datetime import datetime, timedelta
 
 from app import db
-from models import SalesforceOrg, SchemaObject, SchemaField, GenerationJob
+from models import SalesforceOrg, SchemaObject, SchemaField, GenerationJob, SalesforceCredential
 
 # Import both REST and SOAP utilities
 from salesforce_utils import (
@@ -36,7 +36,7 @@ def init_routes(app):
     
     @app.route('/login', methods=['GET', 'POST'])
     def login():
-        """Salesforce login page with both OAuth and direct SOAP login options"""
+        """Salesforce login page with multiple connection options"""
         if request.method == 'POST':
             login_type = request.form.get('login_type')
             
@@ -45,6 +45,9 @@ def init_routes(app):
                 username = request.form.get('username')
                 password = request.form.get('password')
                 security_token = request.form.get('security_token', '')
+                remember = request.form.get('remember') == 'on'
+                name = request.form.get('connection_name', f"Connection {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+                sandbox = request.form.get('sandbox') == 'on'
                 
                 if not username or not password:
                     flash('Username and password are required', 'danger')
@@ -72,6 +75,40 @@ def init_routes(app):
                     session['salesforce_instance_url'] = sf_org.instance_url
                     session['salesforce_access_token'] = sf_org.access_token
                     
+                    # If remember is checked, save credentials for future use
+                    if remember:
+                        try:
+                            # Check if credentials already exist
+                            existing_cred = SalesforceCredential.query.filter_by(username=username).first()
+                            
+                            if existing_cred:
+                                # Update existing credentials
+                                existing_cred.set_password(password)
+                                existing_cred.security_token = security_token
+                                existing_cred.sandbox = sandbox
+                                existing_cred.last_used = datetime.utcnow()
+                                existing_cred.name = name
+                                db.session.commit()
+                                flash(f'Updated saved credentials for {username}', 'info')
+                            else:
+                                # Create new credentials
+                                cred = SalesforceCredential(username=username, name=name, sandbox=sandbox)
+                                cred.set_password(password)
+                                cred.security_token = security_token
+                                cred.last_used = datetime.utcnow()
+                                
+                                # If this is the first credential, make it the default
+                                if SalesforceCredential.query.count() == 0:
+                                    cred.default = True
+                                    
+                                db.session.add(cred)
+                                db.session.commit()
+                                flash(f'Saved credentials for future use', 'info')
+                        except Exception as e:
+                            logger.error(f"Error saving credentials: {str(e)}")
+                            # Non-blocking error - just log it
+                            flash(f'Note: Could not save credentials for future use', 'warning')
+                    
                     flash('Successfully connected to Salesforce via SOAP API', 'success')
                     return redirect(url_for('schema'))
                     
@@ -79,9 +116,75 @@ def init_routes(app):
                     logger.error(f"SOAP login error: {str(e)}")
                     flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
                     return redirect(url_for('login'))
+            
+            # Login with saved credentials
+            elif login_type == 'saved':
+                credential_id = request.form.get('credential_id')
+                
+                if not credential_id:
+                    flash('Please select a saved connection', 'warning')
+                    return redirect(url_for('login'))
+                
+                try:
+                    # Get the credential
+                    cred = SalesforceCredential.query.get(credential_id)
+                    if not cred:
+                        flash('Selected connection not found', 'danger')
+                        return redirect(url_for('login'))
                     
-        # GET request - show login form
-        return render_template('login.html')
+                    # We need to decrypt the password - it's done automatically when we call login
+                    # Try to login with the saved credentials
+                    logger.debug(f"Attempting SOAP login with saved credentials for {cred.username}")
+                    
+                    # Get the password from the form if one-time password is provided
+                    password = request.form.get('one_time_password')
+                    
+                    # Use the saved credentials
+                    login_result = None
+                    if password:  # Use one-time password if provided
+                        login_result = login_with_username_password(cred.username, password, cred.security_token)
+                    else:  # Use saved password
+                        # We'll need to retrieve the actual password (this is a simplified example)
+                        # In a real app, you would need to securely retrieve and decrypt the password
+                        # For this example, we'll show a message that we can't use the saved password directly
+                        flash('For security reasons, please enter your password', 'warning')
+                        return redirect(url_for('login'))
+                    
+                    # Store connection in database
+                    sf_org = SalesforceOrg(
+                        instance_url=login_result.get('instance_url'),
+                        access_token=login_result.get('access_token'),
+                        org_id=login_result.get('user_info', {}).get('org_id'),
+                        user_id=login_result.get('user_info', {}).get('user_id')
+                    )
+                    
+                    db.session.add(sf_org)
+                    db.session.commit()
+                    
+                    # Update last used timestamp
+                    cred.last_used = datetime.utcnow()
+                    db.session.commit()
+                    
+                    # Store in session
+                    session['salesforce_org_id'] = sf_org.id
+                    session['salesforce_instance_url'] = sf_org.instance_url
+                    session['salesforce_access_token'] = sf_org.access_token
+                    
+                    flash(f'Successfully connected to Salesforce using saved credentials', 'success')
+                    return redirect(url_for('schema'))
+                    
+                except Exception as e:
+                    logger.error(f"Error using saved credentials: {str(e)}")
+                    flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
+                    return redirect(url_for('login'))
+                
+        # GET request - show login form with saved credentials
+        saved_credentials = SalesforceCredential.query.order_by(SalesforceCredential.last_used.desc().nullslast()).all()
+        default_credential = SalesforceCredential.query.filter_by(default=True).first()
+        
+        return render_template('login.html', 
+                           saved_credentials=saved_credentials,
+                           default_credential=default_credential)
     
     @app.route('/salesforce/auth')
     def salesforce_auth():
@@ -177,6 +280,108 @@ def init_routes(app):
             logger.error(f"Traceback: {traceback.format_exc()}")
             flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
             return redirect(url_for('login'))
+    
+    @app.route('/credentials', methods=['GET', 'POST', 'DELETE'])
+    def credentials():
+        """Manage saved Salesforce credentials"""
+        if request.method == 'POST':
+            # Handle form submissions for adding or updating credentials
+            action = request.form.get('action')
+            
+            if action == 'update':
+                # Update existing credential
+                credential_id = request.form.get('credential_id')
+                if not credential_id:
+                    flash('No credential selected for update', 'danger')
+                    return redirect(url_for('credentials'))
+                    
+                cred = SalesforceCredential.query.get(credential_id)
+                if not cred:
+                    flash('Credential not found', 'danger')
+                    return redirect(url_for('credentials'))
+                    
+                # Update fields
+                cred.name = request.form.get('name', cred.name)
+                cred.sandbox = request.form.get('sandbox') == 'on'
+                
+                # If password provided, update it
+                password = request.form.get('password')
+                if password:
+                    cred.set_password(password)
+                    
+                # Update security token if provided
+                security_token = request.form.get('security_token')
+                if security_token is not None:  # Empty string is valid (no security token)
+                    cred.security_token = security_token
+                    
+                # Set as default if requested
+                if request.form.get('default') == 'on':
+                    cred.set_default()
+                    
+                db.session.commit()
+                flash('Credential updated successfully', 'success')
+                return redirect(url_for('credentials'))
+                
+            elif action == 'add':
+                # Add new credential
+                username = request.form.get('username')
+                password = request.form.get('password')
+                name = request.form.get('name')
+                security_token = request.form.get('security_token', '')
+                sandbox = request.form.get('sandbox') == 'on'
+                default = request.form.get('default') == 'on'
+                
+                if not username or not password or not name:
+                    flash('Name, username and password are required', 'danger')
+                    return redirect(url_for('credentials'))
+                    
+                # Check if username already exists
+                existing = SalesforceCredential.query.filter_by(username=username).first()
+                if existing:
+                    flash(f'A credential with username {username} already exists', 'warning')
+                    return redirect(url_for('credentials'))
+                    
+                # Create new credential
+                cred = SalesforceCredential(username=username, name=name, sandbox=sandbox)
+                cred.set_password(password)
+                cred.security_token = security_token
+                
+                db.session.add(cred)
+                db.session.commit()
+                
+                # Set as default if requested or if it's the only credential
+                if default or SalesforceCredential.query.count() == 1:
+                    cred.set_default()
+                    
+                flash('New credential added successfully', 'success')
+                return redirect(url_for('credentials'))
+                
+            elif action == 'delete':
+                # Delete credential
+                credential_id = request.form.get('credential_id')
+                if not credential_id:
+                    flash('No credential selected for deletion', 'danger')
+                    return redirect(url_for('credentials'))
+                    
+                cred = SalesforceCredential.query.get(credential_id)
+                if not cred:
+                    flash('Credential not found', 'danger')
+                    return redirect(url_for('credentials'))
+                    
+                # If this is the default credential, find another to make default
+                if cred.default and SalesforceCredential.query.count() > 1:
+                    next_default = SalesforceCredential.query.filter(SalesforceCredential.id != cred.id).first()
+                    if next_default:
+                        next_default.default = True
+                        
+                db.session.delete(cred)
+                db.session.commit()
+                flash('Credential deleted successfully', 'success')
+                return redirect(url_for('credentials'))
+                
+        # GET request - show all credentials
+        credentials = SalesforceCredential.query.order_by(SalesforceCredential.name).all()
+        return render_template('credentials.html', credentials=credentials)
     
     @app.route('/logout')
     def logout():
