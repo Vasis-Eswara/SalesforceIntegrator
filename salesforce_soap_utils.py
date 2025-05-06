@@ -391,9 +391,11 @@ class SalesforceSOAPClient:
             <complexType name="UserInfo">
                 <sequence>
                     <element name="accessibilityMode" type="xsd:boolean"/>
+                    <element name="chatterExternal" type="xsd:boolean" minOccurs="0"/>
                     <element name="currencySymbol" type="xsd:string" nillable="true"/>
                     <element name="orgAttachmentFileSizeLimit" type="xsd:int"/>
                     <element name="orgDefaultCurrencyIsoCode" type="xsd:string" nillable="true"/>
+                    <element name="orgDefaultCurrencyLocale" type="xsd:string" minOccurs="0"/>
                     <element name="orgDisallowHtmlAttachments" type="xsd:boolean"/>
                     <element name="orgHasPersonAccounts" type="xsd:boolean"/>
                     <element name="organizationId" type="xsd:string"/>
@@ -401,6 +403,7 @@ class SalesforceSOAPClient:
                     <element name="organizationName" type="xsd:string"/>
                     <element name="profileId" type="xsd:string"/>
                     <element name="roleId" type="xsd:string" nillable="true"/>
+                    <element name="sessionSecondsValid" type="xsd:int" minOccurs="0"/>
                     <element name="userDefaultCurrencyIsoCode" type="xsd:string" nillable="true"/>
                     <element name="userEmail" type="xsd:string"/>
                     <element name="userFullName" type="xsd:string"/>
@@ -410,6 +413,7 @@ class SalesforceSOAPClient:
                     <element name="userName" type="xsd:string"/>
                     <element name="userTimeZone" type="xsd:string"/>
                     <element name="userType" type="xsd:string"/>
+                    <element name="userUiSkin" type="xsd:string" minOccurs="0"/>
                 </sequence>
             </complexType>
         </schema>
