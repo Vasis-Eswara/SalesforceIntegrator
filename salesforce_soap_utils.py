@@ -1399,11 +1399,11 @@ def get_object_describe_soap(instance_url, session_id, object_name):
                     'name': field_name.text,
                     'label': field_label.text if field_label is not None else field_name.text,
                     'type': field_type.text if field_type is not None else 'string',
-                    'required': (field_nillable is not None and field_nillable.text.lower() == 'false' and 
-                                field_defaultedOnCreate is not None and field_defaultedOnCreate.text.lower() == 'false'),
-                    'unique': field_unique is not None and field_unique.text.lower() == 'true',
-                    'custom': field_custom is not None and field_custom.text.lower() == 'true',
-                    'updateable': field_updatable is not None and field_updatable.text.lower() == 'true',
+                    'required': (field_nillable is not None and field_nillable.text is not None and field_nillable.text.lower() == 'false' and 
+                                field_defaultedOnCreate is not None and field_defaultedOnCreate.text is not None and field_defaultedOnCreate.text.lower() == 'false'),
+                    'unique': field_unique is not None and field_unique.text is not None and field_unique.text.lower() == 'true',
+                    'custom': field_custom is not None and field_custom.text is not None and field_custom.text.lower() == 'true',
+                    'updateable': field_updatable is not None and field_updatable.text is not None and field_updatable.text.lower() == 'true',
                     'defaultValue': field_defaultValue.text if field_defaultValue is not None else None
                 }
                 
@@ -1427,7 +1427,7 @@ def get_object_describe_soap(instance_url, session_id, object_name):
                         value = pv.find('./partner:value', namespaces)
                         active = pv.find('./partner:active', namespaces)
                         
-                        if value is not None and active is not None and active.text.lower() == 'true':
+                        if value is not None and active is not None and active.text is not None and active.text.lower() == 'true':
                             field_info['picklistValues'].append(value.text)
                 
                 # Add length for string fields
@@ -1480,7 +1480,10 @@ def insert_records_soap(instance_url, session_id, object_name, records):
                     formatted_value = str(value)
                 else:
                     # Escape XML special characters
-                    formatted_value = value.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
+                    if value is None:
+                        formatted_value = ''
+                    else:
+                        formatted_value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
                     
                 fields_xml += f"<{field}>{formatted_value}</{field}>\n"
             
@@ -1545,7 +1548,7 @@ def insert_records_soap(instance_url, session_id, object_name, records):
                 
             success_elem = result_elem.find('./partner:success', namespaces)
             
-            if success_elem is not None and success_elem.text.lower() == 'true':
+            if success_elem is not None and success_elem.text is not None and success_elem.text.lower() == 'true':
                 # Success - get the ID
                 id_elem = result_elem.find('./partner:id', namespaces)
                 
