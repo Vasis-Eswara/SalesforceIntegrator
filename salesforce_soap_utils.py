@@ -43,7 +43,7 @@ else:
 
 # SOAP API endpoints
 SOAP_LOGIN_URL = f"{SF_LOGIN_URL}/services/Soap/u/58.0"
-ENTERPRISE_WSDL_URL = "https://yourInstance.salesforce.com/soap/wsdl.jsp?type=enterprise"
+# Enterprise WSDL URL will be constructed from instance_url during use
 
 class SalesforceSOAPClient:
     """
