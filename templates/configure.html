@@ -11,13 +11,13 @@
                     <h3 class="card-title mb-0">Configure Salesforce with Natural Language</h3>
                 </div>
                 <div class="card-body">
-                    {% if not session.get('salesforce_org_id') %}
+                    {% if not is_logged_in %}
                         <div class="alert alert-warning">
                             <strong>Please connect to Salesforce first.</strong> You need to connect to a Salesforce organization before you can configure it.
                             <p class="mt-2"><a href="{{ url_for('login') }}" class="btn btn-primary">Connect to Salesforce</a></p>
                         </div>
                     {% else %}
-                        {% if not config.get('OPENAI_API_KEY') %}
+                        {% if not has_openai_key %}
                             <div class="alert alert-warning">
                                 <strong>OpenAI API key not configured.</strong> Please add your OpenAI API key to enable this feature.
                             </div>

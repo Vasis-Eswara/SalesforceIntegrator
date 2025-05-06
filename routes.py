@@ -547,11 +547,13 @@ def init_routes(app):
     @app.route('/configure', methods=['GET', 'POST'])
     def configure():
         """Configure Salesforce with natural language prompts"""
-        # Check if the user is logged in, but don't redirect (template will handle this)
+        # Check if the user is logged in
         is_logged_in = 'salesforce_org_id' in session
+        logger.debug(f"Configure page access - logged in: {is_logged_in}")
         
         # Check if OpenAI API key is configured
-        if not app.config.get('OPENAI_API_KEY'):
+        has_openai_key = bool(app.config.get('OPENAI_API_KEY'))
+        if not has_openai_key:
             flash('OpenAI API key not configured. Please add your API key to use this feature.', 'warning')
         
         # Handle POST request (form submission)
@@ -561,6 +563,11 @@ def init_routes(app):
             if not prompt:
                 flash('Please enter a prompt', 'warning')
                 return redirect(url_for('configure'))
+                
+            # Ensure user is logged in before processing the prompt
+            if not is_logged_in:
+                flash('Please connect to Salesforce first to use this feature', 'warning')
+                return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key)
                 
             try:
                 # Get Salesforce connection
@@ -583,14 +590,14 @@ def init_routes(app):
                         'success': False,
                         'message': config['error'],
                         'details': config
-                    })
+                    }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
                 
                 # Return the configuration for review
                 return render_template('configure.html', prompt=prompt, results={
                     'success': True,
                     'message': 'Configuration generated successfully. Please review before applying.',
                     'details': config
-                })
+                }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
                 
             except Exception as e:
                 logger.error(f"Error configuring Salesforce: {str(e)}")
@@ -599,15 +606,17 @@ def init_routes(app):
                     'success': False,
                     'message': str(e),
                     'details': {'error': str(e)}
-                })
+                }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
         
         # GET request - show form
-        return render_template('configure.html')
+        return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key)
     
     @app.route('/apply-config', methods=['POST'])
     def apply_config():
         """Apply a generated configuration to Salesforce"""
+        # Ensure the user is logged in
         if 'salesforce_org_id' not in session:
+            logger.warning("User attempted to apply configuration without being logged in")
             flash('Please connect to Salesforce first', 'warning')
             return redirect(url_for('login'))
             
@@ -636,7 +645,7 @@ def init_routes(app):
                 'success': result['success'] if 'success' in result else False,
                 'message': result['message'] if 'message' in result else 'Configuration applied.',
                 'details': result
-            })
+            }, is_logged_in=True, has_openai_key=bool(app.config.get('OPENAI_API_KEY')))
             
         except Exception as e:
             logger.error(f"Error applying configuration: {str(e)}")
