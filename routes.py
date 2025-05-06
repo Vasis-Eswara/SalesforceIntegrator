@@ -472,8 +472,9 @@ def init_routes(app):
         try:
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
             objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            org_info = get_org_info()
             return render_template('generate_with_schema.html', objects=objects,
-                                  job=job, results=results, object_name=object_name)
+                                  job=job, results=results, object_name=object_name, org_info=org_info)
         except Exception as e:
             logger.error(f"Error fetching objects: {str(e)}")
             flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
@@ -481,100 +482,9 @@ def init_routes(app):
 
     @app.route('/generate', methods=['GET', 'POST'])
     def generate():
-        """Generate test data for a Salesforce object"""
-        if 'salesforce_org_id' not in session:
-            flash('Please connect to Salesforce first', 'warning')
-            return redirect(url_for('login'))
-        
-        if request.method == 'POST':
-            object_name = request.form.get('object_name')
-            record_count = int(request.form.get('record_count', 5))
-            nlp_requirements = request.form.get('nlp_requirements', '')
-            
-            if not object_name:
-                flash('Please select an object', 'warning')
-                return redirect(url_for('generate'))
-            
-            try:
-                sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-                
-                # Get object describe info - try REST API first, then SOAP as fallback
-                try:
-                    object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
-                    logger.debug(f"Successfully retrieved object details for {object_name} via REST API")
-                except Exception as rest_error:
-                    logger.warning(f"REST API failed for object detail, falling back to SOAP: {str(rest_error)}")
-                    object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, object_name)
-                    logger.debug(f"Successfully retrieved object details for {object_name} via SOAP API")
-                
-                # Create job record
-                job = GenerationJob(
-                    org_id=sf_org.org_id,
-                    object_name=object_name,
-                    record_count=record_count,
-                    status='processing'
-                )
-                db.session.add(job)
-                db.session.commit()
-                
-                # Add NLP requirements if provided
-                if nlp_requirements:
-                    logger.info(f"Natural language requirements for {object_name}: {nlp_requirements}")
-                    # Add the NLP requirements to the object_info for processing by GPT
-                    if isinstance(object_info, dict):
-                        object_info['nlp_requirements'] = nlp_requirements
-                    
-                # Generate data with GPT
-                generated_data = generate_test_data_with_gpt(object_info, record_count)
-                
-                # Insert records to Salesforce - try REST API first, then SOAP as fallback
-                try:
-                    results = insert_records(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
-                    logger.debug(f"Successfully inserted {len(generated_data)} records via REST API")
-                except Exception as rest_error:
-                    logger.warning(f"REST API failed for record insertion, falling back to SOAP: {str(rest_error)}")
-                    results = insert_records_soap(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
-                    logger.debug(f"Successfully inserted {len(generated_data)} records via SOAP API")
-                
-                # Update job with results
-                job.status = 'completed'
-                job.results = json.dumps(results)
-                job.completed_at = datetime.utcnow()
-                db.session.commit()
-                
-                flash(f'Successfully generated and inserted {record_count} records for {object_name}', 'success')
-                
-                # Check the referer to determine return page
-                referer = request.headers.get('Referer', '')
-                if 'combined' in referer:
-                    # If coming from combined view, return to that view with results
-                    sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-                    objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
-                    return render_template('generate_with_schema.html', objects=objects, job=job, results=results, object_name=object_name)
-                else:
-                    # Otherwise return to the standard generate page
-                    return render_template('generate.html', job=job, results=results, object_name=object_name)
-                
-            except Exception as e:
-                logger.error(f"Error generating data: {str(e)}")
-                flash(f'Error generating data: {str(e)}', 'danger')
-                # Check the referer to determine return page
-                referer = request.headers.get('Referer', '')
-                if 'combined' in referer:
-                    return redirect(url_for('combined'))
-                else:
-                    return redirect(url_for('generate'))
-        
-        # GET request - show form
-        try:
-            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
-            return render_template('generate.html', objects=objects)
-            
-        except Exception as e:
-            logger.error(f"Error fetching objects: {str(e)}")
-            flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
-            return redirect(url_for('index'))
+        """Redirect to combined page - generate functionality now only in combined view"""
+        flash('The Generate Data page has been merged with the Schema & Data Gen page', 'info')
+        return redirect(url_for('combined'))
     
     @app.route('/configure', methods=['GET', 'POST'])
     def configure():
@@ -702,11 +612,12 @@ def init_routes(app):
         except Exception as e:
             logger.error(f"Error processing Excel configuration: {str(e)}")
             flash(f'Error processing Excel configuration: {str(e)}', 'danger')
+            org_info = get_org_info()
             return render_template('configure.html', results={
                 'success': False,
                 'message': str(e),
                 'details': {'error': str(e)}
-            }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
+            }, is_logged_in=is_logged_in, has_openai_key=has_openai_key, org_info=org_info)
     
     @app.route('/apply-config', methods=['POST'])
     def apply_config():
@@ -738,11 +649,12 @@ def init_routes(app):
                 flash(f'Error applying configuration: {result["message"] if "message" in result else "Unknown error"}', 'danger')
                 
             # Return to configure page with the result
+            org_info = get_org_info()
             return render_template('configure.html', results={
                 'success': result['success'] if 'success' in result else False,
                 'message': result['message'] if 'message' in result else 'Configuration applied.',
                 'details': result
-            }, is_logged_in=True, has_openai_key=bool(app.config.get('OPENAI_API_KEY')))
+            }, is_logged_in=True, has_openai_key=bool(app.config.get('OPENAI_API_KEY')), org_info=org_info)
             
         except Exception as e:
             logger.error(f"Error applying configuration: {str(e)}")
