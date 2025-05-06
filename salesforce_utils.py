@@ -22,7 +22,9 @@ if SF_REDIRECT_URI.endswith('/'):
     SF_REDIRECT_URI = SF_REDIRECT_URI[:-1]
 
 
-SF_LOGIN_URL = os.environ.get('SALESFORCE_LOGIN_URL', 'https://login.salesforce.com')
+# For sandbox or developer orgs, use test.salesforce.com
+# For production orgs, use login.salesforce.com
+SF_LOGIN_URL = os.environ.get('SALESFORCE_LOGIN_URL', 'https://test.salesforce.com')
 
 def generate_code_verifier():
     """Generate a code_verifier for PKCE"""
