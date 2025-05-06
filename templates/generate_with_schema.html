@@ -84,7 +84,7 @@
                                     </div>
                                 </div>
                                 <div class="card-body" id="diagram-body">
-                                    <div id="object-diagram" class="mermaid-diagram" style="height: 400px; overflow: auto;"></div>
+                                    <div id="object-diagram" class="mermaid-diagram" style="height: 400px; overflow: auto; resize: vertical;"></div>
                                 </div>
                             </div>
                         </div>
@@ -383,7 +383,7 @@
                         </div>
                         
                         <h5 class="mb-3">Fields</h5>
-                        <div class="table-responsive" id="details-table-container" style="max-height: 400px; overflow-y: auto;">
+                        <div class="table-responsive" id="details-table-container" style="max-height: 400px; overflow-y: auto; resize: vertical;">
                             <table class="table table-striped table-hover">
                                 <thead>
                                     <tr>
@@ -455,7 +455,9 @@
             
             // Toggle details visibility
             if (toggleButton && detailsBody) {
-                toggleButton.addEventListener('click', function() {
+                // Ensure the toggle button works by explicitly setting event listener
+                toggleButton.onclick = function() {
+                    console.log('Toggle details clicked, current display:', detailsBody.style.display);
                     if (detailsBody.style.display === 'none') {
                         detailsBody.style.display = 'block';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
@@ -463,7 +465,7 @@
                         detailsBody.style.display = 'none';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
                     }
-                });
+                };
             }
             
             // Resize details smaller
@@ -500,7 +502,9 @@
             
             // Toggle diagram visibility
             if (toggleButton && diagramBody) {
-                toggleButton.addEventListener('click', function() {
+                // Ensure the toggle button works by explicitly setting event listener
+                toggleButton.onclick = function() {
+                    console.log('Toggle diagram clicked, current display:', diagramBody.style.display);
                     if (diagramBody.style.display === 'none') {
                         diagramBody.style.display = 'block';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
@@ -508,7 +512,7 @@
                         diagramBody.style.display = 'none';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
                     }
-                });
+                };
             }
             
             // Resize diagram smaller

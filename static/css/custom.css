@@ -165,10 +165,22 @@
     border-radius: 0.5rem;
     padding: 1rem;
     transition: height 0.3s ease;
+    min-height: 200px;
+    resize: vertical;
+    overflow: auto;
 }
 
 /* Details Table Container */
 #details-table-container {
     transition: max-height 0.3s ease;
     border-radius: 0.5rem;
+    min-height: 200px;
+    resize: vertical;
+    overflow: auto;
+}
+
+/* Resizable elements styling */
+[style*="resize:vertical"] {
+    border-bottom: 4px solid var(--bs-primary-border-subtle);
+    padding-bottom: 8px;
 }
