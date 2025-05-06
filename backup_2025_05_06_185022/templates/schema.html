@@ -1,0 +1,89 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar with object list -->
+        <div class="col-md-3 col-lg-2">
+            <div class="sidebar">
+                <h4 class="mb-3">Salesforce Objects</h4>
+                
+                <div class="input-group mb-3">
+                    <input type="text" id="object-search" class="form-control" placeholder="Search objects...">
+                    <button class="btn btn-outline-secondary" type="button" id="clear-search">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                
+                {% if objects %}
+                <ul class="list-group object-list" id="object-list">
+                    {% for obj in objects %}
+                    <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-object="{{ obj.name }}">
+                        <span>{{ obj.label }}</span>
+                        <span class="badge rounded-pill {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
+                            {% if obj.custom %}Custom{% else %}Standard{% endif %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="alert alert-warning">
+                    No objects found or unable to retrieve schema.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Main content area with object details -->
+        <div class="col-md-9 col-lg-10">
+            <div class="p-3">
+                <h2 class="mb-4">Schema Explorer</h2>
+                
+                <div id="object-details">
+                    <div class="text-center my-5">
+                        <i class="bi bi-arrow-left-circle-fill text-primary" style="font-size: 3rem;"></i>
+                        <p class="lead mt-3">Select an object from the list to view its schema details</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Search functionality for object list
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('object-search');
+        const clearButton = document.getElementById('clear-search');
+        const objectList = document.getElementById('object-list');
+        
+        if (searchInput && objectList) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                
+                const items = objectList.querySelectorAll('li');
+                items.forEach(item => {
+                    const label = item.textContent.toLowerCase();
+                    if (label.includes(query)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+            });
+            
+            if (clearButton) {
+                clearButton.addEventListener('click', function() {
+                    searchInput.value = '';
+                    const items = objectList.querySelectorAll('li');
+                    items.forEach(item => {
+                        item.style.display = '';
+                    });
+                });
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,167 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Generate Test Data</h2>
+    
+    {% if not config.OPENAI_API_KEY %}
+    <div class="alert alert-danger mb-4">
+        <h4 class="alert-heading">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            OpenAI API Key Missing
+        </h4>
+        <p>The OpenAI API key is required to generate test data using AI. Please set the OPENAI_API_KEY environment variable to continue.</p>
+    </div>
+    {% endif %}
+    
+    {% if job and results %}
+    <!-- Show generation results -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>
+                <i class="bi bi-check-circle-fill text-success me-2"></i>
+                Generation Results for {{ object_name }}
+            </h4>
+        </div>
+        <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+                <div class="me-3">
+                    <span class="fs-1 text-success">{{ results.success }}</span>
+                    <p class="mb-0 text-muted">Records Created</p>
+                </div>
+                
+                {% if results.failure > 0 %}
+                <div class="ms-4">
+                    <span class="fs-1 text-danger">{{ results.failure }}</span>
+                    <p class="mb-0 text-muted">Failed Records</p>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if results.created_ids %}
+            <div class="mb-3">
+                <h5>Created Record IDs:</h5>
+                <div class="results-container">
+                    <code>{{ results.created_ids|join(', ') }}</code>
+                </div>
+            </div>
+            {% endif %}
+            
+            {% if results.errors %}
+            <div class="mt-4">
+                <h5>Errors:</h5>
+                <div class="alert alert-danger">
+                    <ul class="mb-0">
+                        {% for error in results.errors %}
+                        <li>
+                            <strong>{{ error.message }}</strong>
+                            {% if error.fields %}
+                            <div>Fields: {{ error.fields|join(', ') }}</div>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer d-flex justify-content-between">
+            <a href="{{ url_for('generate') }}" class="btn btn-outline-primary">
+                <i class="bi bi-plus-circle-fill me-2"></i>
+                Generate More Data
+            </a>
+            <a href="{{ url_for('combined') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-diagram-3-fill me-2"></i>
+                Schema & Data Gen
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <!-- Show generation form -->
+    <div class="card">
+        <div class="card-header">
+            <h4>New Data Generation</h4>
+        </div>
+        <div class="card-body">
+            {% if not config.OPENAI_API_KEY %}
+            <div class="text-center py-4">
+                <i class="bi bi-robot text-danger" style="font-size: 3rem;"></i>
+                <h4 class="mt-3">AI Generation Not Available</h4>
+                <p class="text-muted">OpenAI API key is required for AI-powered data generation.</p>
+            </div>
+            {% else %}
+            <form id="generate-form" method="POST" action="{{ url_for('generate') }}">
+                <div class="mb-3">
+                    <label for="object-select" class="form-label">Select Salesforce Object</label>
+                    <select class="form-select" id="object-select" name="object_name" required>
+                        <option value="" selected disabled>Choose an object...</option>
+                        {% if objects %}
+                            {% for obj in objects %}
+                            <option value="{{ obj.name }}">{{ obj.label }} ({{ obj.name }})</option>
+                            {% endfor %}
+                        {% endif %}
+                    </select>
+                    <div class="form-text">Select the Salesforce object for which you want to generate test data.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="record-count" class="form-label">Number of Records</label>
+                    <input type="number" class="form-control" id="record-count" name="record_count" min="1" max="100" value="5" required>
+                    <div class="form-text">How many test records would you like to generate? (1-100)</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="nlp-requirements" class="form-label">Natural Language Requirements (Optional)</label>
+                    <textarea class="form-control" id="nlp-requirements" name="nlp_requirements" rows="3" placeholder="Describe specific requirements for the data generation, such as: 'Generate contacts mostly in California with phone numbers' or 'Create accounts with high annual revenue in tech industry'"></textarea>
+                    <div class="form-text">Use plain English to describe special requirements for the data. Our AI will interpret your needs.</div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    The application will analyze the object schema and generate realistic test data that respects all constraints and relationships. Use the natural language input to customize the data generation further.
+                </div>
+                
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="bi bi-lightning-fill me-2"></i>
+                        Generate Test Data
+                    </button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h4>How It Works</h4>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-diagram-3-fill text-primary" style="font-size: 2.5rem"></i>
+                        <h5 class="mt-2">1. Analyze Schema</h5>
+                        <p>We retrieve and analyze the object's schema, fields, and relationships.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-robot text-primary" style="font-size: 2.5rem"></i>
+                        <h5 class="mt-2">2. Generate with AI</h5>
+                        <p>ChatGPT generates realistic test data respecting all schema constraints.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center mb-3">
+                        <i class="bi bi-cloud-upload-fill text-primary" style="font-size: 2.5rem"></i>
+                        <h5 class="mt-2">3. Insert to Salesforce</h5>
+                        <p>The generated data is inserted into your Salesforce org with error handling.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

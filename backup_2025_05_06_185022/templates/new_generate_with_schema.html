@@ -1,0 +1,642 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar with object list -->
+        <div class="col-md-3 col-lg-2">
+            <div class="sidebar">
+                <h4 class="mb-3">Salesforce Objects</h4>
+                
+                <div class="input-group mb-3">
+                    <input type="text" id="object-search" class="form-control" placeholder="Search objects...">
+                    <button class="btn btn-outline-secondary" type="button" id="clear-search">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+                
+                {% if objects %}
+                <ul class="list-group object-list" id="object-list">
+                    {% for obj in objects %}
+                    <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
+                        data-object="{{ obj.name }}" data-object-label="{{ obj.label }}">
+                        <span>{{ obj.label }}</span>
+                        <span class="badge rounded-pill {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
+                            {% if obj.custom %}Custom{% else %}Standard{% endif %}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <div class="alert alert-warning">
+                    No objects found or unable to retrieve schema.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Main content area -->
+        <div class="col-md-9 col-lg-10">
+            <div class="p-3">
+                <h2 class="mb-4">Schema & Data Gen</h2>
+                
+                <!-- Tabs for Schema and Data Generation -->
+                <ul class="nav nav-tabs" id="main-tabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="schema-tab" data-bs-toggle="tab" data-bs-target="#schema-content"
+                            type="button" role="tab" aria-controls="schema-content" aria-selected="true">
+                            <i class="bi bi-diagram-3-fill me-2"></i>Schema Viewer
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="generate-tab" data-bs-toggle="tab" data-bs-target="#generate-content"
+                            type="button" role="tab" aria-controls="generate-content" aria-selected="false">
+                            <i class="bi bi-lightning-fill me-2"></i>Generate Data
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content p-3 border border-top-0 rounded-bottom bg-body-tertiary" id="main-tab-content">
+                    <!-- Schema Viewer Tab -->
+                    <div class="tab-pane fade show active" id="schema-content" role="tabpanel" aria-labelledby="schema-tab">
+                        <div id="object-details">
+                            <div class="text-center my-5">
+                                <i class="bi bi-arrow-left-circle-fill text-primary" style="font-size: 3rem;"></i>
+                                <p class="lead mt-3">Select an object from the list to view its schema details and relationships</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Object Relationship Diagram Section -->
+                        <div id="schema-diagram" style="display:none;" class="mt-4">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h4 id="diagram-title">Object Relationship Diagram</h4>
+                                    <div class="diagram-controls">
+                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-smaller" title="Decrease height">
+                                            <i class="bi bi-dash-circle"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-larger" title="Increase height">
+                                            <i class="bi bi-plus-circle"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-primary" id="toggle-diagram" title="Toggle diagram">
+                                            <i class="bi bi-chevron-up"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body" id="diagram-body">
+                                    <div id="object-diagram" class="mermaid-diagram" style="height: 400px; overflow: auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Generate Data Tab -->
+                    <div class="tab-pane fade" id="generate-content" role="tabpanel" aria-labelledby="generate-tab">
+                        {% if not config.OPENAI_API_KEY %}
+                        <div class="alert alert-danger mb-4">
+                            <h4 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                OpenAI API Key Missing
+                            </h4>
+                            <p>The OpenAI API key is required to generate test data using AI. Please set the OPENAI_API_KEY environment variable to continue.</p>
+                        </div>
+                        <div class="text-center py-4">
+                            <i class="bi bi-robot text-danger" style="font-size: 3rem;"></i>
+                            <h4 class="mt-3">AI Generation Not Available</h4>
+                            <p class="text-muted">OpenAI API key is required for AI-powered data generation.</p>
+                        </div>
+                        {% else %}
+                        <div id="generation-placeholder" class="text-center my-5">
+                            <i class="bi bi-arrow-left-circle-fill text-primary" style="font-size: 3rem;"></i>
+                            <p class="lead mt-3">Select an object from the list to generate test data</p>
+                        </div>
+                        <div id="generation-form" style="display:none;">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4>Generate Test Data for <span id="object-name-display"></span></h4>
+                                </div>
+                                <div class="card-body">
+                                    <form id="data-generation-form" method="POST" action="{{ url_for('generate') }}">
+                                        <input type="hidden" id="object-name-input" name="object_name" value="">
+                                        
+                                        <div class="mb-3">
+                                            <label for="record-count" class="form-label">Number of Records</label>
+                                            <input type="number" class="form-control" id="record-count" name="record_count" min="1" max="100" value="5" required>
+                                            <div class="form-text">How many test records would you like to generate? (1-100)</div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="nlp-requirements" class="form-label">Natural Language Requirements (Optional)</label>
+                                            <textarea class="form-control" id="nlp-requirements" name="nlp_requirements" rows="3" placeholder="Describe specific requirements for the data generation, such as: 'Generate contacts mostly in California with phone numbers' or 'Create accounts with high annual revenue in tech industry'"></textarea>
+                                            <div class="form-text">Use plain English to describe special requirements for the data. Our AI will interpret your needs.</div>
+                                        </div>
+                                        
+                                        <div class="alert alert-info">
+                                            <i class="bi bi-info-circle-fill me-2"></i>
+                                            The application will analyze the object schema and generate realistic test data that respects all constraints and relationships. Use the natural language input to customize the data generation further.
+                                        </div>
+                                        
+                                        <div class="d-grid">
+                                            <button type="submit" class="btn btn-primary btn-lg">
+                                                <i class="bi bi-lightning-fill me-2"></i>
+                                                Generate Test Data
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if job and results %}
+                        <!-- Show generation results -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h4>
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Generation Results for {{ object_name }}
+                                </h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="me-3">
+                                        <span class="fs-1 text-success">{{ results.success }}</span>
+                                        <p class="mb-0 text-muted">Records Created</p>
+                                    </div>
+                                    
+                                    {% if results.failure > 0 %}
+                                    <div class="ms-4">
+                                        <span class="fs-1 text-danger">{{ results.failure }}</span>
+                                        <p class="mb-0 text-muted">Failed Records</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                
+                                {% if results.created_ids %}
+                                <div class="mb-3">
+                                    <h5>Created Record IDs:</h5>
+                                    <div class="results-container">
+                                        <code>{{ results.created_ids|join(', ') }}</code>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if results.errors %}
+                                <div class="mt-4">
+                                    <h5>Errors:</h5>
+                                    <div class="alert alert-danger">
+                                        <ul class="mb-0">
+                                            {% for error in results.errors %}
+                                            <li>
+                                                <strong>{{ error.message }}</strong>
+                                                {% if error.fields %}
+                                                <div>Fields: {{ error.fields|join(', ') }}</div>
+                                                {% endif %}
+                                            </li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                        
+                        <div class="card mt-4">
+                            <div class="card-header">
+                                <h4>How It Works</h4>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="text-center mb-3">
+                                            <i class="bi bi-diagram-3-fill text-primary" style="font-size: 2.5rem"></i>
+                                            <h5 class="mt-2">1. Analyze Schema</h5>
+                                            <p>We retrieve and analyze the object's schema, fields, and relationships.</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-center mb-3">
+                                            <i class="bi bi-robot text-primary" style="font-size: 2.5rem"></i>
+                                            <h5 class="mt-2">2. Generate with AI</h5>
+                                            <p>ChatGPT generates realistic test data respecting all schema constraints.</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="text-center mb-3">
+                                            <i class="bi bi-cloud-upload-fill text-primary" style="font-size: 2.5rem"></i>
+                                            <h5 class="mt-2">3. Insert to Salesforce</h5>
+                                            <p>The generated data is inserted into your Salesforce org with error handling.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Include Mermaid.js for diagram generation -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'dark',
+        securityLevel: 'loose',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+    });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize search functionality for object list
+        const searchInput = document.getElementById('object-search');
+        const clearButton = document.getElementById('clear-search');
+        const objectList = document.getElementById('object-list');
+        
+        if (searchInput && objectList) {
+            searchInput.addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                
+                const items = objectList.querySelectorAll('li');
+                items.forEach(item => {
+                    const label = item.textContent.toLowerCase();
+                    if (label.includes(query)) {
+                        item.style.display = '';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                
+                // Show/hide the clear button based on input value
+                if (this.value) {
+                    clearButton.style.display = 'block';
+                } else {
+                    clearButton.style.display = 'none';
+                }
+            });
+            
+            // Clear search input
+            clearButton.addEventListener('click', function() {
+                searchInput.value = '';
+                const items = objectList.querySelectorAll('li');
+                items.forEach(item => {
+                    item.style.display = '';
+                });
+                clearButton.style.display = 'none';
+            });
+        }
+        
+        // Object selection handling
+        if (objectList) {
+            objectList.addEventListener('click', function(event) {
+                const listItem = event.target.closest('li');
+                if (listItem) {
+                    // Remove active class from all items
+                    const allItems = this.querySelectorAll('li');
+                    allItems.forEach(item => item.classList.remove('active'));
+                    
+                    // Add active class to the clicked item
+                    listItem.classList.add('active');
+                    
+                    // Get the object name and display it
+                    const objectName = listItem.getAttribute('data-object');
+                    const objectLabel = listItem.getAttribute('data-object-label');
+                    
+                    // Update display in Generate Data tab
+                    document.getElementById('object-name-display').textContent = objectLabel;
+                    document.getElementById('object-name-input').value = objectName;
+                    
+                    // Hide placeholder and show form in Generate Data tab
+                    document.getElementById('generation-placeholder').style.display = 'none';
+                    document.getElementById('generation-form').style.display = 'block';
+                    
+                    // Load object details and relationship diagram
+                    loadObjectDetails(objectName);
+                    loadObjectDiagram(objectName);
+                }
+            });
+        }
+        
+        // Function to load object details via AJAX
+        function loadObjectDetails(objectName) {
+            const detailsContainer = document.getElementById('object-details');
+            
+            // Show loading indicator
+            detailsContainer.innerHTML = `
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="lead mt-3">Loading schema for ${objectName}...</p>
+                </div>
+            `;
+            
+            // Fetch object details
+            fetch('/schema/' + objectName)
+                .then(response => response.json())
+                .then(data => {
+                    // Render object details
+                    renderObjectDetails(data, detailsContainer);
+                })
+                .catch(error => {
+                    detailsContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h4 class="alert-heading">Error</h4>
+                            <p>Failed to load schema details: ${error.message}</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Function to render object details
+        function renderObjectDetails(data, container) {
+            let html = `
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>${data.label} (${data.name})</h4>
+                        <div class="details-controls">
+                            <button class="btn btn-sm btn-outline-secondary me-2" id="details-resize-smaller" title="Decrease height">
+                                <i class="bi bi-dash-circle"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary me-2" id="details-resize-larger" title="Increase height">
+                                <i class="bi bi-plus-circle"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-primary" id="toggle-details" title="Toggle details">
+                                <i class="bi bi-chevron-up"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body" id="details-body">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <p><strong>API Name:</strong> ${data.name}</p>
+                                <p><strong>Label:</strong> ${data.label}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Custom Object:</strong> ${data.custom ? 'Yes' : 'No'}</p>
+                                <p><strong>Createable:</strong> ${data.createable ? 'Yes' : 'No'} | <strong>Updateable:</strong> ${data.updateable ? 'Yes' : 'No'} | <strong>Deletable:</strong> ${data.deletable ? 'Yes' : 'No'}</p>
+                            </div>
+                        </div>
+                        
+                        <h5 class="mb-3">Fields</h5>
+                        <div class="table-responsive" id="details-table-container" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Field Label</th>
+                                        <th>API Name</th>
+                                        <th>Type</th>
+                                        <th>Required</th>
+                                        <th>Unique</th>
+                                        <th>Custom</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+            `;
+            
+            // Sort fields alphabetically by label
+            const sortedFields = data.fields.sort((a, b) => a.label.localeCompare(b.label));
+            
+            sortedFields.forEach(field => {
+                html += `
+                    <tr>
+                        <td>${field.label}</td>
+                        <td><code>${field.name}</code></td>
+                        <td>${field.type}${field.length ? ' (' + field.length + ')' : ''}</td>
+                        <td>${field.nillable ? 'No' : 'Yes'}</td>
+                        <td>${field.unique ? 'Yes' : 'No'}</td>
+                        <td>${field.custom ? 'Yes' : 'No'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+            
+            // Initialize details controls
+            initDetailsControls();
+            
+            // Ensure diagram display
+            setTimeout(() => {
+                const schemaContainer = document.getElementById('schema-diagram');
+                if (schemaContainer) {
+                    console.log('Making schema diagram visible');
+                    schemaContainer.style.display = 'block';
+                    
+                    // Initialize diagram controls
+                    initDiagramControls();
+                }
+            }, 200);
+        }
+        
+        // Initialize details controls for collapsing and resizing
+        function initDetailsControls() {
+            const toggleButton = document.getElementById('toggle-details');
+            const resizeSmallerButton = document.getElementById('details-resize-smaller');
+            const resizeLargerButton = document.getElementById('details-resize-larger');
+            const detailsBody = document.getElementById('details-body');
+            const tableContainer = document.getElementById('details-table-container');
+            
+            // Make sure the details body is visible initially
+            if (detailsBody) {
+                detailsBody.style.display = 'block';
+            }
+            
+            // Toggle details visibility
+            if (toggleButton && detailsBody) {
+                toggleButton.addEventListener('click', function() {
+                    if (detailsBody.style.display === 'none') {
+                        detailsBody.style.display = 'block';
+                        toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
+                    } else {
+                        detailsBody.style.display = 'none';
+                        toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    }
+                });
+            }
+            
+            // Resize details smaller
+            if (resizeSmallerButton && tableContainer) {
+                resizeSmallerButton.addEventListener('click', function() {
+                    const currentHeight = parseInt(getComputedStyle(tableContainer).maxHeight);
+                    if (currentHeight > 200) {
+                        tableContainer.style.maxHeight = (currentHeight - 100) + 'px';
+                    }
+                });
+            }
+            
+            // Resize details larger
+            if (resizeLargerButton && tableContainer) {
+                resizeLargerButton.addEventListener('click', function() {
+                    const currentHeight = parseInt(getComputedStyle(tableContainer).maxHeight);
+                    tableContainer.style.maxHeight = (currentHeight + 100) + 'px';
+                });
+            }
+        }
+        
+        // Initialize diagram controls for collapsing and resizing
+        function initDiagramControls() {
+            const toggleButton = document.getElementById('toggle-diagram');
+            const resizeSmallerButton = document.getElementById('resize-smaller');
+            const resizeLargerButton = document.getElementById('resize-larger');
+            const diagramBody = document.getElementById('diagram-body');
+            const diagramContainer = document.getElementById('object-diagram');
+            
+            // Make sure the diagram body is visible initially
+            if (diagramBody) {
+                diagramBody.style.display = 'block';
+            }
+            
+            // Toggle diagram visibility
+            if (toggleButton && diagramBody) {
+                toggleButton.addEventListener('click', function() {
+                    if (diagramBody.style.display === 'none') {
+                        diagramBody.style.display = 'block';
+                        toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
+                    } else {
+                        diagramBody.style.display = 'none';
+                        toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    }
+                });
+            }
+            
+            // Resize diagram smaller
+            if (resizeSmallerButton && diagramContainer) {
+                resizeSmallerButton.addEventListener('click', function() {
+                    const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+                    if (currentHeight > 200) {
+                        diagramContainer.style.height = (currentHeight - 100) + 'px';
+                    }
+                });
+            }
+            
+            // Resize diagram larger
+            if (resizeLargerButton && diagramContainer) {
+                resizeLargerButton.addEventListener('click', function() {
+                    const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+                    diagramContainer.style.height = (currentHeight + 100) + 'px';
+                });
+            }
+        }
+        
+        // Function to generate and display object relationship diagram
+        function loadObjectDiagram(objectName) {
+            const schemaContainer = document.getElementById('schema-diagram');
+            const diagramContainer = document.getElementById('object-diagram');
+            const diagramTitle = document.getElementById('diagram-title');
+            
+            // Make sure the diagram section is visible
+            schemaContainer.style.display = 'block';
+            diagramTitle.textContent = `Relationship Diagram: ${objectName}`;
+            
+            // Show loading indicator
+            diagramContainer.innerHTML = `
+                <div class="text-center my-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="lead mt-3">Generating relationship diagram...</p>
+                </div>
+            `;
+            
+            console.log('Loading diagram for:', objectName); // Debug log
+            
+            // Fetch object details to generate diagram
+            fetch('/schema/' + objectName)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Diagram data received:', Object.keys(data)); // Debug log
+                    
+                    // Generate mermaid diagram syntax
+                    const diagramCode = generateMermaidDiagram(data);
+                    console.log('Generated diagram code length:', diagramCode.length); // Debug log
+                    
+                    // Create the mermaid diagram
+                    diagramContainer.innerHTML = `<div class="mermaid">${diagramCode}</div>`;
+                    
+                    // Force diagram to be visible
+                    schemaContainer.style.display = 'block';
+                    
+                    // Render the diagram with a slight delay to ensure DOM is ready
+                    setTimeout(() => {
+                        try {
+                            console.log('Running mermaid rendering');
+                            mermaid.run();
+                            
+                            // Re-initialize controls after diagram is rendered
+                            initDiagramControls();
+                        } catch (e) {
+                            console.error('Mermaid error:', e);
+                        }
+                    }, 100);
+                })
+                .catch(error => {
+                    console.error('Error loading diagram:', error); // Debug log
+                    diagramContainer.innerHTML = `
+                        <div class="alert alert-danger">
+                            <h4 class="alert-heading">Error</h4>
+                            <p>Failed to generate diagram: ${error.message}</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Function to generate mermaid syntax for object relationships
+        function generateMermaidDiagram(data) {
+            let diagramSyntax = 'classDiagram\n';
+            
+            // Create main class
+            diagramSyntax += `    class ${data.name} {\n`;
+            
+            // Add fields to main class
+            data.fields.forEach(field => {
+                // Only include important fields to avoid clutter
+                if (field.nillable === false || field.unique || field.nameField || 
+                    field.type === 'reference' || field.name === 'Id') {
+                    let fieldLine = `        ${field.name} : ${field.type}`;
+                    if (field.nillable === false) fieldLine += ' [Required]';
+                    if (field.unique) fieldLine += ' [Unique]';
+                    diagramSyntax += fieldLine + '\n';
+                }
+            });
+            
+            diagramSyntax += '    }\n\n';
+            
+            // Track relationship objects to avoid duplicates
+            const relationshipObjects = new Set();
+            
+            // Add relationship arrows
+            data.fields.forEach(field => {
+                if (field.type === 'reference' && field.referenceTo && field.referenceTo.length > 0) {
+                    field.referenceTo.forEach(relatedObject => {
+                        // Avoid self-references in diagram
+                        if (relatedObject !== data.name) {
+                            // Add related object class if not already added
+                            if (!relationshipObjects.has(relatedObject)) {
+                                diagramSyntax += `    class ${relatedObject} {\n        Id : id\n    }\n`;
+                                relationshipObjects.add(relatedObject);
+                            }
+                            
+                            // Add relationship arrow
+                            diagramSyntax += `    ${data.name} --o ${relatedObject} : ${field.name}\n`;
+                        }
+                    });
+                }
+            });
+            
+            return diagramSyntax;
+        }
+    });
+</script>
+{% endblock %}

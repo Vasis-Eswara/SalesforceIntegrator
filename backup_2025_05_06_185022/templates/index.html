@@ -1,0 +1,154 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="p-5">
+                <h1 class="display-4 mb-4">
+                    <i class="bi bi-cloud-lightning-fill text-primary me-3"></i>
+                    Salesforce GPT Data Generator
+                </h1>
+                <p class="lead">
+                    Create realistic test data for your Salesforce org using the power of AI.
+                </p>
+                <hr class="my-4">
+                
+                {% if not config.SALESFORCE_CLIENT_ID or not config.OPENAI_API_KEY %}
+                <div class="alert alert-warning">
+                    <h4 class="alert-heading">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Missing Configuration
+                    </h4>
+                    <p>This application requires the following API keys to function properly:</p>
+                    <ul class="text-start">
+                        {% if not config.SALESFORCE_CLIENT_ID %}
+                        <li><strong>Salesforce API Keys</strong> - Required to connect to your Salesforce organization</li>
+                        {% endif %}
+                        {% if not config.OPENAI_API_KEY %}
+                        <li><strong>OpenAI API Key</strong> - Required to generate test data using AI</li>
+                        {% endif %}
+                    </ul>
+                    <p>Please configure these API keys in your environment variables to continue.</p>
+                </div>
+                {% endif %}
+                
+                {% if sf_connected %}
+                <div class="card bg-success-subtle mb-4">
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            Connected to Salesforce
+                        </h4>
+                        <p class="card-text">You can now explore your Salesforce schema and generate test data.</p>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                            <a href="{{ url_for('combined') }}" class="btn btn-outline-primary me-md-2">
+                                <i class="bi bi-diagram-3-fill me-2"></i>
+                                Schema & Data Gen
+                            </a>
+                            <a href="{{ url_for('generate') }}" class="btn btn-primary">
+                                <i class="bi bi-lightning-fill me-2"></i>
+                                Generate Test Data
+                            </a>
+                            <a href="{{ url_for('configure') }}" class="btn btn-outline-success">
+                                <i class="bi bi-gear-fill me-2"></i>
+                                Configure Salesforce
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card bg-dark mb-4">
+                    <div class="card-body">
+                        <h4 class="card-title">
+                            <i class="bi bi-cloud me-2"></i>
+                            Connect to Salesforce
+                        </h4>
+                        <p class="card-text">To get started, connect your Salesforce org using OAuth authentication.</p>
+                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                            <i class="bi bi-cloud-arrow-up-fill me-2"></i>
+                            Connect Now
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-diagram-3-fill text-primary" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">Schema Analysis</h5>
+                    <p class="card-text">Explore and understand your Salesforce object schema including fields, relationships, and constraints.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-robot text-primary" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">AI-Powered Generation</h5>
+                    <p class="card-text">Leverage ChatGPT to generate realistic test data that respects your schema constraints and business rules.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-cloud-upload-fill text-primary" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">Direct Insertion</h5>
+                    <p class="card-text">Insert generated test data directly into your Salesforce org with validation and error handling.</p>
+        <div class="col-md-4 mt-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-gear-wide-connected text-primary" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">Configure Salesforce</h5>
+                    <p class="card-text">Use natural language to create and modify Salesforce configurations including objects, fields, and validation rules.</p>
+                </div>
+            </div>
+        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if sf_connected %}
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Chat with GPT about your Salesforce data</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chat-container">
+                        <div id="chat-messages" class="chat-messages">
+                            <div class="chat-message assistant">
+                                <div class="chat-avatar">
+                                    <i class="bi bi-robot"></i>
+                                </div>
+                                <div class="chat-content">
+                                    Hello! I'm here to help you generate test data for your Salesforce org. You can ask me questions about your schema or tell me what kind of data you need.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chat-input-container">
+                            <form id="chat-form">
+                                <div class="input-group">
+                                    <input type="text" id="chat-input" class="form-control" placeholder="Type your message..." required>
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="bi bi-send-fill"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
