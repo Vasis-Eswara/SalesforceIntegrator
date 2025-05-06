@@ -105,8 +105,16 @@ class SalesforceSOAPClient:
             if session_id is None or server_url is None:
                 raise Exception("Missing sessionId or serverUrl in login response")
                 
-            self.session_id = session_id.text
-            self.instance_url = server_url.text.split('/services/')[0]
+            self.session_id = session_id.text if session_id is not None else None
+            
+            # Safe handling of server_url
+            if server_url is not None and server_url.text is not None:
+                if '/services/' in server_url.text:
+                    self.instance_url = server_url.text.split('/services/')[0]
+                else:
+                    self.instance_url = server_url.text
+            else:
+                self.instance_url = None
             
             self.headers = {
                 'SessionId': self.session_id,
@@ -306,10 +314,16 @@ class SalesforceSOAPClient:
                 # Extract all field values
                 for field in record:
                     # Skip attributes and nested records
-                    if field.tag.endswith('type') or field.tag.endswith('Id'):
-                        record_data[field.tag.split('}')[-1]] = field.text
-                    elif not field.tag.endswith('records'):
-                        field_name = field.tag.split('}')[-1]
+                    if field.tag and (field.tag.endswith('type') or field.tag.endswith('Id')):
+                        if '}' in field.tag:
+                            record_data[field.tag.split('}')[-1]] = field.text
+                        else:
+                            record_data[field.tag] = field.text
+                    elif field.tag and not field.tag.endswith('records'):
+                        if '}' in field.tag:
+                            field_name = field.tag.split('}')[-1]
+                        else:
+                            field_name = field.tag
                         record_data[field_name] = field.text
                 
                 records.append(record_data)
@@ -374,10 +388,16 @@ class SalesforceSOAPClient:
                     # Extract all field values
                     for field in record:
                         # Skip attributes and nested records
-                        if field.tag.endswith('type') or field.tag.endswith('Id'):
-                            record_data[field.tag.split('}')[-1]] = field.text
-                        elif not field.tag.endswith('records'):
-                            field_name = field.tag.split('}')[-1]
+                        if field.tag and (field.tag.endswith('type') or field.tag.endswith('Id')):
+                            if '}' in field.tag:
+                                record_data[field.tag.split('}')[-1]] = field.text
+                            else:
+                                record_data[field.tag] = field.text
+                        elif field.tag and not field.tag.endswith('records'):
+                            if '}' in field.tag:
+                                field_name = field.tag.split('}')[-1]
+                            else:
+                                field_name = field.tag
                             record_data[field_name] = field.text
                     
                     records.append(record_data)
@@ -597,7 +617,10 @@ class SalesforceSOAPClient:
                     formatted_value = str(value)
                 else:
                     # Escape XML special characters
-                    formatted_value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
+                    if value is None:
+                        formatted_value = ''
+                    else:
+                        formatted_value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
                     
                 fields_xml += f"<{field}>{formatted_value}</{field}>\n"
             
@@ -733,7 +756,10 @@ class SalesforceSOAPClient:
                             formatted_value = str(value)
                         else:
                             # Escape XML special characters
-                            formatted_value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
+                            if value is None:
+                                formatted_value = ''
+                            else:
+                                formatted_value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
                             
                         fields_xml += f"<{field}>{formatted_value}</{field}>\n"
                     
@@ -931,7 +957,7 @@ class SalesforceSOAPClient:
         if SOAP_LOGIN_URL:
             login_wsdl_content = login_wsdl_content.replace(
                 'https://login.salesforce.com/services/Soap/u/58.0',
-                SOAP_LOGIN_URL
+                SOAP_LOGIN_URL if SOAP_LOGIN_URL is not None else 'https://login.salesforce.com/services/Soap/u/58.0'
             )
         
         # Create a temporary file for the WSDL
@@ -1433,18 +1459,27 @@ def get_object_describe_soap(instance_url, session_id, object_name):
                 # Add length for string fields
                 if field_type is not None and field_type.text in ('string', 'textarea'):
                     length = field.find('./partner:length', namespaces)
-                    if length is not None:
-                        field_info['length'] = int(length.text)
+                    if length is not None and length.text is not None:
+                        try:
+                            field_info['length'] = int(length.text)
+                        except (ValueError, TypeError):
+                            field_info['length'] = 0
                 
                 # Add precision and scale for numeric fields
                 if field_type is not None and field_type.text in ('double', 'currency', 'percent'):
                     precision = field.find('./partner:precision', namespaces)
                     scale = field.find('./partner:scale', namespaces)
                     
-                    if precision is not None:
-                        field_info['precision'] = int(precision.text)
-                    if scale is not None:
-                        field_info['scale'] = int(scale.text)
+                    if precision is not None and precision.text is not None:
+                        try:
+                            field_info['precision'] = int(precision.text)
+                        except (ValueError, TypeError):
+                            field_info['precision'] = 0
+                    if scale is not None and scale.text is not None:
+                        try:
+                            field_info['scale'] = int(scale.text)
+                        except (ValueError, TypeError):
+                            field_info['scale'] = 0
                 
                 object_info['fields'].append(field_info)
         
