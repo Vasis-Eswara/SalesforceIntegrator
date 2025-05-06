@@ -236,7 +236,7 @@
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.0.2/dist/mermaid.min.js"></script>
 <script>
     mermaid.initialize({
-        startOnLoad: false,
+        startOnLoad: true,
         theme: 'dark',
         securityLevel: 'loose',
         fontFamily: 'system-ui, -apple-system, sans-serif'
@@ -419,10 +419,10 @@
                 .then(data => {
                     // Generate mermaid diagram syntax
                     const diagramCode = generateMermaidDiagram(data);
-                    diagramContainer.innerHTML = diagramCode;
+                    diagramContainer.innerHTML = `<div class="mermaid">${diagramCode}</div>`;
                     
                     // Render the diagram
-                    mermaid.init(undefined, document.querySelector('.mermaid-diagram'));
+                    mermaid.run();
                 })
                 .catch(error => {
                     diagramContainer.innerHTML = `
