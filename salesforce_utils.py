@@ -10,9 +10,13 @@ logger = logging.getLogger(__name__)
 SF_CLIENT_ID = os.environ.get('SALESFORCE_CLIENT_ID', '')
 SF_CLIENT_SECRET = os.environ.get('SALESFORCE_CLIENT_SECRET', '')
 
-# Hard-code the redirect URI for now
-SF_REDIRECT_URI = 'https://2dbf6f12-560a-4cb9-8ca7-c2cd30a7fe4e-00-2kbskpp6fbk9s.worf.replit.dev/salesforce/callback'
+# Get the redirect URI from environment or use a default
+SF_REDIRECT_URI = os.environ.get('SALESFORCE_REDIRECT_URI', 'https://2dbf6f12-560a-4cb9-8ca7-c2cd30a7fe4e-00-2kbskpp6fbk9s.worf.replit.dev/salesforce/callback')
 logger.debug(f"Using redirect URI: '{SF_REDIRECT_URI}'")
+
+# Make sure there's no trailing slash in the redirect URI
+if SF_REDIRECT_URI.endswith('/'):
+    SF_REDIRECT_URI = SF_REDIRECT_URI[:-1]
 
 
 SF_LOGIN_URL = os.environ.get('SALESFORCE_LOGIN_URL', 'https://login.salesforce.com')
@@ -26,7 +30,8 @@ def get_auth_url():
     params = {
         'client_id': SF_CLIENT_ID,
         'redirect_uri': SF_REDIRECT_URI,
-        'response_type': 'code'
+        'response_type': 'code',
+        'scope': 'api refresh_token offline_access'
     }
     auth_url = f"{SF_LOGIN_URL}/services/oauth2/authorize?{urlencode(params)}"
     logger.debug(f"Generated auth URL: {auth_url}")

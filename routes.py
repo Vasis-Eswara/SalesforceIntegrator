@@ -42,12 +42,27 @@ def init_routes(app):
             return redirect(url_for('login'))
     
     @app.route('/salesforce/callback')
+    @app.route('/salesforce/callback/', endpoint='salesforce_callback_slash') # Handle trailing slash variant
     @app.route('/services/oauth2/success') # Add support for direct Salesforce callback URL
     def salesforce_callback():
         """Handle Salesforce OAuth callback"""
+        # Log all request information to help debug
+        logger.debug(f"Callback received. Request URL: {request.url}")
+        logger.debug(f"Request args: {request.args}")
+        
         code = request.args.get('code')
+        error = request.args.get('error')
+        error_description = request.args.get('error_description')
+        
+        # Check for error first
+        if error:
+            error_msg = f"Authentication failed: {error}. {error_description}" if error_description else f"Authentication failed: {error}"
+            logger.error(error_msg)
+            flash(error_msg, 'danger')
+            return redirect(url_for('login'))
         
         if not code:
+            logger.error("No authorization code received in callback")
             flash('Authentication failed: No authorization code received', 'danger')
             return redirect(url_for('login'))
         
