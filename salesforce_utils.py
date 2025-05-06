@@ -7,6 +7,17 @@ import hashlib
 import secrets
 from urllib.parse import urlencode
 
+try:
+    from flask import session
+except ImportError:
+    # Mock session for non-Flask environments
+    class MockSession(dict):
+        def get(self, key, default=None):
+            return self.get(key, default)
+        def pop(self, key, default=None):
+            return self.pop(key, default) if key in self else default
+    session = MockSession()
+
 logger = logging.getLogger(__name__)
 
 # Salesforce OAuth configuration
@@ -35,9 +46,9 @@ if SF_CLIENT_DOMAIN and SF_CLIENT_DOMAIN.strip():
         SF_LOGIN_URL = f"https://{domain}"
     logger.debug(f"Using custom Salesforce domain: {SF_LOGIN_URL}")
 else:
-    # Try test.salesforce.com first for sandbox environments
-    SF_LOGIN_URL = 'https://test.salesforce.com'
-    logger.debug(f"Using sandbox Salesforce login URL: {SF_LOGIN_URL}")
+    # Try production URL as default
+    SF_LOGIN_URL = 'https://login.salesforce.com'
+    logger.debug(f"Using production Salesforce login URL: {SF_LOGIN_URL}")
 
 def generate_code_verifier():
     """Generate a code_verifier for PKCE"""
@@ -60,7 +71,6 @@ def get_auth_url():
     code_challenge = generate_code_challenge(code_verifier)
     
     # Store code_verifier in session
-    from flask import session
     session['sf_code_verifier'] = code_verifier
     
     # Print all environmental variables and configuration
@@ -96,7 +106,6 @@ def get_access_token(code):
         raise Exception("Salesforce client credentials not configured. Please set the SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET environment variables.")
     
     # Get code_verifier from session
-    from flask import session
     code_verifier = session.get('sf_code_verifier')
     if not code_verifier:
         raise Exception("Code verifier missing from session. Please restart the authentication process.")
@@ -128,11 +137,22 @@ def get_access_token(code):
     try:
         response = requests.post(token_url, data=payload)
         
-        # Enhanced logging of response
+        # Enhanced logging of all response details regardless of status code
+        logger.debug(f"Token request response - Status: {response.status_code}")
+        logger.debug(f"Response headers: {dict(response.headers)}")
+        logger.debug(f"Response full body: {response.text}")
+        
+        # Special error handling for common Salesforce error codes
         if response.status_code != 200:
             logger.error(f"Token request failed with status code {response.status_code}")
             logger.error(f"Response headers: {dict(response.headers)}")
             logger.error(f"Response body: {response.text}")
+            
+            try:
+                error_json = response.json()
+                logger.error(f"Error details: {error_json}")
+            except:
+                logger.error("Could not parse error response as JSON")
             
         response.raise_for_status()
         return response.json()
