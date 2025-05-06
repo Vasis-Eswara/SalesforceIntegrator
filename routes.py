@@ -547,10 +547,9 @@ def init_routes(app):
     @app.route('/configure', methods=['GET', 'POST'])
     def configure():
         """Configure Salesforce with natural language prompts"""
-        if 'salesforce_org_id' not in session:
-            flash('Please connect to Salesforce first', 'warning')
-            return redirect(url_for('login'))
-            
+        # Check if the user is logged in, but don't redirect (template will handle this)
+        is_logged_in = 'salesforce_org_id' in session
+        
         # Check if OpenAI API key is configured
         if not app.config.get('OPENAI_API_KEY'):
             flash('OpenAI API key not configured. Please add your API key to use this feature.', 'warning')

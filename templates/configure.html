@@ -11,7 +11,7 @@
                     <h3 class="card-title mb-0">Configure Salesforce with Natural Language</h3>
                 </div>
                 <div class="card-body">
-                    {% if not session.get('sf_instance_url') %}
+                    {% if not session.get('salesforce_org_id') %}
                         <div class="alert alert-warning">
                             <strong>Please connect to Salesforce first.</strong> You need to connect to a Salesforce organization before you can configure it.
                             <p class="mt-2"><a href="{{ url_for('login') }}" class="btn btn-primary">Connect to Salesforce</a></p>
@@ -70,6 +70,7 @@
                                             id="configPrompt" 
                                             name="prompt" 
                                             rows="5" 
+                                            style="min-height: 120px; resize: vertical;"
                                             placeholder="Example: Create a custom object called Customer Support Case with fields for case number, subject, description, status, and priority"
                                             required
                                         ></textarea>
