@@ -534,9 +534,12 @@ class SalesforceSOAPClient:
                     if field_type is not None and field_type.text in ('string', 'textarea'):
                         length = field.find('./partner:length', namespaces)
                         if length is not None:
-                            try:
-                                field_info['length'] = int(length.text)
-                            except (ValueError, TypeError):
+                            if length.text is not None:
+                                try:
+                                    field_info['length'] = int(length.text)
+                                except (ValueError, TypeError):
+                                    field_info['length'] = 0
+                            else:
                                 field_info['length'] = 0
                     
                     # Add precision and scale for numeric fields
@@ -545,14 +548,20 @@ class SalesforceSOAPClient:
                         scale = field.find('./partner:scale', namespaces)
                         
                         if precision is not None:
-                            try:
-                                field_info['precision'] = int(precision.text)
-                            except (ValueError, TypeError):
+                            if precision.text is not None:
+                                try:
+                                    field_info['precision'] = int(precision.text)
+                                except (ValueError, TypeError):
+                                    field_info['precision'] = 0
+                            else:
                                 field_info['precision'] = 0
                         if scale is not None:
-                            try:
-                                field_info['scale'] = int(scale.text)
-                            except (ValueError, TypeError):
+                            if scale.text is not None:
+                                try:
+                                    field_info['scale'] = int(scale.text)
+                                except (ValueError, TypeError):
+                                    field_info['scale'] = 0
+                            else:
                                 field_info['scale'] = 0
                     
                     object_info['fields'].append(field_info)
@@ -787,8 +796,8 @@ class SalesforceSOAPClient:
                 for result in results:
                     success_elem = result.find('./partner:success', namespaces)
                     success = False
-                    if success_elem is not None and success_elem.text.lower() == 'true':
-                        success = True
+                    if success_elem is not None and success_elem.text:
+                        success = success_elem.text.lower() == 'true'
                     
                     if success:
                         all_results['success'] += 1
@@ -919,10 +928,11 @@ class SalesforceSOAPClient:
 </definitions>'''
         
         # Update the SOAP endpoint to match the configured URL
-        login_wsdl_content = login_wsdl_content.replace(
-            'https://login.salesforce.com/services/Soap/u/58.0',
-            SOAP_LOGIN_URL
-        )
+        if SOAP_LOGIN_URL:
+            login_wsdl_content = login_wsdl_content.replace(
+                'https://login.salesforce.com/services/Soap/u/58.0',
+                SOAP_LOGIN_URL
+            )
         
         # Create a temporary file for the WSDL
         with tempfile.NamedTemporaryFile(mode='w', suffix='.wsdl', delete=False) as temp:
@@ -1295,7 +1305,7 @@ def get_salesforce_objects_soap(instance_url, session_id):
                 objects.append({
                     'name': api_name.text,
                     'label': label.text,
-                    'custom': api_name.text.endswith('__c')
+                    'custom': api_name.text is not None and api_name.text.endswith('__c')
                 })
         
         return objects
