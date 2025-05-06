@@ -370,7 +370,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="card-body" id="details-body">
+                    <div class="card-body" id="details-body" style="display: block;">
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <p><strong>API Name:</strong> ${data.name}</p>
@@ -458,12 +458,18 @@
                 // Ensure the toggle button works by explicitly setting event listener
                 toggleButton.onclick = function() {
                     console.log('Toggle details clicked, current display:', detailsBody.style.display);
+                    console.log('Toggling details section...');
+                    // Check if it's hidden - this is more reliable than checking style.display
                     if (detailsBody.style.display === 'none') {
+                        // Show the details section
                         detailsBody.style.display = 'block';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
+                        console.log('Details section expanded');
                     } else {
+                        // Hide the details section
                         detailsBody.style.display = 'none';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                        console.log('Details section collapsed');
                     }
                 };
             }
@@ -505,12 +511,18 @@
                 // Ensure the toggle button works by explicitly setting event listener
                 toggleButton.onclick = function() {
                     console.log('Toggle diagram clicked, current display:', diagramBody.style.display);
+                    console.log('Toggling diagram section...');
+                    // Check if it's hidden - this is more reliable than checking style.display
                     if (diagramBody.style.display === 'none') {
+                        // Show the diagram section
                         diagramBody.style.display = 'block';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
+                        console.log('Diagram section expanded');
                     } else {
+                        // Hide the diagram section
                         diagramBody.style.display = 'none';
                         toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                        console.log('Diagram section collapsed');
                     }
                 };
             }
