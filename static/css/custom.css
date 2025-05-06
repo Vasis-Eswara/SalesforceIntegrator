@@ -145,17 +145,17 @@
     border-bottom: 1px dotted var(--bs-secondary);
 }
 
-/* Diagram & Details Controls */
-.diagram-controls, .details-controls {
+/* Section Controls */
+.diagram-controls, .details-controls, .generate-controls {
     display: flex;
     align-items: center;
 }
 
-.diagram-controls button, .details-controls button {
+.diagram-controls button, .details-controls button, .generate-controls button {
     transition: all 0.2s ease;
 }
 
-.diagram-controls button:hover, .details-controls button:hover {
+.diagram-controls button:hover, .details-controls button:hover, .generate-controls button:hover {
     transform: scale(1.1);
 }
 
@@ -183,4 +183,11 @@
 [style*="resize:vertical"] {
     border-bottom: 4px solid var(--bs-primary-border-subtle);
     padding-bottom: 8px;
+}
+
+/* Prompt textarea */
+#nlp-requirements {
+    min-height: 100px;
+    resize: vertical;
+    transition: height 0.3s ease;
 }
