@@ -3,23 +3,8 @@ import logging
 import requests
 import tempfile
 import base64
-
-# Try to import zeep, but allow the module to run without it for error handling purposes
-try:
-    from zeep import Client
-    from zeep.transports import Transport
-    from zeep.cache import SqliteCache
-    from zeep.exceptions import Fault
-    HAS_ZEEP = True
-except ImportError:
-    HAS_ZEEP = False
-    # Create placeholder classes for type hints
-    class Client: pass
-    class Transport: pass
-    class SqliteCache: pass
-    class Fault(Exception): pass
-import tempfile
-import base64
+import xml.etree.ElementTree as ET
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -132,9 +117,6 @@ class SalesforceSOAPClient:
             logger.debug(f"Successfully logged in via SOAP API. Instance URL: {self.instance_url}")
             return True
             
-        except Fault as e:
-            logger.error(f"SOAP login fault: {str(e)}")
-            raise Exception(f"Failed to login via SOAP: {str(e)}")
         except Exception as e:
             logger.error(f"Error during SOAP login: {str(e)}")
             raise Exception(f"SOAP login error: {str(e)}")
@@ -247,29 +229,157 @@ class SalesforceSOAPClient:
             raise ValueError("Not authenticated. Call login_with_soap or login_with_oauth_token first.")
         
         try:
-            # Get and parse the Enterprise WSDL
-            enterprise_wsdl = self._get_enterprise_wsdl()
-            transport = Transport(cache=SqliteCache())
-            transport.session.headers = self.headers
+            # Direct SOAP request
+            endpoint = f"{self.instance_url}/services/Soap/u/58.0"
             
-            client = Client(enterprise_wsdl, transport=transport)
-            result = client.service.query(soql_query)
+            # XML request template for query
+            soap_request = f'''
+            <?xml version="1.0" encoding="utf-8" ?>
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xmlns:urn="urn:partner.soap.sforce.com">
+                <soapenv:Header>
+                    <urn:SessionHeader>
+                        <urn:sessionId>{self.session_id}</urn:sessionId>
+                    </urn:SessionHeader>
+                </soapenv:Header>
+                <soapenv:Body>
+                    <urn:query>
+                        <urn:queryString>{soql_query}</urn:queryString>
+                    </urn:query>
+                </soapenv:Body>
+            </soapenv:Envelope>
+            '''.strip()
             
+            headers = {
+                'Content-Type': 'text/xml; charset=UTF-8',
+                'SOAPAction': '""'
+            }
+            
+            response = requests.post(endpoint, data=soap_request, headers=headers)
+            
+            # Check for errors
+            if response.status_code != 200:
+                error_message = f"SOAP query failed with status {response.status_code}: {response.text}"
+                logger.error(error_message)
+                raise Exception(error_message)
+            
+            # Parse XML response manually
+            import xml.etree.ElementTree as ET
+            # Add namespace prefix mapping
+            namespaces = {
+                'soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+                'partner': 'urn:partner.soap.sforce.com'
+            }
+            
+            root = ET.fromstring(response.content)
+            
+            # Find the result element
+            result = root.find('.//partner:queryResponse/partner:result', namespaces)
+            
+            if result is None:
+                raise Exception("Could not find query result in SOAP response")
+            
+            # Process query result
             records = []
-            if hasattr(result, 'records'):
-                records = result.records
+            result_records = result.findall('./partner:records', namespaces)
+            
+            # Get the query more info
+            done_elem = result.find('./partner:done', namespaces)
+            done = (done_elem is not None and done_elem.text.lower() == 'true')
+            query_locator_elem = result.find('./partner:queryLocator', namespaces)
+            query_locator = query_locator_elem.text if query_locator_elem is not None else None
+            
+            # Process records
+            for record in result_records:
+                record_data = {}
                 
-                # Handle pagination if needed
-                while not result.done:
-                    result = client.service.queryMore(result.queryLocator)
-                    if hasattr(result, 'records'):
-                        records.extend(result.records)
+                # Get type
+                type_attr = record.get('{http://www.w3.org/2001/XMLSchema-instance}type')
+                if type_attr:
+                    # Strip namespace prefix if present
+                    record_type = type_attr.split(':')[-1]
+                    record_data['type'] = record_type
+                
+                # Extract all field values
+                for field in record:
+                    # Skip attributes and nested records
+                    if field.tag.endswith('type') or field.tag.endswith('Id'):
+                        record_data[field.tag.split('}')[-1]] = field.text
+                    elif not field.tag.endswith('records'):
+                        field_name = field.tag.split('}')[-1]
+                        record_data[field_name] = field.text
+                
+                records.append(record_data)
+            
+            # Handle pagination if needed
+            while not done and query_locator:
+                # Make queryMore request
+                soap_request = f'''
+                <?xml version="1.0" encoding="utf-8" ?>
+                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                               xmlns:urn="urn:partner.soap.sforce.com">
+                    <soapenv:Header>
+                        <urn:SessionHeader>
+                            <urn:sessionId>{self.session_id}</urn:sessionId>
+                        </urn:SessionHeader>
+                    </soapenv:Header>
+                    <soapenv:Body>
+                        <urn:queryMore>
+                            <urn:queryLocator>{query_locator}</urn:queryLocator>
+                        </urn:queryMore>
+                    </soapenv:Body>
+                </soapenv:Envelope>
+                '''.strip()
+                
+                response = requests.post(endpoint, data=soap_request, headers=headers)
+                
+                # Check for errors
+                if response.status_code != 200:
+                    logger.warning(f"SOAP queryMore failed with status {response.status_code}: {response.text}")
+                    break
+                
+                # Parse response
+                root = ET.fromstring(response.content)
+                result = root.find('.//partner:queryMoreResponse/partner:result', namespaces)
+                
+                if result is None:
+                    break
+                
+                # Process additional records
+                result_records = result.findall('./partner:records', namespaces)
+                
+                # Update pagination info
+                done_elem = result.find('./partner:done', namespaces)
+                done = (done_elem is not None and done_elem.text.lower() == 'true')
+                query_locator_elem = result.find('./partner:queryLocator', namespaces)
+                query_locator = query_locator_elem.text if query_locator_elem is not None else None
+                
+                # Process records
+                for record in result_records:
+                    record_data = {}
+                    
+                    # Get type
+                    type_attr = record.get('{http://www.w3.org/2001/XMLSchema-instance}type')
+                    if type_attr:
+                        # Strip namespace prefix if present
+                        record_type = type_attr.split(':')[-1]
+                        record_data['type'] = record_type
+                    
+                    # Extract all field values
+                    for field in record:
+                        # Skip attributes and nested records
+                        if field.tag.endswith('type') or field.tag.endswith('Id'):
+                            record_data[field.tag.split('}')[-1]] = field.text
+                        elif not field.tag.endswith('records'):
+                            field_name = field.tag.split('}')[-1]
+                            record_data[field_name] = field.text
+                    
+                    records.append(record_data)
             
             return records
             
-        except Fault as e:
-            logger.error(f"SOAP query fault: {str(e)}")
-            raise Exception(f"Failed to execute query via SOAP: {str(e)}")
         except Exception as e:
             logger.error(f"Error executing query via SOAP: {str(e)}")
             raise Exception(f"SOAP query error: {str(e)}")
@@ -282,63 +392,146 @@ class SalesforceSOAPClient:
             raise ValueError("Not authenticated. Call login_with_soap or login_with_oauth_token first.")
         
         try:
-            # Get and parse the Enterprise WSDL
-            enterprise_wsdl = self._get_enterprise_wsdl()
-            transport = Transport(cache=SqliteCache())
-            transport.session.headers = self.headers
+            # Direct SOAP request
+            endpoint = f"{self.instance_url}/services/Soap/u/58.0"
             
-            client = Client(enterprise_wsdl, transport=transport)
-            result = client.service.describeSObject(object_name)
+            # XML request template for describeSObject
+            soap_request = f'''
+            <?xml version="1.0" encoding="utf-8" ?>
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xmlns:urn="urn:partner.soap.sforce.com">
+                <soapenv:Header>
+                    <urn:SessionHeader>
+                        <urn:sessionId>{self.session_id}</urn:sessionId>
+                    </urn:SessionHeader>
+                </soapenv:Header>
+                <soapenv:Body>
+                    <urn:describeSObject>
+                        <urn:sObjectType>{object_name}</urn:sObjectType>
+                    </urn:describeSObject>
+                </soapenv:Body>
+            </soapenv:Envelope>
+            '''.strip()
             
-            # Convert to a simplified Python dict structure
-            object_info = {
-                'name': result.name,
-                'label': result.label,
-                'fields': [],
-                'relationships': []
+            headers = {
+                'Content-Type': 'text/xml; charset=UTF-8',
+                'SOAPAction': '""'
             }
             
-            # Process fields
-            for field in result.fields:
-                field_info = {
-                    'name': field.name,
-                    'label': field.label,
-                    'type': field.type,
-                    'required': not field.nillable and not field.defaultedOnCreate,
-                    'unique': field.unique,
-                    'custom': field.custom,
-                    'updateable': field.updateable,
-                    'defaultValue': field.defaultValue
-                }
+            response = requests.post(endpoint, data=soap_request, headers=headers)
+            
+            # Check for errors
+            if response.status_code != 200:
+                error_message = f"SOAP describeSObject failed with status {response.status_code}: {response.text}"
+                logger.error(error_message)
+                raise Exception(error_message)
+            
+            # Parse XML response manually
+            import xml.etree.ElementTree as ET
+            # Add namespace prefix mapping
+            namespaces = {
+                'soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+                'partner': 'urn:partner.soap.sforce.com'
+            }
+            
+            root = ET.fromstring(response.content)
+            
+            # Find the result element
+            result = root.find('.//partner:describeSObjectResponse/partner:result', namespaces)
+            
+            if result is None:
+                raise Exception("Could not find describeSObject result in SOAP response")
                 
-                # Add reference information if it's a lookup/master-detail
-                if field.type in ('reference'):
-                    field_info['referenceTo'] = field.referenceTo
-                    field_info['relationshipName'] = field.relationshipName
+            # Extract basic object info
+            name = result.find('./partner:name', namespaces)
+            label = result.find('./partner:label', namespaces)
+            
+            object_info = {
+                'name': name.text if name is not None else object_name,
+                'label': label.text if label is not None else object_name,
+                'fields': []
+            }
+            
+            # Extract fields
+            fields = result.findall('./partner:fields', namespaces)
+            
+            for field in fields:
+                field_name = field.find('./partner:name', namespaces)
+                field_label = field.find('./partner:label', namespaces)
+                field_type = field.find('./partner:type', namespaces)
+                field_nillable = field.find('./partner:nillable', namespaces)
+                field_defaultedOnCreate = field.find('./partner:defaultedOnCreate', namespaces)
+                field_unique = field.find('./partner:unique', namespaces)
+                field_custom = field.find('./partner:custom', namespaces)
+                field_updatable = field.find('./partner:updateable', namespaces)
+                field_defaultValue = field.find('./partner:defaultValue', namespaces)
                 
-                # Add picklist values if applicable
-                if field.type in ('picklist', 'multipicklist'):
-                    field_info['picklistValues'] = [
-                        pv.value for pv in field.picklistValues 
-                        if pv.active
-                    ]
+                if field_name is not None:
+                    field_info = {
+                        'name': field_name.text,
+                        'label': field_label.text if field_label is not None else field_name.text,
+                        'type': field_type.text if field_type is not None else 'string',
+                        'required': (field_nillable is not None and field_nillable.text.lower() == 'false' and 
+                                    field_defaultedOnCreate is not None and field_defaultedOnCreate.text.lower() == 'false'),
+                        'unique': field_unique is not None and field_unique.text.lower() == 'true',
+                        'custom': field_custom is not None and field_custom.text.lower() == 'true',
+                        'updateable': field_updatable is not None and field_updatable.text.lower() == 'true',
+                        'defaultValue': field_defaultValue.text if field_defaultValue is not None else None
+                    }
                     
-                # Add length for string fields
-                if field.type in ('string', 'textarea'):
-                    field_info['length'] = field.length
+                    # Get relationship info if it's a reference field
+                    if field_type is not None and field_type.text == 'reference':
+                        relationshipName = field.find('./partner:relationshipName', namespaces)
+                        referenceTo = field.findall('./partner:referenceTo', namespaces)
+                        
+                        if relationshipName is not None:
+                            field_info['relationshipName'] = relationshipName.text
+                        
+                        if referenceTo:
+                            field_info['referenceTo'] = [ref.text for ref in referenceTo if ref.text]
                     
-                # Add precision and scale for numeric fields
-                if field.type in ('double', 'currency', 'percent'):
-                    field_info['precision'] = field.precision
-                    field_info['scale'] = field.scale
-                
-                object_info['fields'].append(field_info)
+                    # Get picklist values if applicable
+                    if field_type is not None and field_type.text in ('picklist', 'multipicklist'):
+                        picklistValues = field.findall('./partner:picklistValues', namespaces)
+                        field_info['picklistValues'] = []
+                        
+                        for pv in picklistValues:
+                            value = pv.find('./partner:value', namespaces)
+                            active = pv.find('./partner:active', namespaces)
+                            
+                            if value is not None and active is not None and active.text.lower() == 'true':
+                                field_info['picklistValues'].append(value.text)
+                    
+                    # Add length for string fields
+                    if field_type is not None and field_type.text in ('string', 'textarea'):
+                        length = field.find('./partner:length', namespaces)
+                        if length is not None:
+                            try:
+                                field_info['length'] = int(length.text)
+                            except (ValueError, TypeError):
+                                field_info['length'] = 0
+                    
+                    # Add precision and scale for numeric fields
+                    if field_type is not None and field_type.text in ('double', 'currency', 'percent'):
+                        precision = field.find('./partner:precision', namespaces)
+                        scale = field.find('./partner:scale', namespaces)
+                        
+                        if precision is not None:
+                            try:
+                                field_info['precision'] = int(precision.text)
+                            except (ValueError, TypeError):
+                                field_info['precision'] = 0
+                        if scale is not None:
+                            try:
+                                field_info['scale'] = int(scale.text)
+                            except (ValueError, TypeError):
+                                field_info['scale'] = 0
+                    
+                    object_info['fields'].append(field_info)
             
             return object_info
             
-        except Fault as e:
-            logger.error(f"SOAP describeSObject fault: {str(e)}")
-            raise Exception(f"Failed to describe object via SOAP: {str(e)}")
         except Exception as e:
             logger.error(f"Error describing object via SOAP: {str(e)}")
             raise Exception(f"SOAP describeSObject error: {str(e)}")
@@ -351,38 +544,115 @@ class SalesforceSOAPClient:
             raise ValueError("Not authenticated. Call login_with_soap or login_with_oauth_token first.")
         
         try:
-            # Get and parse the Enterprise WSDL
-            enterprise_wsdl = self._get_enterprise_wsdl()
-            transport = Transport(cache=SqliteCache())
-            transport.session.headers = self.headers
+            # Direct SOAP request
+            endpoint = f"{self.instance_url}/services/Soap/u/58.0"
             
-            client = Client(enterprise_wsdl, transport=transport)
-            
-            # Create the sObject
-            sobject = client.factory.create(f'ns0:{sobject_type}')
-            
-            # Set field values
+            # Build field XML
+            fields_xml = ''
             for field, value in sobject_data.items():
-                setattr(sobject, field, value)
+                # Skip None values
+                if value is None:
+                    continue
+                    
+                # Format value based on type
+                if isinstance(value, bool):
+                    formatted_value = str(value).lower()
+                elif isinstance(value, (int, float)):
+                    formatted_value = str(value)
+                else:
+                    # Escape XML special characters
+                    formatted_value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
+                    
+                fields_xml += f"<{field}>{formatted_value}</{field}>\n"
             
-            # Create the record
-            result = client.service.create(sobject)
+            # XML request template for create
+            soap_request = f'''
+            <?xml version="1.0" encoding="utf-8" ?>
+            <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                           xmlns:urn="urn:partner.soap.sforce.com"
+                           xmlns:urn1="urn:sobject.partner.soap.sforce.com">
+                <soapenv:Header>
+                    <urn:SessionHeader>
+                        <urn:sessionId>{self.session_id}</urn:sessionId>
+                    </urn:SessionHeader>
+                </soapenv:Header>
+                <soapenv:Body>
+                    <urn:create>
+                        <urn:sObjects xsi:type="urn1:{sobject_type}">
+                            {fields_xml}
+                        </urn:sObjects>
+                    </urn:create>
+                </soapenv:Body>
+            </soapenv:Envelope>
+            '''.strip()
             
-            if result.success:
+            headers = {
+                'Content-Type': 'text/xml; charset=UTF-8',
+                'SOAPAction': '""'
+            }
+            
+            response = requests.post(endpoint, data=soap_request, headers=headers)
+            
+            # Check for errors
+            if response.status_code != 200:
+                error_message = f"SOAP create failed with status {response.status_code}: {response.text}"
+                logger.error(error_message)
+                raise Exception(error_message)
+            
+            # Parse XML response manually
+            import xml.etree.ElementTree as ET
+            # Add namespace prefix mapping
+            namespaces = {
+                'soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+                'partner': 'urn:partner.soap.sforce.com'
+            }
+            
+            root = ET.fromstring(response.content)
+            
+            # Find the result element
+            result = root.find('.//partner:createResponse/partner:result', namespaces)
+            
+            if result is None:
+                raise Exception("Could not find create result in SOAP response")
+            
+            # Process result
+            success_elem = result.find('./partner:success', namespaces)
+            success = False
+            if success_elem is not None and success_elem.text.lower() == 'true':
+                success = True
+                
+            if success:
+                id_elem = result.find('./partner:id', namespaces)
+                record_id = id_elem.text if id_elem is not None else None
+                
                 return {
-                    'id': result.id,
+                    'id': record_id,
                     'success': True
                 }
             else:
-                errors = [error for error in result.errors]
+                # Process errors
+                errors = []
+                error_elems = result.findall('./partner:errors', namespaces)
+                
+                for error in error_elems:
+                    message = error.find('./partner:message', namespaces)
+                    fields = error.findall('./partner:fields', namespaces)
+                    status_code = error.find('./partner:statusCode', namespaces)
+                    
+                    error_info = {
+                        'message': message.text if message is not None else 'Unknown error',
+                        'fields': [field.text for field in fields if field.text],
+                        'statusCode': status_code.text if status_code is not None else 'UNKNOWN_ERROR'
+                    }
+                    
+                    errors.append(error_info)
+                
                 return {
                     'success': False,
                     'errors': errors
                 }
                 
-        except Fault as e:
-            logger.error(f"SOAP create fault: {str(e)}")
-            raise Exception(f"Failed to create record via SOAP: {str(e)}")
         except Exception as e:
             logger.error(f"Error creating record via SOAP: {str(e)}")
             raise Exception(f"SOAP create error: {str(e)}")
@@ -395,50 +665,128 @@ class SalesforceSOAPClient:
             raise ValueError("Not authenticated. Call login_with_soap or login_with_oauth_token first.")
             
         try:
-            # Get and parse the Enterprise WSDL
-            enterprise_wsdl = self._get_enterprise_wsdl()
-            transport = Transport(cache=SqliteCache())
-            transport.session.headers = self.headers
-            
-            client = Client(enterprise_wsdl, transport=transport)
-            
-            # Create the sObjects
-            sobjects = []
-            for record_data in records:
-                sobject = client.factory.create(f'ns0:{sobject_type}')
-                for field, value in record_data.items():
-                    setattr(sobject, field, value)
-                sobjects.append(sobject)
-            
-            # Create the records
-            results = client.service.create(sobjects)
-            
-            # Process results
-            processed_results = {
+            # For up to 200 records at once (Salesforce limit)
+            max_batch_size = 200
+            all_results = {
                 'success': 0,
                 'failure': 0,
                 'errors': [],
                 'created_ids': []
             }
             
-            for result in results:
-                if result.success:
-                    processed_results['success'] += 1
-                    processed_results['created_ids'].append(result.id)
-                else:
-                    processed_results['failure'] += 1
-                    for error in result.errors:
-                        processed_results['errors'].append({
-                            'message': error.message,
-                            'fields': error.fields,
-                            'statusCode': error.statusCode
-                        })
-            
-            return processed_results
+            # Process in batches if needed
+            for i in range(0, len(records), max_batch_size):
+                batch = records[i:i + max_batch_size]
                 
-        except Fault as e:
-            logger.error(f"SOAP create_multiple fault: {str(e)}")
-            raise Exception(f"Failed to create multiple records via SOAP: {str(e)}")
+                # Direct SOAP request
+                endpoint = f"{self.instance_url}/services/Soap/u/58.0"
+                
+                # Build sObjects XML
+                sobjects_xml = ''
+                for record in batch:
+                    fields_xml = ''
+                    for field, value in record.items():
+                        # Skip None values
+                        if value is None:
+                            continue
+                            
+                        # Format value based on type
+                        if isinstance(value, bool):
+                            formatted_value = str(value).lower()
+                        elif isinstance(value, (int, float)):
+                            formatted_value = str(value)
+                        else:
+                            # Escape XML special characters
+                            formatted_value = str(value).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;').replace('\'', '&apos;')
+                            
+                        fields_xml += f"<{field}>{formatted_value}</{field}>\n"
+                    
+                    sobjects_xml += f'''
+                    <urn:sObjects xsi:type="urn1:{sobject_type}">
+                        {fields_xml}
+                    </urn:sObjects>
+                    '''
+                
+                # XML request template for create
+                soap_request = f'''
+                <?xml version="1.0" encoding="utf-8" ?>
+                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                               xmlns:urn="urn:partner.soap.sforce.com"
+                               xmlns:urn1="urn:sobject.partner.soap.sforce.com">
+                    <soapenv:Header>
+                        <urn:SessionHeader>
+                            <urn:sessionId>{self.session_id}</urn:sessionId>
+                        </urn:SessionHeader>
+                    </soapenv:Header>
+                    <soapenv:Body>
+                        <urn:create>
+                            {sobjects_xml}
+                        </urn:create>
+                    </soapenv:Body>
+                </soapenv:Envelope>
+                '''.strip()
+                
+                headers = {
+                    'Content-Type': 'text/xml; charset=UTF-8',
+                    'SOAPAction': '""'
+                }
+                
+                response = requests.post(endpoint, data=soap_request, headers=headers)
+                
+                # Check for errors
+                if response.status_code != 200:
+                    error_message = f"SOAP create_multiple failed with status {response.status_code}: {response.text}"
+                    logger.error(error_message)
+                    raise Exception(error_message)
+                
+                # Parse XML response manually
+                import xml.etree.ElementTree as ET
+                # Add namespace prefix mapping
+                namespaces = {
+                    'soapenv': 'http://schemas.xmlsoap.org/soap/envelope/',
+                    'partner': 'urn:partner.soap.sforce.com'
+                }
+                
+                root = ET.fromstring(response.content)
+                
+                # Find the result elements
+                results = root.findall('.//partner:createResponse/partner:result', namespaces)
+                
+                if not results:
+                    raise Exception("Could not find create results in SOAP response")
+                
+                # Process results
+                for result in results:
+                    success_elem = result.find('./partner:success', namespaces)
+                    success = False
+                    if success_elem is not None and success_elem.text.lower() == 'true':
+                        success = True
+                    
+                    if success:
+                        all_results['success'] += 1
+                        id_elem = result.find('./partner:id', namespaces)
+                        if id_elem is not None and id_elem.text:
+                            all_results['created_ids'].append(id_elem.text)
+                    else:
+                        all_results['failure'] += 1
+                        error_elems = result.findall('./partner:errors', namespaces)
+                        
+                        for error in error_elems:
+                            message = error.find('./partner:message', namespaces)
+                            fields = error.findall('./partner:fields', namespaces)
+                            status_code = error.find('./partner:statusCode', namespaces)
+                            
+                            error_info = {
+                                'message': message.text if message is not None else 'Unknown error',
+                                'fields': [field.text for field in fields if field.text],
+                                'statusCode': status_code.text if status_code is not None else 'UNKNOWN_ERROR'
+                            }
+                            
+                            all_results['errors'].append(error_info)
+            
+            return all_results
+                
         except Exception as e:
             logger.error(f"Error creating multiple records via SOAP: {str(e)}")
             raise Exception(f"SOAP create_multiple error: {str(e)}")
