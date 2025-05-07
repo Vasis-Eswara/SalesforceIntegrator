@@ -1,5 +1,41 @@
 /* Custom styling beyond Bootstrap defaults */
 
+/* Improved text legibility */
+.text-enhanced {
+    color: #ffffff !important; /* Brighter white for better contrast */
+    text-shadow: 0 0 2px rgba(0, 0, 0, 0.3); /* Subtle shadow for better readability */
+}
+
+.text-subtitle {
+    color: #e6e6ff !important; /* Light blue-tinted text for secondary headings */
+}
+
+.text-body-enhanced {
+    color: #d8d8d8 !important; /* Light gray with better contrast against dark backgrounds */
+}
+
+.btn-text-enhanced {
+    color: #ffffff !important;
+    font-weight: 500;
+}
+
+.placeholder-enhanced::placeholder {
+    color: #a8a8a8 !important;
+    opacity: 0.9;
+}
+
+/* Improved header styling */
+.header-title {
+    color: #ffffff;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.header-subtitle {
+    color: #d8e8ff; /* Light blue tint */
+    font-weight: 400;
+}
+
 /* Chat interface styling */
 .chat-container {
     height: 400px;
