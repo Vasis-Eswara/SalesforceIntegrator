@@ -9,11 +9,55 @@
                 <h4 class="mb-3 header-title">Salesforce Objects</h4>
                 
                 <div class="input-group mb-3">
-                    <input type="text" id="object-search" class="form-control placeholder-enhanced" placeholder="Search objects...">
-                    <button class="btn btn-outline-secondary btn-text-enhanced" type="button" id="clear-search">
+                    <input type="text" id="object-search" class="form-control placeholder-enhanced" placeholder="Search objects..." 
+                           oninput="searchObjects(this.value)">
+                    <button class="btn btn-outline-secondary btn-text-enhanced" type="button" id="clear-search"
+                            onclick="document.getElementById('object-search').value=''; searchObjects('');">
                         <i class="bi bi-x"></i>
                     </button>
                 </div>
+
+                <script>
+                    // Direct, inline search function that's guaranteed to work
+                    function searchObjects(searchTerm) {
+                        searchTerm = searchTerm.toLowerCase();
+                        console.log("Searching for:", searchTerm);
+                        
+                        // Get all list items
+                        var listItems = document.getElementById('object-list').getElementsByTagName('li');
+                        var anyVisible = false;
+                        
+                        // Check each item
+                        for (var i = 0; i < listItems.length; i++) {
+                            var item = listItems[i];
+                            var text = item.textContent || item.innerText;
+                            
+                            if (text.toLowerCase().indexOf(searchTerm) > -1) {
+                                item.style.display = "";
+                                anyVisible = true;
+                            } else {
+                                item.style.display = "none";
+                            }
+                        }
+                        
+                        // Show/hide no results message
+                        var noResults = document.getElementById('no-results-message');
+                        if (!anyVisible && searchTerm.length > 0) {
+                            if (!noResults) {
+                                noResults = document.createElement('div');
+                                noResults.id = 'no-results-message';
+                                noResults.className = 'alert alert-warning mt-3';
+                                noResults.innerHTML = 'No objects matching "' + searchTerm + '" found';
+                                document.getElementById('object-list').parentNode.insertBefore(noResults, document.getElementById('object-list').nextSibling);
+                            } else {
+                                noResults.innerHTML = 'No objects matching "' + searchTerm + '" found';
+                                noResults.style.display = 'block';
+                            }
+                        } else if (noResults) {
+                            noResults.style.display = 'none';
+                        }
+                    }
+                </script>
                 
                 {% if objects %}
                 <ul class="list-group object-list" id="object-list">
