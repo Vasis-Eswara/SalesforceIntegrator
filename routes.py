@@ -18,6 +18,11 @@ from salesforce_utils import (
     get_object_describe, insert_records
 )
 
+from salesforce_soap_utils import (
+    SalesforceSOAPClient, get_salesforce_objects_soap, 
+    get_object_describe_soap, login_with_username_password
+)
+
 # Import SOAP-based implementations
 from salesforce_soap_utils import (
     login_with_username_password, get_salesforce_objects_soap,
@@ -557,6 +562,45 @@ def init_routes(app):
         """Redirect to combined page - generate functionality now only in combined view"""
         flash('The Generate Data page has been merged with the Schema & Data Gen page', 'info')
         return redirect(url_for('combined'))
+        
+    @app.route('/select-object')
+    def select_object():
+        """Simple object selector page with dedicated search"""
+        # Check if logged in
+        if 'instance_url' not in session and 'username' not in session:
+            flash('Please log in to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+            
+        try:
+            # Try to get objects from REST API first
+            objects = []
+            if 'instance_url' in session and 'access_token' in session:
+                # Using REST API
+                try:
+                    objects = get_salesforce_objects(session['instance_url'], session['access_token'])
+                except Exception as e:
+                    app.logger.error(f"Error fetching objects via REST API: {e}")
+                    
+            # Fall back to SOAP API if REST failed or not available
+            if not objects and 'username' in session:
+                try:
+                    # Using SOAP API with saved credentials
+                    cred = SalesforceCredential.query.filter_by(username=session['username']).first()
+                    if cred:
+                        app.logger.debug(f"Attempting SOAP login with saved credentials for {cred.username}")
+                        soap_client = SalesforceSOAPClient(username=cred.username)
+                        password = cred.check_password(session.get('password', ''))  # This is for demo only
+                        if password and cred.security_token:
+                            soap_client.login_with_soap()
+                            objects = get_salesforce_objects_soap(soap_client.instance_url, soap_client.session_id)
+                except Exception as e:
+                    app.logger.error(f"Error fetching objects via SOAP API: {e}")
+            
+            return render_template('object_selector.html', objects=objects, org_info=get_org_info())
+        except Exception as e:
+            logger.error(f"Error in select_object: {str(e)}")
+            flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
+            return redirect(url_for('index'))
     
     @app.route('/configure', methods=['GET', 'POST'])
     def configure():
