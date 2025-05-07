@@ -119,6 +119,20 @@
 .object-list li.active {
     background-color: var(--bs-primary-bg-subtle);
     color: var(--bs-primary);
+    font-weight: 500;
+}
+
+/* Enhanced search box */
+#object-search {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+#object-search:focus {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: #6c7eed;
+    box-shadow: 0 0 0 0.25rem rgba(108, 126, 237, 0.25);
 }
 
 /* Custom badge for object types */
