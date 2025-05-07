@@ -249,10 +249,64 @@
 {% block scripts %}
 <!-- Include Mermaid.js for diagram generation -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+
+<!-- Search functionality -->
+<script>
+    // Simple search function implementation
+    function filterObjects() {
+        var input = document.getElementById("object-search");
+        var filter = input.value.toLowerCase();
+        var list = document.getElementById("object-list");
+        var items = list.getElementsByTagName("li");
+        var anyVisible = false;
+        
+        for (var i = 0; i < items.length; i++) {
+            var txtValue = items[i].textContent || items[i].innerText;
+            if (txtValue.toLowerCase().indexOf(filter) > -1) {
+                items[i].style.display = "";
+                anyVisible = true;
+            } else {
+                items[i].style.display = "none";
+            }
+        }
+        
+        // Show/hide no results message
+        var noResults = document.getElementById("no-results");
+        if (!anyVisible && filter.length > 0) {
+            if (!noResults) {
+                noResults = document.createElement("div");
+                noResults.id = "no-results";
+                noResults.className = "alert alert-warning mt-3";
+                noResults.textContent = "No objects matching \"" + filter + "\" found";
+                list.parentNode.insertBefore(noResults, list.nextSibling);
+            } else {
+                noResults.textContent = "No objects matching \"" + filter + "\" found";
+            }
+        } else if (noResults) {
+            noResults.parentNode.removeChild(noResults);
+        }
+    }
+</script>
+
 <!-- Export functionality -->
 <script>
     // Data export functionality
     document.addEventListener('DOMContentLoaded', function() {
+        // Set up search functionality
+        var searchInput = document.getElementById("object-search");
+        if (searchInput) {
+            searchInput.addEventListener("keyup", filterObjects);
+            
+            // Clear search button
+            var clearButton = document.getElementById("clear-search");
+            if (clearButton) {
+                clearButton.addEventListener("click", function() {
+                    searchInput.value = "";
+                    filterObjects();
+                });
+            }
+        }
+        
         // Add event listeners to export buttons if they exist
         const exportCsvBtn = document.getElementById('export-csv');
         const exportJsonBtn = document.getElementById('export-json');
