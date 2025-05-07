@@ -177,16 +177,35 @@ function filterObjectList(searchTerm) {
     if (!objectList) return;
     
     const items = objectList.querySelectorAll('li');
+    let matchFound = false;
+    
     items.forEach(item => {
-        const objectLabel = item.getAttribute('data-object-label').toLowerCase();
-        const objectName = item.getAttribute('data-object').toLowerCase();
+        // Get text content directly from the first span (object label)
+        const objectLabelSpan = item.querySelector('span:first-of-type');
+        const objectLabel = objectLabelSpan ? objectLabelSpan.textContent.toLowerCase() : '';
+        
+        // Also get the API name from data attribute
+        const objectName = item.getAttribute('data-object') ? item.getAttribute('data-object').toLowerCase() : '';
         
         if (objectLabel.includes(searchTerm) || objectName.includes(searchTerm) || searchTerm === '') {
             item.style.display = 'flex'; // Show the item
+            matchFound = true;
         } else {
             item.style.display = 'none'; // Hide the item
         }
     });
+    
+    // Add visual feedback if no matches were found
+    const noResultsMessage = document.getElementById('no-search-results');
+    if (!noResultsMessage && !matchFound && searchTerm !== '') {
+        const message = document.createElement('div');
+        message.id = 'no-search-results';
+        message.className = 'alert alert-info mt-3';
+        message.textContent = `No objects matching "${searchTerm}" found`;
+        objectList.parentNode.insertBefore(message, objectList.nextSibling);
+    } else if (noResultsMessage && (matchFound || searchTerm === '')) {
+        noResultsMessage.remove();
+    }
 }
 
 /**
