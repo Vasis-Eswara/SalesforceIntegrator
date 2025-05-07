@@ -176,22 +176,36 @@ function filterObjectList(searchTerm) {
     const objectList = document.getElementById('object-list');
     if (!objectList) return;
     
+    // Convert search term to lowercase for case-insensitive comparison
+    searchTerm = searchTerm.toLowerCase();
+    
     const items = objectList.querySelectorAll('li');
     let matchFound = false;
     
+    // Debug info
+    console.log(`Found ${items.length} items in the object list`);
+    
     items.forEach(item => {
-        // Get text content directly from the first span (object label)
-        const objectLabelSpan = item.querySelector('span:first-of-type');
-        const objectLabel = objectLabelSpan ? objectLabelSpan.textContent.toLowerCase() : '';
+        // Get the full text content for the item
+        const itemText = item.textContent.toLowerCase().trim();
         
-        // Also get the API name from data attribute
-        const objectName = item.getAttribute('data-object') ? item.getAttribute('data-object').toLowerCase() : '';
+        // Get the API name from data attributes
+        const objectName = (item.getAttribute('data-object') || '').toLowerCase();
+        const objectLabel = (item.getAttribute('data-object-label') || '').toLowerCase();
         
-        if (objectLabel.includes(searchTerm) || objectName.includes(searchTerm) || searchTerm === '') {
+        // Debug each item
+        console.log(`Item: "${itemText}", objectName: "${objectName}", objectLabel: "${objectLabel}"`);
+        
+        if (itemText.includes(searchTerm) || 
+            objectName.includes(searchTerm) || 
+            objectLabel.includes(searchTerm) ||
+            searchTerm === '') {
             item.style.display = 'flex'; // Show the item
             matchFound = true;
+            console.log(`MATCH FOUND for "${searchTerm}"`);
         } else {
             item.style.display = 'none'; // Hide the item
+            console.log(`No match for "${searchTerm}"`);
         }
     });
     
@@ -203,6 +217,7 @@ function filterObjectList(searchTerm) {
         message.className = 'alert alert-info mt-3';
         message.textContent = `No objects matching "${searchTerm}" found`;
         objectList.parentNode.insertBefore(message, objectList.nextSibling);
+        console.log(`No matches found for "${searchTerm}", added message`);
     } else if (noResultsMessage && (matchFound || searchTerm === '')) {
         noResultsMessage.remove();
     }

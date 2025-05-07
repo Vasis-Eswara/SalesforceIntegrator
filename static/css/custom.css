@@ -142,6 +142,15 @@
     letter-spacing: 0.5px;
 }
 
+/* Override Bootstrap's list-group-item styles */
+.list-group-item {
+    background-color: #242933;
+    border-color: #363d4a;
+    color: #ffffff;
+    margin-bottom: 4px;
+    border-radius: 8px !important;
+}
+
 /* Enhanced search box */
 #object-search {
     background-color: rgba(255, 255, 255, 0.08);
