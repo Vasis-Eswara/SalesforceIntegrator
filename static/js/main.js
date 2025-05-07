@@ -182,43 +182,53 @@ function filterObjectList(searchTerm) {
     const items = objectList.querySelectorAll('li');
     let matchFound = false;
     
-    // Debug info
-    console.log(`Found ${items.length} items in the object list`);
-    
-    items.forEach(item => {
-        // Get the full text content for the item
-        const itemText = item.textContent.toLowerCase().trim();
+    // For empty search term, show all items
+    if (searchTerm === '') {
+        items.forEach(item => {
+            item.style.display = 'flex';
+        });
         
-        // Get the API name from data attributes
+        // Remove any "no results" message
+        const noResultsMessage = document.getElementById('no-search-results');
+        if (noResultsMessage) {
+            noResultsMessage.remove();
+        }
+        
+        return;
+    }
+    
+    // Process each item for non-empty search term
+    items.forEach(item => {
+        // Get all sources of text to search in
+        const itemText = item.textContent.toLowerCase().trim();
         const objectName = (item.getAttribute('data-object') || '').toLowerCase();
         const objectLabel = (item.getAttribute('data-object-label') || '').toLowerCase();
         
-        // Debug each item
-        console.log(`Item: "${itemText}", objectName: "${objectName}", objectLabel: "${objectLabel}"`);
-        
+        // Simple word match
         if (itemText.includes(searchTerm) || 
             objectName.includes(searchTerm) || 
-            objectLabel.includes(searchTerm) ||
-            searchTerm === '') {
-            item.style.display = 'flex'; // Show the item
+            objectLabel.includes(searchTerm)) {
+            item.style.display = 'flex';
             matchFound = true;
-            console.log(`MATCH FOUND for "${searchTerm}"`);
         } else {
-            item.style.display = 'none'; // Hide the item
-            console.log(`No match for "${searchTerm}"`);
+            item.style.display = 'none';
         }
     });
     
     // Add visual feedback if no matches were found
     const noResultsMessage = document.getElementById('no-search-results');
-    if (!noResultsMessage && !matchFound && searchTerm !== '') {
+    if (!noResultsMessage && !matchFound) {
         const message = document.createElement('div');
         message.id = 'no-search-results';
-        message.className = 'alert alert-info mt-3';
+        message.className = 'alert alert-warning mt-3';
         message.textContent = `No objects matching "${searchTerm}" found`;
+        message.style.color = '#fff';
+        message.style.backgroundColor = 'rgba(255, 193, 7, 0.2)';
+        message.style.borderColor = 'rgba(255, 193, 7, 0.3)';
+        
+        // Insert the message after the object list
         objectList.parentNode.insertBefore(message, objectList.nextSibling);
-        console.log(`No matches found for "${searchTerm}", added message`);
-    } else if (noResultsMessage && (matchFound || searchTerm === '')) {
+    } else if (noResultsMessage && matchFound) {
         noResultsMessage.remove();
     }
 }
