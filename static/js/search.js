@@ -1,58 +1,36 @@
-/**
- * Simple, reliable object search functionality
- */
-document.addEventListener('DOMContentLoaded', function() {
-    // Get search elements
-    const searchInput = document.getElementById('object-search');
-    const clearButton = document.getElementById('clear-search');
-    const objectList = document.getElementById('object-list');
-    
-    if (!searchInput || !objectList) return;
-    
-    // Function to handle search filtering
-    function performSearch() {
-        const searchTerm = searchInput.value.toLowerCase().trim();
-        const items = objectList.querySelectorAll('li');
+// Simple, direct implementation of object search functionality
+$(document).ready(function() {
+    // Direct search with jQuery
+    $("#object-search").on("keyup", function() {
+        var value = $(this).val().toLowerCase();
+        $("#object-list li").filter(function() {
+            $(this).toggle($(this).text().toLowerCase().indexOf(value) > -1);
+        });
         
-        // Show/hide items based on search term
-        let anyVisible = false;
-        items.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            if (text.includes(searchTerm) || searchTerm === '') {
-                item.style.display = '';
+        // Check if any items are visible
+        var anyVisible = false;
+        $("#object-list li").each(function() {
+            if($(this).is(":visible")) {
                 anyVisible = true;
-            } else {
-                item.style.display = 'none';
+                return false; // Break the loop
             }
         });
         
-        // Handle no results message
-        let noResults = document.getElementById('no-results-message');
-        if (!anyVisible && searchTerm !== '') {
-            // No matches found
-            if (!noResults) {
-                noResults = document.createElement('div');
-                noResults.id = 'no-results-message';
-                noResults.className = 'alert alert-warning mt-3';
-                noResults.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> No objects matching "${searchTerm}" found`;
-                objectList.parentNode.insertBefore(noResults, objectList.nextSibling);
+        // Show/hide no results message
+        if(!anyVisible && value.length > 0) {
+            if($("#no-results").length === 0) {
+                $("#object-list").after('<div id="no-results" class="alert alert-warning mt-3">No objects matching "' + value + '" found</div>');
             } else {
-                noResults.innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i> No objects matching "${searchTerm}" found`;
+                $("#no-results").html('No objects matching "' + value + '" found');
             }
-        } else if (noResults) {
-            // Remove no results message if there are results or empty search
-            noResults.remove();
+        } else {
+            $("#no-results").remove();
         }
-    }
-    
-    // Attach event listeners
-    searchInput.addEventListener('input', performSearch);
+    });
     
     // Clear search button
-    if (clearButton) {
-        clearButton.addEventListener('click', function() {
-            searchInput.value = '';
-            performSearch();
-        });
-    }
+    $("#clear-search").click(function() {
+        $("#object-search").val("");
+        $("#object-search").trigger("keyup");
+    });
 });
