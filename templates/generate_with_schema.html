@@ -9,7 +9,7 @@
                 <h4 class="mb-3 header-title">Salesforce </h4>
                 
                 <div class="input-group mb-3">
-                    <input type="text" id="object-search" class="form-control placeholder-enhanced" placeholder="Search objects...">
+                    <input type="text" id="object-search" class="form-control placeholder-enhanced" placeholder="Search objects..." autocomplete="off">
                     <button class="btn btn-outline-secondary btn-text-enhanced" type="button" id="clear-search">
                         <i class="bi bi-x"></i>
                     </button>
@@ -372,7 +372,23 @@
     });
     
     document.addEventListener('DOMContentLoaded', function() {
-        // We don't need a duplicate search implementation as we're using the filterObjects function
+        // Prevent auto-focus on the search field
+        const searchInput = document.getElementById('object-search');
+        if (searchInput) {
+            // Blur any focused element
+            if (document.activeElement) {
+                document.activeElement.blur();
+            }
+            
+            // Prevent search from getting auto-selected
+            searchInput.blur();
+            
+            // Move cursor to the beginning of the document
+            window.scrollTo(0, 0);
+        }
+        
+        // Get object list element
+        const objectList = document.getElementById('object-list');
         
         // Object selection handling
         if (objectList) {
