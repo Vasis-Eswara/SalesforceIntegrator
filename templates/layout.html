@@ -55,6 +55,9 @@
                         <a class="nav-link {% if request.path == url_for('select_object') %}active{% endif %}" href="{{ url_for('select_object') }}"><i class="bi bi-search me-1"></i>Object Selector</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('simple_selector') %}active{% endif %}" href="{{ url_for('simple_selector') }}"><i class="bi bi-list-stars me-1"></i>Simple Selector</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('configure') %}active{% endif %}" href="{{ url_for('configure') }}">Configure Salesforce</a>
                     </li>
                     <li class="nav-item">
