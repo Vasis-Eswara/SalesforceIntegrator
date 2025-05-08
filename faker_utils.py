@@ -14,22 +14,46 @@ def generate_test_data_with_faker(object_info, record_count=5):
     Generate test data for a Salesforce object based on schema using Faker
     
     Args:
-        object_info (dict): Object schema information from Salesforce
+        object_info (dict or str): Object schema information from Salesforce
         record_count (int): Number of records to generate
         
     Returns:
         list: Generated test data records
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
     # Handle different object_info formats
+    if isinstance(object_info, str):
+        try:
+            # Try to parse JSON string
+            import json
+            logger.debug(f"Trying to parse object_info as JSON string")
+            object_info = json.loads(object_info)
+        except Exception as e:
+            logger.error(f"object_info is a string but not valid JSON: {e}")
+            return []
+            
     if not isinstance(object_info, dict):
-        print(f"Warning: object_info is not a dictionary, it's a {type(object_info)}")
+        logger.error(f"object_info is not a dictionary or JSON string, it's a {type(object_info)}")
         return []
         
+    # Check if object has required fields
+    if not object_info.get('name'):
+        logger.warning(f"object_info missing 'name' attribute")
+        
+    # Extract fields with safeguards
     fields = object_info.get('fields', [])
     if not fields:
-        print(f"Warning: No fields found in object_info")
+        logger.warning(f"No fields found in object_info")
         return []
-        
+    
+    # Ensure fields is a list
+    if not isinstance(fields, list):
+        logger.error(f"Fields is not a list, it's a {type(fields)}")
+        return []
+    
+    logger.debug(f"Preparing to generate {record_count} records with {len(fields)} fields")
     records = []
     
     # First, identify required fields and any field dependencies
@@ -94,9 +118,20 @@ def generate_field_value(field):
     Returns:
         Various: Generated value appropriate for the field type
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Safeguard against non-dict fields
+    if not isinstance(field, dict):
+        logger.error(f"Field is not a dictionary: {type(field)}")
+        return None
+        
     field_type = field.get('type')
     field_label = field.get('label', '')
     field_name = field.get('name', '')
+    
+    # Log field info at debug level
+    logger.debug(f"Generating value for field: {field_name}, type: {field_type}, label: {field_label}")
     
     # Skip system fields
     if field_name in ['Id', 'OwnerId', 'CreatedDate', 'CreatedById', 
@@ -240,23 +275,51 @@ def analyze_schema(object_info):
     Analyze a Salesforce schema to identify patterns and constraints
     
     Args:
-        object_info (dict): Object schema information from Salesforce
+        object_info (dict or str): Object schema information from Salesforce
         
     Returns:
         dict: Analysis of the schema
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    empty_analysis = {
+        'requiredFields': [],
+        'uniqueFields': [],
+        'picklistFields': {},
+        'referenceFields': {},
+        'recommendations': ["Unable to analyze schema - invalid input format"]
+    }
+    
     # Handle different object_info formats
+    if isinstance(object_info, str):
+        try:
+            # Try to parse JSON string
+            import json
+            logger.debug(f"Trying to parse object_info as JSON string")
+            object_info = json.loads(object_info)
+        except Exception as e:
+            logger.error(f"object_info is a string but not valid JSON: {e}")
+            return empty_analysis
+            
     if not isinstance(object_info, dict):
-        print(f"Warning: object_info is not a dictionary, it's a {type(object_info)}")
-        return {
-            'requiredFields': [],
-            'uniqueFields': [],
-            'picklistFields': {},
-            'referenceFields': {},
-            'recommendations': ["Unable to analyze schema - invalid input format"]
-        }
+        logger.error(f"object_info is not a dictionary or JSON string, it's a {type(object_info)}")
+        return empty_analysis
         
+    # Check if object has required fields
+    if not object_info.get('name'):
+        logger.warning(f"object_info missing 'name' attribute")
+        
+    # Extract fields with safeguards
     fields = object_info.get('fields', [])
+    if not fields:
+        logger.warning(f"No fields found in object_info")
+        return empty_analysis
+    
+    # Ensure fields is a list
+    if not isinstance(fields, list):
+        logger.error(f"Fields is not a list, it's a {type(fields)}")
+        return empty_analysis
     analysis = {
         'requiredFields': [],
         'uniqueFields': [],

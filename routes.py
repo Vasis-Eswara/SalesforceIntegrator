@@ -511,20 +511,60 @@ def init_routes(app):
                         object_info['nlp_requirements'] = nlp_requirements
                     
                 # Generate data with Faker instead of GPT
-                generated_data = generate_test_data_with_faker(object_info, record_count)
-                
-                # Store the raw generated data before attempting to insert into Salesforce
-                job.raw_data = json.dumps(generated_data)
-                db.session.commit()
+                try:
+                    logger.debug(f"Generating data with Faker for {object_name}, record count: {record_count}")
+                    if not isinstance(object_info, dict) and not isinstance(object_info, str):
+                        logger.error(f"object_info is not a dictionary or string: {type(object_info)}")
+                        # Try to convert to JSON string if possible
+                        object_info = json.dumps(object_info)
+                    
+                    generated_data = generate_test_data_with_faker(object_info, record_count)
+                    
+                    if not generated_data:
+                        logger.error(f"Failed to generate data for {object_name}")
+                        raise Exception(f"Failed to generate data for {object_name}")
+                        
+                    logger.debug(f"Successfully generated {len(generated_data)} records")
+                    
+                    # Store the raw generated data before attempting to insert into Salesforce
+                    job.raw_data = json.dumps(generated_data)
+                    db.session.commit()
+                    
+                except Exception as e:
+                    logger.error(f"Error in data generation: {str(e)}")
+                    job.status = 'failed'
+                    job.error_message = f"Data generation error: {str(e)}"
+                    job.completed_at = datetime.utcnow()
+                    db.session.commit()
+                    flash(f'Error generating data: {str(e)}', 'danger')
+                    return redirect(url_for('combined'))
+                    
                 
                 # Insert records to Salesforce - try REST API first, then SOAP as fallback
                 try:
+                    if not generated_data:
+                        raise Exception("No generated data to insert")
+                        
+                    logger.debug(f"Attempting to insert {len(generated_data)} records via REST API")
                     results = insert_records(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
                     logger.debug(f"Successfully inserted {len(generated_data)} records via REST API")
+                    
                 except Exception as rest_error:
                     logger.warning(f"REST API failed for record insertion, falling back to SOAP: {str(rest_error)}")
-                    results = insert_records_soap(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
-                    logger.debug(f"Successfully inserted {len(generated_data)} records via SOAP API")
+                    try:
+                        if not generated_data:
+                            raise Exception("No generated data to insert")
+                            
+                        results = insert_records_soap(sf_org.instance_url, sf_org.access_token, object_name, generated_data)
+                        logger.debug(f"Successfully inserted {len(generated_data)} records via SOAP API")
+                    except Exception as soap_error:
+                        logger.error(f"Both REST and SOAP APIs failed for record insertion: {str(soap_error)}")
+                        job.status = 'failed'
+                        job.error_message = f"Record insertion error: REST API: {str(rest_error)}, SOAP API: {str(soap_error)}"
+                        job.completed_at = datetime.utcnow()
+                        db.session.commit()
+                        flash(f'Error inserting records: {str(soap_error)}', 'danger')
+                        return redirect(url_for('combined'))
                 
                 # Update job with results
                 job.status = 'completed'
