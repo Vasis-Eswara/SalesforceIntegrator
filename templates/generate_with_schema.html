@@ -9,7 +9,7 @@
                 <h4 class="mb-3 header-title">Salesforce </h4>
                 
                 <div class="input-group mb-3">
-                    <input type="text" id="object-search" class="form-control placeholder-enhanced" placeholder="Search objects..." autocomplete="off">
+                    <input type="text" id="object-search" class="form-control placeholder-enhanced" placeholder="Search objects..." autocomplete="off" tabindex="-1">
                     <button class="btn btn-outline-secondary btn-text-enhanced" type="button" id="clear-search">
                         <i class="bi bi-x"></i>
                     </button>
@@ -252,85 +252,69 @@
 
 <!-- Search functionality -->
 <script>
-    // Simple search function implementation
-    function filterObjects() {
-        var input = document.getElementById("object-search");
-        var filter = input.value.toLowerCase();
-        var list = document.getElementById("object-list");
-        if (!list) return; // Ensure list exists
+    document.addEventListener('DOMContentLoaded', function() {
+        // Simple one-time setup of search functionality
+        const searchBox = document.getElementById('object-search');
+        const clearBtn = document.getElementById('clear-search');
+        const objList = document.getElementById('object-list');
         
-        var items = list.getElementsByTagName("li");
-        var anyVisible = false;
+        if (!searchBox || !objList) return;
         
-        // If empty filter, show all objects
-        if (filter === '') {
-            for (var i = 0; i < items.length; i++) {
-                items[i].style.display = "";
-            }
+        // Ensure search box is not focused on page load
+        searchBox.blur();
+        
+        // Handle search input
+        searchBox.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const items = objList.querySelectorAll('li');
+            let found = false;
             
-            // Remove any "no results" message
-            var noResults = document.getElementById("no-results");
-            if (noResults && noResults.parentNode) {
-                noResults.parentNode.removeChild(noResults);
-            }
-            return;
-        }
-        
-        // Process each item for non-empty search term
-        for (var i = 0; i < items.length; i++) {
-            var item = items[i];
-            // Get data attributes and text content for comprehensive search
-            var txtValue = item.textContent || item.innerText;
-            var objName = item.getAttribute('data-object') || '';
-            var objLabel = item.getAttribute('data-object-label') || '';
+            // Search through items
+            items.forEach(function(item) {
+                const text = item.textContent.toLowerCase();
+                const api = (item.getAttribute('data-object') || '').toLowerCase();
+                const label = (item.getAttribute('data-object-label') || '').toLowerCase();
+                
+                // Show/hide based on match
+                if (text.includes(searchTerm) || api.includes(searchTerm) || label.includes(searchTerm) || searchTerm === '') {
+                    item.style.display = '';
+                    found = true;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
             
-            if (txtValue.toLowerCase().indexOf(filter) > -1 || 
-                objName.toLowerCase().indexOf(filter) > -1 || 
-                objLabel.toLowerCase().indexOf(filter) > -1) {
-                item.style.display = "";
-                anyVisible = true;
-            } else {
-                item.style.display = "none";
+            // Handle no results
+            let noResults = document.getElementById('no-results');
+            if (!found && searchTerm !== '') {
+                if (!noResults) {
+                    noResults = document.createElement('div');
+                    noResults.id = 'no-results';
+                    noResults.className = 'alert alert-warning mt-3';
+                    objList.parentNode.insertBefore(noResults, objList.nextSibling);
+                }
+                noResults.textContent = `No objects matching "${searchTerm}" found`;
+                noResults.style.display = 'block';
+            } else if (noResults) {
+                noResults.style.display = 'none';
             }
-        }
+        });
         
-        // Show/hide no results message
-        var noResults = document.getElementById("no-results");
-        if (!anyVisible && filter.length > 0) {
-            if (!noResults) {
-                noResults = document.createElement("div");
-                noResults.id = "no-results";
-                noResults.className = "alert alert-warning mt-3";
-                noResults.textContent = "No objects matching \"" + filter + "\" found";
-                list.parentNode.insertBefore(noResults, list.nextSibling);
-            } else {
-                noResults.textContent = "No objects matching \"" + filter + "\" found";
-                noResults.style.display = "block";
-            }
-        } else if (noResults) {
-            noResults.style.display = "none";
+        // Clear search
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                searchBox.value = '';
+                // Trigger the input event to update the list
+                searchBox.dispatchEvent(new Event('input'));
+            });
         }
-    }
+    });
 </script>
 
 <!-- Export functionality -->
 <script>
     // Data export functionality
     document.addEventListener('DOMContentLoaded', function() {
-        // Set up search functionality
-        var searchInput = document.getElementById("object-search");
-        if (searchInput) {
-            searchInput.addEventListener("keyup", filterObjects);
-            
-            // Clear search button
-            var clearButton = document.getElementById("clear-search");
-            if (clearButton) {
-                clearButton.addEventListener("click", function() {
-                    searchInput.value = "";
-                    filterObjects();
-                });
-            }
-        }
         
         // Add event listeners to export buttons if they exist
         const exportCsvBtn = document.getElementById('export-csv');
@@ -372,20 +356,7 @@
     });
     
     document.addEventListener('DOMContentLoaded', function() {
-        // Prevent auto-focus on the search field
-        const searchInput = document.getElementById('object-search');
-        if (searchInput) {
-            // Blur any focused element
-            if (document.activeElement) {
-                document.activeElement.blur();
-            }
-            
-            // Prevent search from getting auto-selected
-            searchInput.blur();
-            
-            // Move cursor to the beginning of the document
-            window.scrollTo(0, 0);
-        }
+        // This is the main initialization code for the page UI
         
         // Get object list element
         const objectList = document.getElementById('object-list');
