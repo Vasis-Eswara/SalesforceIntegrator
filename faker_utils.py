@@ -72,8 +72,21 @@ def generate_test_data_with_faker(object_info, record_count=5):
         logger.error(f"Fields is not a list, it's a {type(fields)}")
         return []
     
-    # Count createable fields
-    createable_fields = [f for f in fields if f.get('createable', True)]
+    # Count createable fields with additional error handling
+    createable_fields = []
+    for f in fields:
+        # Verify each field is a dictionary to avoid 'str' object has no attribute 'get' error
+        if not isinstance(f, dict):
+            logger.error(f"Field is not a dictionary, it's a {type(f)}: {f}")
+            continue
+        
+        # Check if field is createable
+        try:
+            if f.get('createable', True):
+                createable_fields.append(f)
+        except Exception as e:
+            logger.error(f"Error checking if field is createable: {e}, field: {f}")
+            
     logger.info(f"Preparing to generate {record_count} records with {len(createable_fields)} createable fields out of {len(fields)} total fields")
     records = []
     
@@ -83,12 +96,25 @@ def generate_test_data_with_faker(object_info, record_count=5):
     picklist_fields = {}
     
     for field in fields:
-        # Skip fields that can't be created via API
-        if not field.get('createable', True):
+        # Skip non-dictionary fields 
+        if not isinstance(field, dict):
+            logger.error(f"Field is not a dictionary, it's a {type(field)}: {field}")
             continue
             
-        if field.get('nillable') is False and not field.get('defaultedOnCreate', False):
-            required_fields.append(field)
+        # Skip fields that can't be created via API
+        try:
+            if not field.get('createable', True):
+                continue
+        except Exception as e:
+            logger.error(f"Error checking if field is createable: {e}, field: {field}")
+            continue
+            
+        try:
+            if field.get('nillable') is False and not field.get('defaultedOnCreate', False):
+                required_fields.append(field)
+        except Exception as e:
+            logger.error(f"Error checking if field is required: {e}, field: {field}")
+            continue
             
         # Track relationship fields
         if field.get('type') == 'reference' and field.get('referenceTo'):
@@ -107,22 +133,37 @@ def generate_test_data_with_faker(object_info, record_count=5):
         
         # Handle all fields
         for field in fields:
-            field_name = field.get('name')
-            field_type = field.get('type')
-            
-            # Skip auto fields, formula fields, and audit fields
-            if (field.get('autoNumber', False) or 
-                field.get('calculated', False) or 
-                not field.get('createable', True) or 
-                field_name in ['Id', 'CreatedDate', 'CreatedById', 'LastModifiedDate', 
-                              'LastModifiedById', 'SystemModstamp', 'IsDeleted']):
+            # Skip non-dictionary fields
+            if not isinstance(field, dict):
+                logger.error(f"Field is not a dictionary, it's a {type(field)}: {field}")
                 continue
                 
-            # Generate value based on field type
-            value = generate_field_value(field)
-            
-            if value is not None:
-                record[field_name] = value
+            try:
+                field_name = field.get('name')
+                field_type = field.get('type')
+                
+                # Skip fields without a name
+                if not field_name:
+                    logger.warning(f"Field has no name: {field}")
+                    continue
+                
+                # Skip auto fields, formula fields, and audit fields
+                if (field.get('autoNumber', False) or 
+                    field.get('calculated', False) or 
+                    not field.get('createable', True) or 
+                    field_name in ['Id', 'CreatedDate', 'CreatedById', 'LastModifiedDate', 
+                                  'LastModifiedById', 'SystemModstamp', 'IsDeleted']):
+                    continue
+                    
+                # Generate value based on field type
+                value = generate_field_value(field)
+                
+                if value is not None:
+                    record[field_name] = value
+                    
+            except Exception as e:
+                logger.error(f"Error processing field for data generation: {e}, field: {field}")
+                continue
         
         records.append(record)
     
