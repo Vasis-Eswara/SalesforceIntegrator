@@ -586,10 +586,44 @@ def init_routes(app):
                             
                             object_info['fields'] = fixed_fields
                     
-                    logger.debug(f"Calling Faker data generation function")
-                    # Call the Faker generation function with validated input
-                    generated_data = generate_test_data_with_faker(object_info, record_count)
+                    logger.debug(f"Starting intelligent data generation for {object_name}")
                     
+                    # Try the new intelligent data generator first
+                    try:
+                        from intelligent_data_gen import IntelligentDataGenerator
+                        
+                        # Create a connection object to pass to the generator
+                        sf_connection = type('SFConnection', (), {
+                            'access_token': sf_org.access_token,
+                            'instance_url': sf_org.instance_url
+                        })
+                        
+                        # Initialize the intelligent generator
+                        generator = IntelligentDataGenerator(sf_connection)
+                        
+                        # Generate data with the intelligent approach
+                        logger.info(f"Using intelligent data generator for {object_name}")
+                        result = generator.generate_data(object_name, int(record_count))
+                        
+                        # Check if generation was successful
+                        if result["success_count"] > 0:
+                            generated_data = result["records"]
+                            logger.debug(f"Successfully generated {len(generated_data)} records using intelligent generator")
+                        else:
+                            # If intelligent generation failed, log the errors and fall back
+                            error_msg = '; '.join(result['errors']) if result['errors'] else "Unknown error"
+                            logger.warning(f"Intelligent data generation failed: {error_msg}")
+                            
+                            # Fall back to basic Faker
+                            logger.debug(f"Falling back to basic Faker data generation")
+                            generated_data = generate_test_data_with_faker(object_info, record_count)
+                    except Exception as e:
+                        # If intelligent generation fails for any reason, fall back to basic Faker
+                        logger.error(f"Error using intelligent data generator: {str(e)}")
+                        logger.debug(f"Falling back to basic Faker data generation")
+                        generated_data = generate_test_data_with_faker(object_info, record_count)
+                    
+                    # Validate the generated data
                     if not generated_data:
                         logger.error(f"Failed to generate data for {object_name}")
                         raise Exception(f"Failed to generate data for {object_name}")
