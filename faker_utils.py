@@ -23,6 +23,25 @@ def generate_test_data_with_faker(object_info, record_count=5):
     import logging
     logger = logging.getLogger(__name__)
     
+    # Convert record_count to integer if it's a string
+    if isinstance(record_count, str):
+        try:
+            record_count = int(record_count)
+            logger.debug(f"Converted record_count from string to int: {record_count}")
+        except ValueError:
+            logger.error(f"Invalid record count (not a number): {record_count}")
+            record_count = 5  # Default to 5 if invalid
+    
+    # Ensure record_count is positive and reasonable
+    if not isinstance(record_count, int) or record_count < 1:
+        logger.warning(f"Invalid record count: {record_count}, using default of 5")
+        record_count = 5
+    
+    # Limit record count to a reasonable maximum to prevent accidental overloads
+    if record_count > 200:
+        logger.warning(f"Record count {record_count} exceeds maximum of 200, limiting to 200")
+        record_count = 200
+    
     # Handle different object_info formats
     if isinstance(object_info, str):
         try:
@@ -38,9 +57,9 @@ def generate_test_data_with_faker(object_info, record_count=5):
         logger.error(f"object_info is not a dictionary or JSON string, it's a {type(object_info)}")
         return []
         
-    # Check if object has required fields
-    if not object_info.get('name'):
-        logger.warning(f"object_info missing 'name' attribute")
+    # Check if object has name
+    object_name = object_info.get('name', object_info.get('label', 'Unknown Object'))
+    logger.debug(f"Generating data for object: {object_name}")
         
     # Extract fields with safeguards
     fields = object_info.get('fields', [])
@@ -53,7 +72,9 @@ def generate_test_data_with_faker(object_info, record_count=5):
         logger.error(f"Fields is not a list, it's a {type(fields)}")
         return []
     
-    logger.debug(f"Preparing to generate {record_count} records with {len(fields)} fields")
+    # Count createable fields
+    createable_fields = [f for f in fields if f.get('createable', True)]
+    logger.info(f"Preparing to generate {record_count} records with {len(createable_fields)} createable fields out of {len(fields)} total fields")
     records = []
     
     # First, identify required fields and any field dependencies
@@ -169,19 +190,71 @@ def generate_field_value(field):
         return time_str
         
     elif field_type == 'int':
-        min_val = field.get('minValue', 0)
-        max_val = field.get('maxValue', 100000)
-        return random.randint(min_val, min(max_val, 100000))
+        try:
+            min_val = field.get('minValue', 0)
+            # Ensure min_val is an integer
+            if not isinstance(min_val, int):
+                try:
+                    min_val = int(min_val)
+                except (ValueError, TypeError):
+                    min_val = 0
+                    
+            max_val = field.get('maxValue', 100000)
+            # Ensure max_val is an integer
+            if not isinstance(max_val, int):
+                try:
+                    max_val = int(max_val)
+                except (ValueError, TypeError):
+                    max_val = 100000
+                    
+            # Ensure min is less than max
+            if min_val >= max_val:
+                min_val = 0
+                max_val = 100000
+                
+            return random.randint(min_val, min(max_val, 100000))
+        except Exception as e:
+            logger.error(f"Error generating integer value: {e}")
+            return random.randint(0, 100)
         
     elif field_type == 'double' or field_type == 'currency' or field_type == 'percent':
-        min_val = field.get('minValue', 0)
-        max_val = field.get('maxValue', 100000)
-        precision = field.get('precision', 2)
-        scale = field.get('scale', 2)
-        
-        # Generate appropriate decimal
-        value = round(random.uniform(min_val, min(max_val, 100000)), scale)
-        return value
+        try:
+            min_val = field.get('minValue', 0)
+            # Ensure min_val is a number
+            if not isinstance(min_val, (int, float)):
+                try:
+                    min_val = float(min_val)
+                except (ValueError, TypeError):
+                    min_val = 0.0
+                    
+            max_val = field.get('maxValue', 100000)
+            # Ensure max_val is a number
+            if not isinstance(max_val, (int, float)):
+                try:
+                    max_val = float(max_val)
+                except (ValueError, TypeError):
+                    max_val = 100000.0
+                    
+            # Ensure min is less than max
+            if min_val >= max_val:
+                min_val = 0.0
+                max_val = 100000.0
+                
+            precision = field.get('precision', 2)
+            scale = field.get('scale', 2)
+            
+            # Ensure scale is a non-negative integer and reasonable
+            if not isinstance(scale, int) or scale < 0:
+                scale = 2
+            if scale > 10:  # Prevent excessive precision
+                scale = 10
+                
+            # Generate appropriate decimal
+            value = round(random.uniform(min_val, min(max_val, 100000)), scale)
+            return value
+        except Exception as e:
+            logger.error(f"Error generating decimal value: {e}")
+            return round(random.uniform(0, 100), 2)
         
     elif field_type == 'phone':
         return fake.phone_number()
@@ -201,74 +274,177 @@ def generate_field_value(field):
     return None
 
 def generate_string_value(field):
-    """Generate a value for a string field based on the field name/label"""
-    field_name = field.get('name', '').lower()
-    field_label = field.get('label', '').lower()
-    field_type = field.get('type', '')
-    max_length = field.get('length', 255)
+    """Generate a value for a string field based on its metadata"""
+    import logging
+    logger = logging.getLogger(__name__)
     
-    # Check for common field patterns and generate appropriate data
-    if any(name in field_name for name in ['name', 'title']):
-        if 'first' in field_name:
-            return fake.first_name()[:max_length]
-        elif 'last' in field_name:
-            return fake.last_name()[:max_length]
-        elif 'full' in field_name or 'name' == field_name:
-            return fake.name()[:max_length]
-        elif 'title' in field_name:
-            return fake.job()[:max_length]
+    # Default values
+    DEFAULT_LENGTH = 255
     
-    elif 'company' in field_name or 'company' in field_label:
-        return fake.company()[:max_length]
+    # Safeguard against non-dict fields
+    if not isinstance(field, dict):
+        return fake.word()
+    
+    # Get field properties safely
+    try:
+        field_name = str(field.get('name', '')).lower()
+        field_label = str(field.get('label', '')).lower()
+        field_type = str(field.get('type', ''))
         
-    elif 'address' in field_name:
-        if 'street' in field_name or 'line1' in field_name:
+        # Get length with validation
+        try:
+            max_length = int(field.get('length', DEFAULT_LENGTH))
+            if max_length < 1 or max_length > 10000:
+                max_length = min(max(1, max_length), 10000)
+        except (ValueError, TypeError):
+            max_length = DEFAULT_LENGTH
+    except Exception:
+        # If anything fails in property extraction, use defaults
+        field_name = ''
+        field_label = ''
+        field_type = ''
+        max_length = DEFAULT_LENGTH
+    
+    # Generate value based on field properties
+    try:
+        # Name-related fields
+        if 'first' in field_name and 'name' in field_name:
+            return fake.first_name()[:max_length]
+            
+        if 'last' in field_name and 'name' in field_name:
+            return fake.last_name()[:max_length]
+            
+        if field_name == 'name' or 'fullname' in field_name:
+            return fake.name()[:max_length]
+            
+        if 'company' in field_name or 'company' in field_label:
+            return fake.company()[:max_length]
+            
+        if 'title' in field_name:
+            return fake.job()[:max_length]
+            
+        # Address fields
+        if 'street' in field_name:
             return fake.street_address()[:max_length]
-        elif 'city' in field_name:
+            
+        if 'city' in field_name:
             return fake.city()[:max_length]
-        elif 'state' in field_name or 'province' in field_name:
+            
+        if 'state' in field_name:
             return fake.state()[:max_length]
-        elif 'zip' in field_name or 'postal' in field_name:
+            
+        if 'zip' in field_name or 'postal' in field_name:
             return fake.postcode()[:max_length]
-        elif 'country' in field_name:
+            
+        if 'country' in field_name:
             return fake.country()[:max_length]
-        else:
+            
+        if 'address' in field_name:
             return fake.address()[:max_length]
             
-    elif 'phone' in field_name:
-        return fake.phone_number()[:max_length]
+        # Contact fields
+        if 'phone' in field_name:
+            return fake.phone_number()[:max_length]
+            
+        if 'email' in field_name:
+            return fake.email()[:max_length]
+            
+        # Content fields
+        if 'description' in field_name or field_type == 'textarea':
+            return fake.paragraph()[:max_length]
+            
+        # Default for other string fields
+        return fake.text(max_nb_chars=min(100, max_length))[:max_length]
         
-    elif 'email' in field_name:
-        return fake.email()[:max_length]
-        
-    elif 'description' in field_name or field_type == 'textarea':
-        # Generate a paragraph of text for long text fields
-        return fake.paragraph()[:max_length]
-    
-    # For other fields, generate a generic string
-    words = random.randint(1, 3) 
-    return fake.text(max_nb_chars=max_length)[:max_length]
+    except Exception as e:
+        logger.error(f"Error generating string value: {e}")
+        return fake.word()[:max_length]
 
 def generate_picklist_value(field):
     """Generate a random value from a picklist field"""
-    picklist_values = field.get('picklistValues', [])
-    active_values = [pv.get('value') for pv in picklist_values if pv.get('active', True)]
+    import logging
+    logger = logging.getLogger(__name__)
     
-    if active_values:
-        return random.choice(active_values)
-    return None
+    # Safeguard against non-dict fields
+    if not isinstance(field, dict):
+        logger.error(f"Field is not a dictionary: {type(field)}")
+        return None
+    
+    try:
+        picklist_values = field.get('picklistValues', [])
+        
+        # Check if picklistValues is a list
+        if not isinstance(picklist_values, list):
+            logger.error(f"picklistValues is not a list: {type(picklist_values)}")
+            return None
+            
+        # Check for default value first
+        default_value = next((pv.get('value') for pv in picklist_values 
+                          if pv.get('defaultValue', False) and pv.get('active', True)), None)
+        if default_value:
+            logger.debug(f"Using default picklist value: {default_value}")
+            return default_value
+            
+        # Otherwise, get active values
+        active_values = [pv.get('value') for pv in picklist_values if pv.get('active', True)]
+        
+        # Filter out None values that might come from malformed picklist entries
+        active_values = [v for v in active_values if v is not None]
+        
+        if active_values:
+            selected_value = random.choice(active_values)
+            return selected_value
+        else:
+            logger.warning(f"No active picklist values found for field: {field.get('name')}")
+            return None
+    except Exception as e:
+        logger.error(f"Error generating picklist value: {e}")
+        return None
 
 def generate_multipicklist_value(field):
     """Generate a random set of values from a multi-select picklist field"""
-    picklist_values = field.get('picklistValues', [])
-    active_values = [pv.get('value') for pv in picklist_values if pv.get('active', True)]
+    import logging
+    logger = logging.getLogger(__name__)
     
-    if active_values:
-        # Choose a random number of values (1 to 3, or all if fewer than 3)
-        num_values = min(random.randint(1, 3), len(active_values))
-        selected_values = random.sample(active_values, num_values)
-        return ';'.join(selected_values)
-    return None
+    # Safeguard against non-dict fields
+    if not isinstance(field, dict):
+        logger.error(f"Field is not a dictionary: {type(field)}")
+        return None
+    
+    try:
+        picklist_values = field.get('picklistValues', [])
+        
+        # Check if picklistValues is a list
+        if not isinstance(picklist_values, list):
+            logger.error(f"picklistValues is not a list: {type(picklist_values)}")
+            return None
+            
+        # Get active values
+        active_values = [pv.get('value') for pv in picklist_values if pv.get('active', True)]
+        
+        # Filter out None values that might come from malformed picklist entries
+        active_values = [v for v in active_values if v is not None]
+        
+        if active_values:
+            # Choose a random number of values (1 to 3, or all if fewer than 3)
+            num_values = min(random.randint(1, 3), len(active_values))
+            
+            # Ensure we don't try to sample more values than exist
+            if num_values > len(active_values):
+                num_values = len(active_values)
+                
+            if num_values > 0:
+                selected_values = random.sample(active_values, num_values)
+                return ';'.join(selected_values)
+            else:
+                logger.warning(f"No values could be selected for multipicklist field: {field.get('name')}")
+                return None
+        else:
+            logger.warning(f"No active picklist values found for multipicklist field: {field.get('name')}")
+            return None
+    except Exception as e:
+        logger.error(f"Error generating multipicklist value: {e}")
+        return None
 
 def analyze_schema(object_info):
     """
