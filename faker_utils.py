@@ -257,6 +257,15 @@ def generate_field_value(field):
             
             # Generate a random value with appropriate scale
             value = round(random.uniform(min_val, max_val), scale)
+            
+            # Handle special numeric fields with specific ranges
+            if field_name == 'billinglatitude' or field_name == 'shippinglatitude':
+                # Latitude must be between -90 and +90
+                value = round(random.uniform(-90, 90), 6)
+            elif field_name == 'billinglongitude' or field_name == 'shippinglongitude':
+                # Longitude must be between -180 and +180
+                value = round(random.uniform(-180, 180), 6)
+                
             return value
             
         # Integer fields
@@ -281,6 +290,14 @@ def generate_field_value(field):
                 
             # Default ID patterns for common objects
             ref_object = reference_to[0] if reference_to else ''
+            field_name_lower = field_name.lower()
+            
+            # Handle special fields that need specific ID formats
+            if 'dandbcompanyid' in field_name_lower:
+                # D&B Company IDs should be null rather than placeholder IDs
+                return None
+                
+            # Standard ID mapping for common objects    
             id_map = {
                 'Account': '001000000000001AAA',
                 'Contact': '003000000000001AAA',
