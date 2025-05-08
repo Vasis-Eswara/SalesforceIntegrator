@@ -546,6 +546,47 @@ def init_routes(app):
                             logger.error(f"Failed to convert object_info to JSON: {je}")
                             raise ValueError(f"Schema information is in an unsupported format: {type(object_info)}")
                     
+                    # Additional deep validation of the fields structure
+                    if isinstance(object_info, dict) and 'fields' in object_info:
+                        # Check if we need to fix the fields structure
+                        fields = object_info['fields']
+                        if isinstance(fields, str):
+                            logger.warning("Fields is a string, attempting to fix")
+                            try:
+                                # Try to parse as JSON
+                                parsed_fields = json.loads(fields)
+                                if isinstance(parsed_fields, list):
+                                    logger.info("Successfully converted fields string to list")
+                                    object_info['fields'] = parsed_fields
+                                else:
+                                    logger.warning(f"Parsed fields is not a list: {type(parsed_fields)}")
+                            except Exception as e:
+                                logger.error(f"Error parsing fields string: {e}")
+                        
+                        # Ensure each field is a dict if they're strings
+                        if isinstance(object_info['fields'], list):
+                            fixed_fields = []
+                            for i, field in enumerate(object_info['fields']):
+                                if isinstance(field, str):
+                                    logger.warning(f"Field at index {i} is a string, attempting to fix")
+                                    try:
+                                        # Try to parse as JSON
+                                        parsed_field = json.loads(field)
+                                        if isinstance(parsed_field, dict):
+                                            logger.info(f"Successfully converted field string to dict at index {i}")
+                                            fixed_fields.append(parsed_field)
+                                        else:
+                                            logger.warning(f"Parsed field is not a dict: {type(parsed_field)}")
+                                            # Skip this field
+                                    except Exception as e:
+                                        logger.error(f"Error parsing field string at index {i}: {e}")
+                                        # Skip this field
+                                else:
+                                    fixed_fields.append(field)
+                            
+                            object_info['fields'] = fixed_fields
+                    
+                    logger.debug(f"Calling Faker data generation function")
                     # Call the Faker generation function with validated input
                     generated_data = generate_test_data_with_faker(object_info, record_count)
                     

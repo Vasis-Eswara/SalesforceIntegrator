@@ -3,6 +3,7 @@ Utilities for generating test data using Faker
 """
 import json
 import random
+import logging
 from datetime import datetime, timedelta
 from faker import Faker
 
@@ -46,7 +47,6 @@ def generate_test_data_with_faker(object_info, record_count=5):
     if isinstance(object_info, str):
         try:
             # Try to parse JSON string
-            import json
             logger.debug(f"Trying to parse object_info as JSON string")
             object_info = json.loads(object_info)
         except Exception as e:
@@ -72,20 +72,74 @@ def generate_test_data_with_faker(object_info, record_count=5):
         logger.error(f"Fields is not a list, it's a {type(fields)}")
         return []
     
-    # Count createable fields with additional error handling
+    # Count createable fields with additional error handling and detailed logging
     createable_fields = []
-    for f in fields:
+    
+    # Check if fields is iterable
+    if not isinstance(fields, list):
+        logger.error(f"Fields is not a list, it's a {type(fields)}")
+        # Dump fields content for debugging
+        try:
+            logger.error(f"Fields content: {str(fields)[:200]}...")
+        except Exception as e:
+            logger.error(f"Could not print fields content: {e}")
+        
+        # Try to convert non-list fields to list if it's a string
+        if isinstance(fields, str):
+            try:
+                logger.warning("Attempting to parse string fields as JSON")
+                fields = json.loads(fields)
+                if isinstance(fields, list):
+                    logger.info(f"Successfully converted string fields to list with {len(fields)} items")
+                else:
+                    logger.error(f"Parsed fields is not a list: {type(fields)}")
+                    fields = []
+            except Exception as e:
+                logger.error(f"Failed to parse fields string as JSON: {e}")
+                fields = []
+        else:
+            fields = []
+    
+    logger.debug(f"Processing {len(fields)} fields for createable check")
+    
+    for i, f in enumerate(fields):
         # Verify each field is a dictionary to avoid 'str' object has no attribute 'get' error
         if not isinstance(f, dict):
-            logger.error(f"Field is not a dictionary, it's a {type(f)}: {f}")
-            continue
+            logger.error(f"Field at index {i} is not a dictionary, it's a {type(f)}: {str(f)[:100]}")
+            
+            # Try to convert string to dict if it's a JSON string
+            if isinstance(f, str):
+                try:
+                    logger.warning(f"Attempting to parse string field at index {i} as JSON")
+                    f = json.loads(f)
+                    if isinstance(f, dict):
+                        logger.info(f"Successfully converted string field to dictionary at index {i}")
+                    else:
+                        logger.error(f"Parsed field is not a dictionary: {type(f)}")
+                        continue
+                except Exception as e:
+                    logger.error(f"Failed to parse field string as JSON at index {i}: {e}")
+                    continue
+            else:
+                continue
         
         # Check if field is createable
         try:
             if f.get('createable', True):
                 createable_fields.append(f)
         except Exception as e:
-            logger.error(f"Error checking if field is createable: {e}, field: {f}")
+            logger.error(f"Error checking if field is createable: {e}, field: {str(f)[:100]}")
+    
+    # Extra safeguard - dump the first few fields for debugging
+    if fields and len(fields) > 0:
+        try:
+            sample_field = fields[0]
+            logger.debug(f"Sample field (first in list): {sample_field}")
+            logger.debug(f"Sample field type: {type(sample_field)}")
+            if isinstance(sample_field, dict):
+                logger.debug(f"Sample field keys: {list(sample_field.keys())}")
+        except Exception as e:
+            logger.error(f"Error examining sample field: {e}")
             
     logger.info(f"Preparing to generate {record_count} records with {len(createable_fields)} createable fields out of {len(fields)} total fields")
     records = []
