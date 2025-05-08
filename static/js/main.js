@@ -113,26 +113,8 @@ function addChatMessage(role, message, className = '') {
 function initSchemaExplorer() {
     const objectList = document.getElementById('object-list');
     const objectDetails = document.getElementById('object-details');
-    const objectSearch = document.getElementById('object-search');
-    const clearSearch = document.getElementById('clear-search');
     
     if (!objectList) return;
-    
-    // Initialize search functionality
-    if (objectSearch) {
-        objectSearch.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            filterObjectList(searchTerm);
-        });
-        
-        // Clear search button
-        if (clearSearch) {
-            clearSearch.addEventListener('click', function() {
-                objectSearch.value = '';
-                filterObjectList('');
-            });
-        }
-    }
     
     // Add click event listeners to object list items
     const objectItems = objectList.querySelectorAll('li');

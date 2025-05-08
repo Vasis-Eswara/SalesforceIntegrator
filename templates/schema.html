@@ -8,13 +8,6 @@
             <div class="sidebar">
                 <h4 class="mb-3">Salesforce Objects</h4>
                 
-                <div class="input-group mb-3">
-                    <input type="text" id="object-search" class="form-control" placeholder="Search objects...">
-                    <button class="btn btn-outline-secondary" type="button" id="clear-search">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
-                
                 {% if objects %}
                 <ul class="list-group object-list" id="object-list">
                     {% for obj in objects %}
@@ -53,36 +46,15 @@
 
 {% block scripts %}
 <script>
-    // Search functionality for object list
     document.addEventListener('DOMContentLoaded', function() {
-        const searchInput = document.getElementById('object-search');
-        const clearButton = document.getElementById('clear-search');
         const objectList = document.getElementById('object-list');
         
-        if (searchInput && objectList) {
-            searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                
-                const items = objectList.querySelectorAll('li');
-                items.forEach(item => {
-                    const label = item.textContent.toLowerCase();
-                    if (label.includes(query)) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
+        if (objectList) {
+            // Make sure all list items are visible
+            const items = objectList.querySelectorAll('li');
+            items.forEach(item => {
+                item.style.display = '';
             });
-            
-            if (clearButton) {
-                clearButton.addEventListener('click', function() {
-                    searchInput.value = '';
-                    const items = objectList.querySelectorAll('li');
-                    items.forEach(item => {
-                        item.style.display = '';
-                    });
-                });
-            }
         }
     });
 </script>
