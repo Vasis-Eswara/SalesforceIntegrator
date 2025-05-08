@@ -131,147 +131,353 @@ def generate_test_data_with_faker(object_info, record_count=5):
 
 def generate_field_value(field):
     """
-    Generate a value for a field based on its metadata
+    Generate a value for a field based on its metadata with enhanced intelligence
     
     Args:
         field (dict): Field metadata from Salesforce
         
     Returns:
-        Various: Generated value appropriate for the field type
+        Various: Generated value appropriate for the field type and context
     """
     import logging
     logger = logging.getLogger(__name__)
+    import string
     
     # Safeguard against non-dict fields
     if not isinstance(field, dict):
         logger.error(f"Field is not a dictionary: {type(field)}")
         return None
         
-    field_type = field.get('type')
-    field_label = field.get('label', '')
-    field_name = field.get('name', '')
+    # Extract field information safely
+    try:
+        field_type = str(field.get('type', '')).lower()
+        field_label = str(field.get('label', '')).lower()
+        field_name = str(field.get('name', '')).lower()
+    except Exception as e:
+        logger.error(f"Error extracting field properties: {e}")
+        field_type = ''
+        field_label = ''
+        field_name = ''
     
     # Log field info at debug level
     logger.debug(f"Generating value for field: {field_name}, type: {field_type}, label: {field_label}")
     
     # Skip system fields
-    if field_name in ['Id', 'OwnerId', 'CreatedDate', 'CreatedById', 
-                     'LastModifiedDate', 'LastModifiedById', 'SystemModstamp']:
+    system_fields = ['id', 'ownerid', 'createddate', 'createdbyid', 
+                     'lastmodifieddate', 'lastmodifiedbyid', 'systemmodstamp',
+                     'isdeleted', 'recordtypeid']
+    
+    if field_name.lower() in system_fields:
+        logger.debug(f"Skipping system field: {field_name}")
         return None
     
-    # Handle specific field types
-    if field_type == 'string' or field_type == 'textarea':
-        return generate_string_value(field)
-        
-    elif field_type == 'picklist':
-        return generate_picklist_value(field)
-        
-    elif field_type == 'multipicklist':
-        return generate_multipicklist_value(field)
-        
-    elif field_type == 'boolean':
-        return random.choice([True, False])
-        
-    elif field_type == 'reference':
-        # Return a placeholder reference ID (would need to be replaced with real IDs)
-        if 'Id' in field_name:
-            return '001000000000001AAA'  # Placeholder ID for references
+    # Handle specific field contexts based on the combination of field type, name and label
+    try:
+        # Text fields with specialized generation
+        if field_type in ('string', 'textarea'):
+            return generate_string_value(field)
+            
+        # Selection fields with predefined options
+        elif field_type == 'picklist':
+            return generate_picklist_value(field)
+            
+        elif field_type == 'multipicklist':
+            return generate_multipicklist_value(field)
+            
+        # Boolean fields with contextual weighting
+        elif field_type == 'boolean':
+            # Check for fields that are more likely to be true or false based on name/label
+            positive_indicators = ['active', 'enabled', 'is_current', 'approved', 'verified', 'primary', 'completed']
+            negative_indicators = ['inactive', 'disabled', 'canceled', 'rejected', 'deleted', 'archived']
+            
+            if any(term in field_name for term in positive_indicators):
+                # 70% chance of being True for fields like "IsActive"
+                return random.choices([True, False], weights=[0.7, 0.3])[0]
+            elif any(term in field_name for term in negative_indicators):
+                # 30% chance of being True for fields like "IsCanceled"
+                return random.choices([True, False], weights=[0.3, 0.7])[0]
+            else:
+                # Default equal weighting
+                return random.choice([True, False])
+            
+        # Reference fields with intelligent placeholders
+        elif field_type == 'reference':
+            # Different placeholder IDs based on the referenced object type
+            reference_to = field.get('referenceTo', [])
+            if not reference_to or not isinstance(reference_to, list):
+                return None
+            
+            ref_object = reference_to[0] if reference_to else ''
+            
+            # Generate appropriate placeholder IDs based on common object prefixes
+            if ref_object == 'Account':
+                return '001000000000001AAA'
+            elif ref_object == 'Contact':
+                return '003000000000001AAA'
+            elif ref_object == 'Opportunity':
+                return '006000000000001AAA'
+            elif ref_object == 'Lead':
+                return '00Q000000000001AAA'
+            elif ref_object == 'Case':
+                return '500000000000001AAA'
+            elif ref_object == 'User':
+                return '005000000000001AAA'
+            else:
+                # Generic placeholder for other objects
+                return 'a00000000000001AAA'
+            
+        # Date fields with contextual date ranges
+        elif field_type == 'date':
+            # Adjust date ranges based on field semantic meaning
+            if any(term in field_name for term in ['birth', 'dob']):
+                # Birth dates typically range from 18-80 years ago
+                return fake.date_between(start_date='-80y', end_date='-18y').isoformat()
+                
+            elif any(term in field_name for term in ['expiry', 'expiration', 'end']):
+                # Expiration dates are usually in the future
+                return fake.date_between(start_date='today', end_date='+3y').isoformat()
+                
+            elif any(term in field_name for term in ['start', 'begin', 'commencement']):
+                # Start dates can be recently in past or near future
+                return fake.date_between(start_date='-30d', end_date='+90d').isoformat()
+                
+            elif 'due' in field_name:
+                # Due dates are typically in the near future
+                return fake.date_between(start_date='today', end_date='+60d').isoformat()
+                
+            elif 'created' in field_name or 'registered' in field_name:
+                # Creation dates in the past
+                return fake.date_between(start_date='-2y', end_date='today').isoformat()
+                
+            else:
+                # Default date range
+                return fake.date_between(start_date='-2y', end_date='+1y').isoformat()
+                
+        # Datetime fields with appropriate time components
+        elif field_type == 'datetime':
+            # Similar patterns as date fields
+            if any(term in field_name for term in ['created', 'registered']):
+                # Creation dates typically in the past
+                return fake.date_time_between(start_date='-2y', end_date='now').isoformat()
+                
+            elif any(term in field_name for term in ['modified', 'updated', 'last']):
+                # Last modified usually recent
+                return fake.date_time_between(start_date='-3m', end_date='now').isoformat()
+                
+            elif any(term in field_name for term in ['scheduled', 'appointment', 'meeting']):
+                # Scheduled times usually in future business hours
+                future_date = fake.date_time_between(start_date='+1d', end_date='+60d')
+                # Adjust hour to business hours (9am-5pm)
+                business_hour = random.randint(9, 17)
+                future_date = future_date.replace(hour=business_hour, minute=random.choice([0, 15, 30, 45]))
+                return future_date.isoformat()
+                
+            else:
+                # Default datetime range
+                return fake.date_time_between(start_date='-2y', end_date='+1y').isoformat()
+                
+        # Time fields
+        elif field_type == 'time':
+            if any(term in field_name for term in ['start', 'begin']):
+                # Business start times typically in the morning
+                hour = random.randint(8, 10)
+                minute = random.choice([0, 15, 30, 45])
+                return f"{hour:02d}:{minute:02d}:00.000Z"
+                
+            elif any(term in field_name for term in ['end', 'finish', 'close']):
+                # Business end times typically in the afternoon
+                hour = random.randint(16, 18)
+                minute = random.choice([0, 15, 30, 45])
+                return f"{hour:02d}:{minute:02d}:00.000Z"
+                
+            else:
+                # Standard business hours as default
+                hour = random.randint(9, 17)
+                minute = random.choice([0, 15, 30, 45])
+                return f"{hour:02d}:{minute:02d}:00.000Z"
+                
+        # Integer fields with semantic ranges
+        elif field_type == 'int':
+            try:
+                # Start with default range
+                min_val = 0
+                max_val = 100
+                
+                # Try to get field-defined constraints
+                if field.get('minValue') is not None:
+                    try:
+                        min_val = int(field.get('minValue'))
+                    except (ValueError, TypeError):
+                        pass
+                        
+                if field.get('maxValue') is not None:
+                    try:
+                        max_val = int(field.get('maxValue'))
+                    except (ValueError, TypeError):
+                        pass
+                        
+                # Ensure min is less than max
+                if min_val >= max_val:
+                    min_val = 0
+                    max_val = 100
+                    
+                # Adjust ranges for common field semantics
+                if any(term in field_name for term in ['quantity', 'count', 'amount', 'number']):
+                    min_val = max(0, min_val)  # Non-negative for counts
+                    if 'large' in field_name or 'bulk' in field_name:
+                        max_val = max(max_val, 1000)
+                    
+                if 'age' in field_name:
+                    min_val = max(0, min_val)
+                    max_val = min(120, max_val)  # Reasonable age limit
+                    
+                if 'year' in field_name:
+                    current_year = datetime.now().year
+                    if 'birth' in field_name or 'founded' in field_name:
+                        min_val = max(current_year - 100, min_val)
+                        max_val = min(current_year, max_val)
+                    else:
+                        min_val = max(current_year - 10, min_val)
+                        max_val = min(current_year + 10, max_val)
+                        
+                if 'priority' in field_name:
+                    min_val = max(1, min_val)
+                    max_val = min(5, max_val)
+                    
+                # Limit to reasonable maximum to prevent issues
+                max_val = min(max_val, 1000000)
+                    
+                return random.randint(min_val, max_val)
+            except Exception as e:
+                logger.error(f"Error generating integer value: {e}")
+                return random.randint(0, 100)  # Fallback
+            
+        # Decimal fields with appropriate scale and precision
+        elif field_type in ('double', 'currency', 'percent'):
+            try:
+                # Start with default range
+                min_val = 0.0
+                max_val = 100.0
+                scale = 2  # Default decimal places
+                
+                # Try to get field-defined constraints
+                if field.get('minValue') is not None:
+                    try:
+                        min_val = float(field.get('minValue'))
+                    except (ValueError, TypeError):
+                        pass
+                        
+                if field.get('maxValue') is not None:
+                    try:
+                        max_val = float(field.get('maxValue'))
+                    except (ValueError, TypeError):
+                        pass
+                        
+                # Get precision settings if available
+                if field.get('scale') is not None:
+                    try:
+                        scale = min(int(field.get('scale')), 10)  # Limit to 10 decimal places
+                        scale = max(0, scale)  # Ensure non-negative
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Ensure min is less than max
+                if min_val >= max_val:
+                    min_val = 0.0
+                    max_val = 100.0
+                    
+                # Adjust ranges based on field type
+                if field_type == 'percent':
+                    min_val = max(0.0, min_val)
+                    max_val = min(100.0, max_val)
+                    
+                # Adjust ranges for common field semantics
+                if field_type == 'currency':
+                    if any(term in field_name for term in ['price', 'cost']):
+                        if 'wholesale' in field_name:
+                            min_val = max(0.01, min_val)
+                            max_val = min(500.0, max_val)
+                        elif 'premium' in field_name or 'luxury' in field_name:
+                            min_val = max(10.0, min_val)
+                            max_val = min(5000.0, max_val)
+                            
+                if 'discount' in field_name:
+                    min_val = max(0.0, min_val)
+                    max_val = min(50.0, max_val)
+                    
+                if 'rating' in field_name:
+                    min_val = max(0.0, min_val)
+                    max_val = min(5.0, max_val)
+                    scale = min(1, scale)  # Usually 1 decimal place for ratings
+                    
+                # Limit to reasonable maximum to prevent issues
+                max_val = min(max_val, 1000000.0)
+                
+                # Generate value with appropriate precision
+                value = random.uniform(min_val, max_val)
+                return round(value, scale)
+            except Exception as e:
+                logger.error(f"Error generating decimal value: {e}")
+                return round(random.uniform(0, 100), 2)  # Fallback
+            
+        # Contact information fields
+        elif field_type == 'phone':
+            if 'fax' in field_name:
+                return fake.phone_number()
+            elif 'mobile' in field_name or 'cell' in field_name:
+                return fake.phone_number()
+            elif 'work' in field_name or 'office' in field_name:
+                return fake.phone_number()
+            else:
+                return fake.phone_number()
+                
+        elif field_type == 'email':
+            company_domains = ['example.com', 'acme.org', 'globex.net', 'initech.io', 'umbrella.co']
+            
+            if 'work' in field_name or 'business' in field_name:
+                username = fake.user_name()
+                domain = random.choice(company_domains)
+                return f"{username}@{domain}"
+            elif 'personal' in field_name:
+                return fake.free_email()
+            else:
+                return fake.email()
+                
+        elif field_type == 'url':
+            if 'linkedin' in field_name:
+                return f"https://www.linkedin.com/in/{fake.user_name()}"
+            elif 'twitter' in field_name or 'x' in field_name:
+                return f"https://twitter.com/{fake.user_name()}"
+            elif 'facebook' in field_name:
+                return f"https://www.facebook.com/{fake.user_name()}"
+            elif 'website' in field_name or 'site' in field_name or 'web' in field_name:
+                return f"https://www.{fake.domain_name()}"
+            else:
+                return fake.uri()
+                
+        elif field_type == 'address':
+            # Return compound address as string
+            address = fake.address()
+            return address.replace('\n', ', ')
+            
+        # Additional data types
+        elif field_type == 'base64':
+            # Simple base64 placeholder
+            return 'U2FtcGxlIEJhc2U2NCBEYXRh'
+            
+        elif field_type == 'location' or field_type == 'geolocation':
+            # Return a dict or string with coordinates
+            lat = round(float(fake.latitude()), 6)
+            lng = round(float(fake.longitude()), 6)
+            return f"{lat},{lng}"
+            
+        # Fallback for unhandled types
+        logger.debug(f"Unhandled field type: {field_type}")
         return None
         
-    elif field_type == 'date':
-        return fake.date_between(start_date='-2y', end_date='+1y').isoformat()
-        
-    elif field_type == 'datetime':
-        return fake.date_time_between(start_date='-2y', end_date='+1y').isoformat()
-        
-    elif field_type == 'time':
-        time_str = fake.time()
-        # Ensure it matches Salesforce format
-        return time_str
-        
-    elif field_type == 'int':
-        try:
-            min_val = field.get('minValue', 0)
-            # Ensure min_val is an integer
-            if not isinstance(min_val, int):
-                try:
-                    min_val = int(min_val)
-                except (ValueError, TypeError):
-                    min_val = 0
-                    
-            max_val = field.get('maxValue', 100000)
-            # Ensure max_val is an integer
-            if not isinstance(max_val, int):
-                try:
-                    max_val = int(max_val)
-                except (ValueError, TypeError):
-                    max_val = 100000
-                    
-            # Ensure min is less than max
-            if min_val >= max_val:
-                min_val = 0
-                max_val = 100000
-                
-            return random.randint(min_val, min(max_val, 100000))
-        except Exception as e:
-            logger.error(f"Error generating integer value: {e}")
-            return random.randint(0, 100)
-        
-    elif field_type == 'double' or field_type == 'currency' or field_type == 'percent':
-        try:
-            min_val = field.get('minValue', 0)
-            # Ensure min_val is a number
-            if not isinstance(min_val, (int, float)):
-                try:
-                    min_val = float(min_val)
-                except (ValueError, TypeError):
-                    min_val = 0.0
-                    
-            max_val = field.get('maxValue', 100000)
-            # Ensure max_val is a number
-            if not isinstance(max_val, (int, float)):
-                try:
-                    max_val = float(max_val)
-                except (ValueError, TypeError):
-                    max_val = 100000.0
-                    
-            # Ensure min is less than max
-            if min_val >= max_val:
-                min_val = 0.0
-                max_val = 100000.0
-                
-            precision = field.get('precision', 2)
-            scale = field.get('scale', 2)
-            
-            # Ensure scale is a non-negative integer and reasonable
-            if not isinstance(scale, int) or scale < 0:
-                scale = 2
-            if scale > 10:  # Prevent excessive precision
-                scale = 10
-                
-            # Generate appropriate decimal
-            value = round(random.uniform(min_val, min(max_val, 100000)), scale)
-            return value
-        except Exception as e:
-            logger.error(f"Error generating decimal value: {e}")
-            return round(random.uniform(0, 100), 2)
-        
-    elif field_type == 'phone':
-        return fake.phone_number()
-        
-    elif field_type == 'email':
-        return fake.email()
-        
-    elif field_type == 'url':
-        return fake.uri()
-        
-    elif field_type == 'address':
-        # Return compound address as string
-        address = fake.address()
-        return address.replace('\n', ', ')
-        
-    # For any other field types, return None
-    return None
+    except Exception as e:
+        logger.error(f"Unexpected error in generate_field_value: {e}")
+        return None
 
 def generate_string_value(field):
     """Generate a value for a string field based on its metadata"""
