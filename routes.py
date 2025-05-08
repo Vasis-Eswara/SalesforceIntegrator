@@ -513,11 +513,40 @@ def init_routes(app):
                 # Generate data with Faker instead of GPT
                 try:
                     logger.debug(f"Generating data with Faker for {object_name}, record count: {record_count}")
-                    if not isinstance(object_info, dict) and not isinstance(object_info, str):
-                        logger.error(f"object_info is not a dictionary or string: {type(object_info)}")
-                        # Try to convert to JSON string if possible
-                        object_info = json.dumps(object_info)
                     
+                    # Additional input validation and proper error handling
+                    if not object_info:
+                        logger.error(f"object_info is empty or None")
+                        raise ValueError("No object schema information available")
+                    
+                    # Ensure object_info is either a dictionary or a properly formatted JSON string
+                    if isinstance(object_info, dict):
+                        # Verify the object_info has the required structure
+                        if 'fields' not in object_info:
+                            logger.error(f"object_info is missing required 'fields' key")
+                            raise ValueError("The object schema is missing required field information")
+                            
+                    elif isinstance(object_info, str):
+                        # Try to parse and validate JSON string
+                        try:
+                            parsed_info = json.loads(object_info)
+                            if 'fields' not in parsed_info:
+                                logger.error(f"Parsed object_info is missing required 'fields' key")
+                                raise ValueError("The object schema is missing required field information")
+                        except json.JSONDecodeError as je:
+                            logger.error(f"object_info is not valid JSON: {je}")
+                            raise ValueError(f"Invalid schema format: {str(je)}")
+                    else:
+                        logger.error(f"object_info is not a dictionary or valid JSON string: {type(object_info)}")
+                        try:
+                            # Try to convert to JSON string if possible
+                            object_info = json.dumps(object_info)
+                            logger.debug("Successfully converted object_info to JSON string")
+                        except Exception as je:
+                            logger.error(f"Failed to convert object_info to JSON: {je}")
+                            raise ValueError(f"Schema information is in an unsupported format: {type(object_info)}")
+                    
+                    # Call the Faker generation function with validated input
                     generated_data = generate_test_data_with_faker(object_info, record_count)
                     
                     if not generated_data:

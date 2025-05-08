@@ -757,38 +757,83 @@ def analyze_schema(object_info):
     }
     
     for field in fields:
-        field_name = field.get('name')
-        
-        # Track required fields
-        if not field.get('nillable') and not field.get('defaultedOnCreate'):
-            analysis['requiredFields'].append({
-                'name': field_name,
-                'label': field.get('label'),
-                'type': field.get('type')
-            })
+        # Skip non-dictionary fields
+        if not isinstance(field, dict):
+            logger.error(f"Field is not a dictionary, it's a {type(field)}: {field}")
+            continue
             
-        # Track unique fields
-        if field.get('unique'):
-            analysis['uniqueFields'].append({
-                'name': field_name,
-                'label': field.get('label'),
-                'type': field.get('type')
-            })
+        try:
+            field_name = field.get('name')
             
-        # Track picklist fields
-        if field.get('type') == 'picklist' and field.get('picklistValues'):
-            analysis['picklistFields'][field_name] = {
-                'label': field.get('label'),
-                'values': [pv.get('value') for pv in field.get('picklistValues') 
-                           if pv.get('active', True)]
-            }
+            # Skip fields without a name
+            if not field_name:
+                logger.warning(f"Skipping field without a name: {field}")
+                continue
             
-        # Track reference fields
-        if field.get('type') == 'reference' and field.get('referenceTo'):
-            analysis['referenceFields'][field_name] = {
-                'label': field.get('label'),
-                'referencesTo': field.get('referenceTo')
-            }
+            # Track required fields
+            try:
+                if not field.get('nillable') and not field.get('defaultedOnCreate'):
+                    analysis['requiredFields'].append({
+                        'name': field_name,
+                        'label': field.get('label'),
+                        'type': field.get('type')
+                    })
+            except Exception as e:
+                logger.error(f"Error processing required field: {e}, field: {field_name}")
+                
+            # Track unique fields
+            try:
+                if field.get('unique'):
+                    analysis['uniqueFields'].append({
+                        'name': field_name,
+                        'label': field.get('label'),
+                        'type': field.get('type')
+                    })
+            except Exception as e:
+                logger.error(f"Error processing unique field: {e}, field: {field_name}")
+                
+            # Track picklist fields
+            try:
+                if field.get('type') == 'picklist' and field.get('picklistValues'):
+                    picklist_values = field.get('picklistValues')
+                    if not isinstance(picklist_values, list):
+                        logger.warning(f"picklistValues is not a list for field {field_name}")
+                        continue
+                        
+                    valid_values = []
+                    for pv in picklist_values:
+                        if not isinstance(pv, dict):
+                            logger.warning(f"Picklist value is not a dictionary: {pv}")
+                            continue
+                        
+                        if pv.get('active', True) and pv.get('value') is not None:
+                            valid_values.append(pv.get('value'))
+                    
+                    analysis['picklistFields'][field_name] = {
+                        'label': field.get('label'),
+                        'values': valid_values
+                    }
+            except Exception as e:
+                logger.error(f"Error processing picklist field: {e}, field: {field_name}")
+                
+            # Track reference fields
+            try:
+                if field.get('type') == 'reference' and field.get('referenceTo'):
+                    references = field.get('referenceTo')
+                    if not isinstance(references, list):
+                        logger.warning(f"referenceTo is not a list for field {field_name}")
+                        references = [str(references)] if references else []
+                        
+                    analysis['referenceFields'][field_name] = {
+                        'label': field.get('label'),
+                        'referencesTo': references
+                    }
+            except Exception as e:
+                logger.error(f"Error processing reference field: {e}, field: {field_name}")
+                
+        except Exception as e:
+            logger.error(f"Error analyzing field: {e}, field: {field}")
+            continue
     
     # Generate recommendations
     if analysis['requiredFields']:
