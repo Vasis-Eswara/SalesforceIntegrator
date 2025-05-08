@@ -9,7 +9,7 @@
                 <h4 class="mb-3 header-title">Salesforce </h4>
                 
                 <div class="input-group mb-3">
-                    <input type="text" id="object-search" class="form-control placeholder-enhanced" placeholder="Search objects..." autocomplete="off" tabindex="-1">
+                    <input type="text" id="object-search" name="object-search-dummy" class="form-control placeholder-enhanced" placeholder="Search objects..." autocomplete="new-password" tabindex="-1" data-form-type="other">
                     <button class="btn btn-outline-secondary btn-text-enhanced" type="button" id="clear-search">
                         <i class="bi bi-x"></i>
                     </button>
@@ -260,8 +260,19 @@
         
         if (!searchBox || !objList) return;
         
-        // Ensure search box is not focused on page load
-        searchBox.blur();
+        // IMPORTANT: Clear any autofilled value on page load
+        setTimeout(function() {
+            // Forcibly clear the search box on page load
+            searchBox.value = '';
+            // Reset all list items to be visible
+            const items = objList.querySelectorAll('li');
+            items.forEach(item => item.style.display = '');
+            // Remove any "no results" message if present
+            const noResults = document.getElementById('no-results');
+            if (noResults) noResults.style.display = 'none';
+            // Ensure the search box is not focused
+            searchBox.blur();
+        }, 50);
         
         // Handle search input
         searchBox.addEventListener('input', function() {
@@ -306,6 +317,8 @@
                 searchBox.value = '';
                 // Trigger the input event to update the list
                 searchBox.dispatchEvent(new Event('input'));
+                // Blur to remove focus
+                searchBox.blur();
             });
         }
     });
