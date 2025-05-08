@@ -845,108 +845,191 @@ def init_routes(app):
             
     @app.route('/api/export/csv/<int:job_id>', methods=['GET'])
     def export_csv(job_id):
-        """Export generated data to CSV format"""
+        """Export generated data to CSV format with enhanced functionality"""
         if 'salesforce_org_id' not in session:
             return jsonify({'error': 'Not connected to Salesforce'}), 401
             
         try:
             # Retrieve the job from the database
             job = GenerationJob.query.get_or_404(job_id)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"{job.object_name}_data_{timestamp}.csv"
             
-            # Get the object details to use field names as headers
+            # Get the object details to use field labels as column headers
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
             
             try:
+                # Attempt to get object metadata via REST API
                 object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, job.object_name)
                 logger.debug(f"Successfully retrieved object details for {job.object_name} via REST API")
             except Exception as rest_error:
+                # Fall back to SOAP API if REST fails
                 logger.warning(f"REST API failed for object detail, falling back to SOAP: {str(rest_error)}")
-                object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, job.object_name)
-                logger.debug(f"Successfully retrieved object details for {job.object_name} via SOAP API")
+                try:
+                    from salesforce_soap_utils import get_object_describe_soap
+                    object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, job.object_name)
+                    logger.debug(f"Successfully retrieved object details for {job.object_name} via SOAP API")
+                except Exception as soap_error:
+                    logger.error(f"Both REST and SOAP APIs failed: {str(soap_error)}")
+                    object_info = {'fields': []}  # Empty fallback
             
-            # Get the raw generated data from the job
+            # Build a mapping of field names to field labels for better CSV headers
+            field_label_map = {}
+            field_type_map = {}
+            
+            try:
+                for field in object_info.get('fields', []):
+                    field_name = field.get('name')
+                    field_label = field.get('label')
+                    field_type = field.get('type')
+                    
+                    if field_name and field_label:
+                        field_label_map[field_name] = field_label
+                    
+                    if field_name and field_type:
+                        field_type_map[field_name] = field_type
+            except Exception as e:
+                logger.warning(f"Error processing field metadata: {str(e)}")
+            
+            # Extract records from the job with comprehensive data source checking
+            records = []
+            
+            # Function to extract records from various data formats
+            def extract_records_from_data(data):
+                if not data:
+                    return []
+                    
+                extracted = []
+                
+                # Handle different data structures
+                if isinstance(data, dict):
+                    # Composite API response format
+                    if 'compositeResponse' in data:
+                        composite_records = []
+                        for response in data.get('compositeResponse', []):
+                            if response.get('httpStatusCode') in [200, 201]:
+                                body = response.get('body', {})
+                                if isinstance(body, dict):
+                                    composite_records.append(body)
+                                elif isinstance(body, list):
+                                    composite_records.extend(body)
+                        extracted.extend(composite_records)
+                    
+                    # Standard query results format
+                    elif 'records' in data:
+                        extracted.extend(data.get('records', []))
+                    
+                    # Direct data in 'generated_data' key
+                    elif 'generated_data' in data:
+                        gen_data = data.get('generated_data')
+                        if isinstance(gen_data, list):
+                            extracted.extend(gen_data)
+                
+                # Direct list of records
+                elif isinstance(data, list):
+                    extracted.extend(data)
+                
+                return extracted
+            
+            # Try all possible data sources in priority order
+            data_sources = []
+            
+            # 1. Try the raw_data field first (most complete pre-insertion data)
+            if hasattr(job, 'raw_data') and job.raw_data:
+                try:
+                    raw_data = json.loads(job.raw_data)
+                    data_sources.append(('raw_data', raw_data))
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Could not parse raw_data as JSON: {str(e)}")
+            
+            # 2. Then try the results field (post-insertion data)
             if job.results:
-                # Parse the job results
-                results_data = json.loads(job.results)
-                
-                # Check if we have any successful records
-                if not results_data:
-                    flash('No data available for export', 'warning')
-                    return redirect(url_for('combined'))
-                
-                # Determine if the results have raw records or just success counts
-                # Different formats depending on how the data was generated
-                records = []
-                
-                # First try to get records from composite API format
-                if 'compositeResponse' in results_data:
-                    for response in results_data.get('compositeResponse', []):
-                        if response.get('httpStatusCode') == 201:  # Created
-                            body = response.get('body', {})
-                            if 'id' in body:
-                                # This is just the ID, not the full record
-                                # We'd need another API call to get the full record
-                                # For now, just add the ID
-                                records.append({'Id': body.get('id')})
-                
-                # Try to get records from standard format
-                elif isinstance(results_data, dict) and 'records' in results_data:
-                    records = results_data.get('records', [])
-                
-                # Try to get raw generated data
-                elif isinstance(results_data, list):
-                    records = results_data
-                
-                # If we have no records but have raw_data, use that
-                if not records and hasattr(job, 'raw_data') and job.raw_data:
-                    try:
-                        raw_records = json.loads(job.raw_data)
-                        if isinstance(raw_records, list):
-                            records = raw_records
-                    except:
-                        pass
-                
-                # If we still have no records, check if the generated data is in the results
-                if not records and 'generated_data' in results_data:
-                    generated_data = results_data.get('generated_data')
-                    if isinstance(generated_data, list):
-                        records = generated_data
-                
-                # If we have no valid records, return a message
-                if not records:
-                    flash('No data records available for export', 'warning')
-                    return redirect(url_for('combined'))
-                
-                # Get field names for headers
-                if records and isinstance(records[0], dict):
-                    # Use the keys from the first record as field names
-                    field_names = list(records[0].keys())
-                else:
-                    # If we don't have valid records, try to get field names from object info
-                    field_names = [field['name'] for field in object_info.get('fields', [])]
-                
-                # Create a CSV in memory
-                output = io.StringIO()
-                writer = csv.DictWriter(output, fieldnames=field_names)
-                writer.writeheader()
-                
-                for record in records:
-                    if isinstance(record, dict):
-                        # Filter the record to only include the fields we want
-                        filtered_record = {k: v for k, v in record.items() if k in field_names}
-                        writer.writerow(filtered_record)
-                
-                # Return the CSV as a file download
-                output.seek(0)
-                return Response(
-                    output.getvalue(),
-                    mimetype='text/csv',
-                    headers={'Content-Disposition': f'attachment;filename={job.object_name}_data.csv'}
-                )
+                try:
+                    results_data = json.loads(job.results)
+                    data_sources.append(('results', results_data))
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Could not parse results as JSON: {str(e)}")
             
-            # No results available
-            flash('No data available for export', 'warning')
-            return redirect(url_for('combined'))
+            # Extract records from all data sources
+            for source_name, source_data in data_sources:
+                extracted_records = extract_records_from_data(source_data)
+                if extracted_records:
+                    records = extracted_records
+                    logger.debug(f"Found {len(records)} records in {source_name}")
+                    break
+            
+            # If we still have no records after trying all sources
+            if not records:
+                flash('No data records available for export', 'warning')
+                return redirect(url_for('combined'))
+            
+            # Determine fields to include in the CSV
+            # Start with fields from the first record
+            if records and isinstance(records[0], dict):
+                field_names = list(records[0].keys())
+                
+                # Add any missing fields from other records (to handle inconsistent record structures)
+                for record in records[1:]:
+                    if isinstance(record, dict):
+                        for key in record.keys():
+                            if key not in field_names:
+                                field_names.append(key)
+            else:
+                # Fallback to fields from object metadata
+                field_names = [field.get('name') for field in object_info.get('fields', []) 
+                              if field.get('name') not in ['Id', 'OwnerId']]
+            
+            # Create a CSV in memory with improved formatting
+            output = io.StringIO()
+            
+            # Use field labels as headers if available, otherwise use field names
+            csv_headers = []
+            for field_name in field_names:
+                # Use label if available, otherwise use the field name
+                header = field_label_map.get(field_name, field_name)
+                csv_headers.append(header)
+            
+            writer = csv.writer(output)
+            # Write the headers
+            writer.writerow(csv_headers)
+            
+            # Format and write each record
+            for record in records:
+                if not isinstance(record, dict):
+                    continue
+                    
+                row = []
+                for field_name in field_names:
+                    value = record.get(field_name)
+                    
+                    # Format values appropriately based on field type
+                    if value is not None:
+                        # Format boolean values as "Yes"/"No"
+                        if field_type_map.get(field_name) == 'boolean':
+                            value = "Yes" if value else "No"
+                        # Format date/datetime values nicely
+                        elif field_type_map.get(field_name) in ['date', 'datetime'] and isinstance(value, str):
+                            try:
+                                if 'T' in value:  # ISO datetime format
+                                    dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
+                                    value = dt.strftime('%Y-%m-%d %H:%M:%S')
+                                else:  # ISO date format
+                                    dt = datetime.fromisoformat(value)
+                                    value = dt.strftime('%Y-%m-%d')
+                            except (ValueError, TypeError):
+                                pass  # Keep original if parsing fails
+                    
+                    row.append(value)
+                    
+                writer.writerow(row)
+            
+            # Return the CSV as a file download with an improved filename
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment;filename={filename}'}
+            )
                 
         except Exception as e:
             logger.error(f"Error exporting CSV: {str(e)}")
@@ -955,74 +1038,142 @@ def init_routes(app):
             
     @app.route('/api/export/json/<int:job_id>', methods=['GET'])
     def export_json(job_id):
-        """Export generated data to JSON format"""
+        """Export generated data to JSON format with enhanced functionality"""
         if 'salesforce_org_id' not in session:
             return jsonify({'error': 'Not connected to Salesforce'}), 401
             
         try:
             # Retrieve the job from the database
             job = GenerationJob.query.get_or_404(job_id)
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"{job.object_name}_data_{timestamp}.json"
             
-            # Get the results data
+            # Get the object details for metadata enrichment
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            try:
+                # Attempt to get object metadata via REST API
+                object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, job.object_name)
+                logger.debug(f"Successfully retrieved object details for {job.object_name} via REST API")
+            except Exception as rest_error:
+                # Fall back to SOAP API if REST fails
+                logger.warning(f"REST API failed for object detail, falling back to SOAP: {str(rest_error)}")
+                try:
+                    from salesforce_soap_utils import get_object_describe_soap
+                    object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, job.object_name)
+                    logger.debug(f"Successfully retrieved object details for {job.object_name} via SOAP API")
+                except Exception as soap_error:
+                    logger.error(f"Both REST and SOAP APIs failed: {str(soap_error)}")
+                    object_info = {'fields': []}  # Empty fallback
+            # Function to extract records from various data formats
+            def extract_records_from_data(data):
+                if not data:
+                    return []
+                    
+                extracted = []
+                
+                # Handle different data structures
+                if isinstance(data, dict):
+                    # Composite API response format
+                    if 'compositeResponse' in data:
+                        composite_records = []
+                        for response in data.get('compositeResponse', []):
+                            if response.get('httpStatusCode') in [200, 201]:
+                                body = response.get('body', {})
+                                if isinstance(body, dict):
+                                    composite_records.append(body)
+                                elif isinstance(body, list):
+                                    composite_records.extend(body)
+                        extracted.extend(composite_records)
+                    
+                    # Standard query results format
+                    elif 'records' in data:
+                        extracted.extend(data.get('records', []))
+                    
+                    # Direct data in 'generated_data' key
+                    elif 'generated_data' in data:
+                        gen_data = data.get('generated_data')
+                        if isinstance(gen_data, list):
+                            extracted.extend(gen_data)
+                
+                # Direct list of records
+                elif isinstance(data, list):
+                    extracted.extend(data)
+                
+                return extracted
+            
+            # Try all possible data sources in priority order
+            data_sources = []
+            
+            # 1. Try the raw_data field first (most complete pre-insertion data)
+            if hasattr(job, 'raw_data') and job.raw_data:
+                try:
+                    raw_data = json.loads(job.raw_data)
+                    data_sources.append(('raw_data', raw_data))
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Could not parse raw_data as JSON: {str(e)}")
+            
+            # 2. Then try the results field (post-insertion data)
             if job.results:
-                # Parse the job results
-                results_data = json.loads(job.results)
-                
-                # Check if we have any successful records
-                if not results_data:
-                    flash('No data available for export', 'warning')
-                    return redirect(url_for('combined'))
-                
-                # Determine if the results have raw records or just success counts
-                # Different formats depending on how the data was generated
-                records = []
-                
-                # First try to get records from composite API format
-                if 'compositeResponse' in results_data:
-                    for response in results_data.get('compositeResponse', []):
-                        if response.get('httpStatusCode') == 201:  # Created
-                            body = response.get('body', {})
-                            if 'id' in body:
-                                records.append({'Id': body.get('id')})
-                
-                # Try to get records from standard format
-                elif isinstance(results_data, dict) and 'records' in results_data:
-                    records = results_data.get('records', [])
-                
-                # Try to get raw generated data
-                elif isinstance(results_data, list):
-                    records = results_data
-                
-                # If we have no records but have raw_data, use that
-                if not records and hasattr(job, 'raw_data') and job.raw_data:
-                    try:
-                        raw_records = json.loads(job.raw_data)
-                        if isinstance(raw_records, list):
-                            records = raw_records
-                    except:
-                        pass
-                
-                # If we still have no records, check if the generated data is in the results
-                if not records and 'generated_data' in results_data:
-                    generated_data = results_data.get('generated_data')
-                    if isinstance(generated_data, list):
-                        records = generated_data
-                
-                # If we have no valid records, return a message
-                if not records:
-                    flash('No data records available for export', 'warning')
-                    return redirect(url_for('combined'))
-                
-                # Return the JSON as a file download
-                return Response(
-                    json.dumps(records, indent=2),
-                    mimetype='application/json',
-                    headers={'Content-Disposition': f'attachment;filename={job.object_name}_data.json'}
-                )
+                try:
+                    results_data = json.loads(job.results)
+                    data_sources.append(('results', results_data))
+                except (json.JSONDecodeError, TypeError) as e:
+                    logger.warning(f"Could not parse results as JSON: {str(e)}")
             
-            # No results available
-            flash('No data available for export', 'warning')
-            return redirect(url_for('combined'))
+            # Extract records from all data sources
+            records = []
+            for source_name, source_data in data_sources:
+                extracted_records = extract_records_from_data(source_data)
+                if extracted_records:
+                    records = extracted_records
+                    logger.debug(f"Found {len(records)} records in {source_name}")
+                    break
+            
+            # If we still have no records after trying all sources
+            if not records:
+                flash('No data records available for export', 'warning')
+                return redirect(url_for('combined'))
+            
+            # Enhance the JSON response with metadata
+            field_info = {}
+            try:
+                # Process field metadata for enhancing the export
+                for field in object_info.get('fields', []):
+                    field_name = field.get('name')
+                    if field_name:
+                        field_info[field_name] = {
+                            'label': field.get('label'),
+                            'type': field.get('type'),
+                            'description': field.get('description') or '',
+                            'required': not field.get('nillable', True),
+                            'createable': field.get('createable', False),
+                            'updateable': field.get('updateable', False)
+                        }
+            except Exception as e:
+                logger.warning(f"Error processing field metadata: {str(e)}")
+                
+            # Create enhanced JSON export data
+            export_data = {
+                'metadata': {
+                    'object': job.object_name,
+                    'objectLabel': object_info.get('label', job.object_name),
+                    'generatedAt': datetime.now().isoformat(),
+                    'recordCount': len(records),
+                    'exportFormat': 'JSON',
+                    'jobId': job.id,
+                    'source': 'Salesforce GPT Data Generator'
+                },
+                'fieldInfo': field_info,
+                'records': records
+            }
+            
+            # Return formatted JSON for easy readability
+            return Response(
+                json.dumps(export_data, indent=2, default=str),  # default=str handles non-serializable types
+                mimetype='application/json',
+                headers={'Content-Disposition': f'attachment;filename={filename}'}
+            )
                 
         except Exception as e:
             logger.error(f"Error exporting JSON: {str(e)}")

@@ -1,0 +1,426 @@
+/*
+ * Enhanced Dark Theme for Salesforce GPT Data Generator
+ * Built on Bootstrap dark theme with additional customizations
+ */
+
+:root {
+  --sf-blue: #1589ee;
+  --sf-blue-light: #0070d2;
+  --sf-blue-dark: #0a6ed1;
+  --sf-brand: #00a1e0;
+  --sf-green: #04844b;
+  --sf-bg-dark: #121212;
+  --sf-bg-dark-secondary: #1e1e1e;
+  --sf-bg-dark-tertiary: #2d2d2d;
+  --sf-text-primary: #f8f8f8;
+  --sf-text-secondary: #a7b9c3;
+  --sf-text-muted: #6c757d;
+  --sf-border: #3d3d3d;
+  --sf-border-light: #555555;
+  --sf-shadow: rgba(0, 0, 0, 0.25);
+}
+
+/* Apply theme to body */
+body {
+  background-color: var(--sf-bg-dark);
+  color: var(--sf-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+}
+
+/* Card styling */
+.card {
+  background-color: var(--sf-bg-dark-secondary);
+  border: 1px solid var(--sf-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.25rem 0.75rem var(--sf-shadow);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1rem var(--sf-shadow);
+}
+
+.card-header {
+  background-color: var(--sf-bg-dark-tertiary);
+  border-bottom: 1px solid var(--sf-border);
+  font-weight: 600;
+}
+
+.card-footer {
+  background-color: var(--sf-bg-dark-tertiary);
+  border-top: 1px solid var(--sf-border);
+}
+
+/* Navigation */
+.navbar {
+  background-color: var(--sf-bg-dark-tertiary) !important;
+  box-shadow: 0 2px 10px var(--sf-shadow);
+}
+
+.navbar-brand {
+  font-weight: 600;
+  color: var(--sf-blue-light) !important;
+}
+
+.nav-link {
+  color: var(--sf-text-secondary) !important;
+  transition: color 0.2s;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--sf-blue-light) !important;
+}
+
+/* Buttons */
+.btn-primary {
+  background-color: var(--sf-blue);
+  border-color: var(--sf-blue);
+}
+
+.btn-primary:hover {
+  background-color: var(--sf-blue-dark);
+  border-color: var(--sf-blue-dark);
+}
+
+.btn-outline-primary {
+  border-color: var(--sf-blue);
+  color: var(--sf-blue);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--sf-blue);
+  color: white;
+}
+
+.btn-success {
+  background-color: var(--sf-green);
+  border-color: var(--sf-green);
+}
+
+/* Tables */
+.table {
+  color: var(--sf-text-primary);
+  border-color: var(--sf-border);
+}
+
+.table th {
+  background-color: var(--sf-bg-dark-tertiary);
+  border-color: var(--sf-border);
+  font-weight: 600;
+}
+
+.table td {
+  border-color: var(--sf-border-light);
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Form elements */
+.form-control, .form-select {
+  background-color: var(--sf-bg-dark-tertiary);
+  border: 1px solid var(--sf-border);
+  color: var(--sf-text-primary);
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: var(--sf-bg-dark-tertiary);
+  border-color: var(--sf-blue-light);
+  box-shadow: 0 0 0 0.2rem rgba(21, 137, 238, 0.25);
+  color: var(--sf-text-primary);
+}
+
+.form-control::placeholder {
+  color: var(--sf-text-muted);
+}
+
+.form-label {
+  color: var(--sf-text-secondary);
+  font-weight: 500;
+}
+
+/* Custom badge styling */
+.badge.bg-primary {
+  background-color: var(--sf-blue) !important;
+}
+
+.badge.bg-success {
+  background-color: var(--sf-green) !important;
+}
+
+/* Accordion styling */
+.accordion {
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.accordion-item {
+  background-color: var(--sf-bg-dark-secondary);
+  border: 1px solid var(--sf-border);
+}
+
+.accordion-button {
+  background-color: var(--sf-bg-dark-tertiary);
+  color: var(--sf-text-primary);
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: var(--sf-blue-dark);
+  color: white;
+}
+
+.accordion-button:focus {
+  box-shadow: none;
+  border-color: var(--sf-blue-light);
+}
+
+/* Alert styling */
+.alert {
+  border-width: 1px;
+  border-left-width: 4px;
+}
+
+.alert-info {
+  background-color: rgba(21, 137, 238, 0.1);
+  border-color: var(--sf-blue);
+  color: var(--sf-text-primary);
+}
+
+.alert-warning {
+  background-color: rgba(255, 183, 0, 0.1);
+  border-color: #ffb700;
+  color: var(--sf-text-primary);
+}
+
+.alert-danger {
+  background-color: rgba(194, 57, 52, 0.1);
+  border-color: #c23934;
+  color: var(--sf-text-primary);
+}
+
+/* Pill navigation */
+.nav-pills .nav-link {
+  border-radius: 0.25rem;
+  color: var(--sf-text-secondary);
+  transition: all 0.2s;
+}
+
+.nav-pills .nav-link.active {
+  background-color: var(--sf-blue);
+  color: white !important;
+}
+
+/* Progress bars */
+.progress {
+  background-color: var(--sf-bg-dark-tertiary);
+  height: 0.75rem;
+  border-radius: 1rem;
+}
+
+.progress-bar {
+  background-color: var(--sf-blue);
+}
+
+/* List groups */
+.list-group-item {
+  background-color: var(--sf-bg-dark-secondary);
+  border-color: var(--sf-border);
+  color: var(--sf-text-primary);
+}
+
+.list-group-item.active {
+  background-color: var(--sf-blue);
+  border-color: var(--sf-blue);
+}
+
+/* Tooltips */
+.tooltip .tooltip-inner {
+  background-color: var(--sf-bg-dark-tertiary);
+  color: var(--sf-text-primary);
+  border: 1px solid var(--sf-border);
+}
+
+/* Modal styling */
+.modal-content {
+  background-color: var(--sf-bg-dark-secondary);
+  border: 1px solid var(--sf-border);
+}
+
+.modal-header, .modal-footer {
+  border-color: var(--sf-border);
+}
+
+/* Custom section borders */
+.section-border {
+  border: 1px solid var(--sf-border);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  background-color: var(--sf-bg-dark-secondary);
+}
+
+.section-title {
+  color: var(--sf-blue-light);
+  border-bottom: 1px solid var(--sf-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+/* Code and pre styling */
+pre, code {
+  background-color: var(--sf-bg-dark-tertiary);
+  color: var(--sf-text-secondary);
+  border-radius: 0.25rem;
+  padding: 0.2rem 0.4rem;
+}
+
+pre {
+  padding: 1rem;
+  border: 1px solid var(--sf-border);
+}
+
+/* Custom scrollbars for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--sf-bg-dark-tertiary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sf-border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sf-border-light);
+}
+
+/* Collapsible enhancements */
+.collapsible-section {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+/* Utility classes */
+.text-sf-blue {
+  color: var(--sf-blue-light) !important;
+}
+
+.text-sf-green {
+  color: var(--sf-green) !important;
+}
+
+.text-sf-muted {
+  color: var(--sf-text-muted) !important;
+}
+
+.bg-sf-dark {
+  background-color: var(--sf-bg-dark-tertiary) !important;
+}
+
+/* Highlight/focus effect for form controls */
+.form-control:focus, .form-select:focus {
+  border-color: var(--sf-blue-light);
+  box-shadow: 0 0 0 0.25rem rgba(0, 112, 210, 0.25);
+}
+
+/* Custom data generation container */
+.data-generation-container {
+  border: 1px solid var(--sf-border);
+  border-radius: 0.5rem;
+  background-color: var(--sf-bg-dark-secondary);
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.generation-options {
+  background-color: rgba(21, 137, 238, 0.05);
+  border-left: 3px solid var(--sf-blue-light);
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Field type icons and highlighting */
+.field-required {
+  color: #ff8f6d;
+  font-weight: bold;
+}
+
+.field-unique {
+  color: #68d391;
+  font-weight: bold;
+}
+
+.field-reference {
+  color: #63b3ed;
+  font-style: italic;
+}
+
+/* Schema tree view */
+.schema-tree ul {
+  list-style-type: none;
+  padding-left: 1.5rem;
+}
+
+.schema-tree li {
+  margin: 0.25rem 0;
+}
+
+.schema-tree .object-node {
+  color: var(--sf-blue-light);
+  font-weight: 600;
+}
+
+.schema-tree .field-node {
+  color: var(--sf-text-secondary);
+}
+
+/* Stats cards */
+.stats-card {
+  background-color: var(--sf-bg-dark-secondary);
+  border-left: 4px solid var(--sf-blue);
+  border-radius: 0.25rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: transform 0.2s;
+}
+
+.stats-card:hover {
+  transform: translateY(-2px);
+}
+
+.stats-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--sf-blue-light);
+}
+
+.stats-label {
+  color: var(--sf-text-secondary);
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+}
+
+/* Export buttons enhancement */
+.export-btn-group {
+  margin-top: 1rem;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 0.5rem;
+}
+
+.export-btn i {
+  margin-right: 0.5rem;
+}
