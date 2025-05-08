@@ -34,6 +34,36 @@ class IntelligentDataGenerator:
             'object_metadata': {} # Cache of object metadata
         }
         
+        # Get API version dynamically instead of hardcoding
+        self.api_version = self._detect_api_version() or "v58.0"
+        logger.info(f"Using Salesforce API version: {self.api_version}")
+        
+    def _detect_api_version(self):
+        """Detect the latest available API version for this org"""
+        try:
+            import requests
+            
+            headers = {
+                'Authorization': f'Bearer {self.sf_connection.access_token}',
+                'Content-Type': 'application/json'
+            }
+            
+            # Get available versions
+            url = f"{self.sf_connection.instance_url}/services/data/"
+            
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                versions = response.json()
+                if versions and isinstance(versions, list) and len(versions) > 0:
+                    # Sort versions and get the latest
+                    latest = sorted(versions, key=lambda v: v.get('version', '0'), reverse=True)[0]
+                    return f"v{latest.get('version')}"
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error detecting API version: {e}")
+            return None
+        
     def generate_data(self, object_name, record_count=5, existing_records=None):
         """
         Generate valid test data for a Salesforce object
@@ -44,7 +74,7 @@ class IntelligentDataGenerator:
             existing_records (list): Optional list of existing records to use as a pattern
             
         Returns:
-            list: List of generated records ready for insertion
+            dict: Dictionary with generation results including records, errors, and counts
         """
         logger.info(f"Intelligently generating {record_count} records for {object_name}")
         
@@ -62,6 +92,16 @@ class IntelligentDataGenerator:
         # Use existing records as a base pattern if provided
         pattern = self._analyze_patterns(object_name, existing_records)
         
+        # Check if this is likely a brand new org with no data
+        is_empty_org = not self.cache['record_ids'] or all(len(ids) == 0 for ids in self.cache['record_ids'].values())
+        
+        if is_empty_org:
+            logger.warning(f"No existing records found in org for reference. Using basic generation for {object_name}")
+            
+            # Add extra logging/warning in the error list but don't prevent generation
+            errors.append(f"Note: No existing records found to analyze. Using basic generation patterns for {object_name}.")
+        
+        # Generate the requested number of records
         for i in range(record_count):
             try:
                 record = self._generate_single_record(object_name, pattern)
@@ -76,7 +116,8 @@ class IntelligentDataGenerator:
             "records": records,
             "errors": errors,
             "success_count": len(records),
-            "error_count": len(errors)
+            "error_count": len(errors),
+            "is_empty_org": is_empty_org
         }
     
     def _fetch_object_metadata(self, object_name):
@@ -97,7 +138,7 @@ class IntelligentDataGenerator:
                 'Content-Type': 'application/json'
             }
             
-            url = f"{self.sf_connection.instance_url}/services/data/v58.0/sobjects/{object_name}/describe/"
+            url = f"{self.sf_connection.instance_url}/services/data/{self.api_version}/sobjects/{object_name}/describe/"
             
             response = requests.get(url, headers=headers)
             response.raise_for_status()
@@ -176,16 +217,26 @@ class IntelligentDataGenerator:
             }
             
             # Query for IDs only to minimize data transfer
-            url = f"{self.sf_connection.instance_url}/services/data/v58.0/query/"
+            url = f"{self.sf_connection.instance_url}/services/data/{self.api_version}/query/"
             params = {
                 'q': f"SELECT Id FROM {object_name} ORDER BY CreatedDate DESC LIMIT {limit}"
             }
             
             response = requests.get(url, headers=headers, params=params)
             
-            if response.status_code == 404:
-                # Object may not exist or user doesn't have access
-                logger.warning(f"Could not fetch records for {object_name}. Object may not exist or insufficient access.")
+            if response.status_code == 403:
+                # User doesn't have access to the object
+                logger.warning(f"Object-level security prevents access to {object_name}. Using basic generation.")
+                self.cache['record_ids'][object_name] = []
+                return
+            elif response.status_code == 404:
+                # Object doesn't exist
+                logger.warning(f"Object {object_name} not found. It may not exist or be available in this org.")
+                self.cache['record_ids'][object_name] = []
+                return
+            elif response.status_code >= 400:
+                # Other API error
+                logger.warning(f"Could not fetch records for {object_name}. API error: {response.status_code}")
                 self.cache['record_ids'][object_name] = []
                 return
                 
@@ -232,16 +283,21 @@ class IntelligentDataGenerator:
             }
             
             # Query for values
-            url = f"{self.sf_connection.instance_url}/services/data/v58.0/query/"
+            url = f"{self.sf_connection.instance_url}/services/data/{self.api_version}/query/"
             params = {
                 'q': f"SELECT {field_name} FROM {object_name} WHERE {field_name} != null LIMIT {limit}"
             }
             
             response = requests.get(url, headers=headers, params=params)
             
-            if response.status_code >= 400:
-                # Field may not exist or user doesn't have access
-                logger.warning(f"Could not fetch values for {field_key}. Field may not exist or insufficient access.")
+            if response.status_code == 403:
+                # User doesn't have field-level access
+                logger.warning(f"Field-level security prevents access to {field_key}. Using basic generation.")
+                self.cache['field_values'][field_key] = []
+                return
+            elif response.status_code >= 400:
+                # Field may not exist or other issue
+                logger.warning(f"Could not fetch values for {field_key}. Field may not exist or API error: {response.status_code}")
                 self.cache['field_values'][field_key] = []
                 return
                 
@@ -294,14 +350,37 @@ class IntelligentDataGenerator:
                 }
                 
                 # Get a sample of records to analyze
-                url = f"{self.sf_connection.instance_url}/services/data/v58.0/query/"
+                url = f"{self.sf_connection.instance_url}/services/data/{self.api_version}/query/"
                 params = {
                     'q': f"SELECT * FROM {object_name} LIMIT 50"
                 }
                 
                 response = requests.get(url, headers=headers, params=params)
                 
-                if response.status_code < 400:
+                if response.status_code == 403:
+                    # User doesn't have access to the object
+                    logger.warning(f"Object-level security prevents access to {object_name} for pattern analysis. Using basic generation.")
+                elif response.status_code == 404:
+                    # Object doesn't exist
+                    logger.warning(f"Object {object_name} not found for pattern analysis. It may not exist in this org.")
+                elif response.status_code == 400:
+                    # Query syntax error - probably due to a field not being accessible
+                    logger.warning(f"Pattern analysis query error for {object_name}: {response.text[:200]}...")
+                    
+                    # Try a simpler query with just the ID - often more likely to succeed
+                    try:
+                        simple_url = f"{self.sf_connection.instance_url}/services/data/{self.api_version}/query/"
+                        simple_params = {
+                            'q': f"SELECT Id FROM {object_name} LIMIT 1"
+                        }
+                        
+                        simple_response = requests.get(simple_url, headers=headers, params=simple_params)
+                        
+                        if simple_response.status_code < 400:
+                            logger.info(f"Object {object_name} exists but the full query failed. Will use basic generation.")
+                    except Exception:
+                        pass
+                elif response.status_code < 400:
                     data = response.json()
                     records = data.get('records', [])
                     logger.info(f"Fetched {len(records)} records for pattern analysis")
