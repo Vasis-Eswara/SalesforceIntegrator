@@ -20,7 +20,16 @@ def generate_test_data_with_faker(object_info, record_count=5):
     Returns:
         list: Generated test data records
     """
+    # Handle different object_info formats
+    if not isinstance(object_info, dict):
+        print(f"Warning: object_info is not a dictionary, it's a {type(object_info)}")
+        return []
+        
     fields = object_info.get('fields', [])
+    if not fields:
+        print(f"Warning: No fields found in object_info")
+        return []
+        
     records = []
     
     # First, identify required fields and any field dependencies
@@ -236,6 +245,17 @@ def analyze_schema(object_info):
     Returns:
         dict: Analysis of the schema
     """
+    # Handle different object_info formats
+    if not isinstance(object_info, dict):
+        print(f"Warning: object_info is not a dictionary, it's a {type(object_info)}")
+        return {
+            'requiredFields': [],
+            'uniqueFields': [],
+            'picklistFields': {},
+            'referenceFields': {},
+            'recommendations': ["Unable to analyze schema - invalid input format"]
+        }
+        
     fields = object_info.get('fields', [])
     analysis = {
         'requiredFields': [],
