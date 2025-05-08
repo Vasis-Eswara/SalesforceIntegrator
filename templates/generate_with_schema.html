@@ -6,14 +6,7 @@
         <!-- Sidebar with object list -->
         <div class="col-md-3 col-lg-2">
             <div class="sidebar">
-                <h4 class="mb-3 header-title">Salesforce </h4>
-                
-                <div class="input-group mb-3">
-                    <input type="text" id="object-search" name="object-search-dummy" class="form-control placeholder-enhanced" placeholder="Search objects..." autocomplete="new-password" tabindex="-1" data-form-type="other">
-                    <button class="btn btn-outline-secondary btn-text-enhanced" type="button" id="clear-search">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
+                <h4 class="mb-3 header-title">Salesforce Objects</h4>
                 
                 {% if objects %}
                 <ul class="list-group object-list" id="object-list">
@@ -250,77 +243,16 @@
 <!-- Include Mermaid.js for diagram generation -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 
-<!-- Search functionality -->
+<!-- Object List Functionality -->
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Simple one-time setup of search functionality
-        const searchBox = document.getElementById('object-search');
-        const clearBtn = document.getElementById('clear-search');
         const objList = document.getElementById('object-list');
         
-        if (!searchBox || !objList) return;
+        if (!objList) return;
         
-        // IMPORTANT: Clear any autofilled value on page load
-        setTimeout(function() {
-            // Forcibly clear the search box on page load
-            searchBox.value = '';
-            // Reset all list items to be visible
-            const items = objList.querySelectorAll('li');
-            items.forEach(item => item.style.display = '');
-            // Remove any "no results" message if present
-            const noResults = document.getElementById('no-results');
-            if (noResults) noResults.style.display = 'none';
-            // Ensure the search box is not focused
-            searchBox.blur();
-        }, 50);
-        
-        // Handle search input
-        searchBox.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            const items = objList.querySelectorAll('li');
-            let found = false;
-            
-            // Search through items
-            items.forEach(function(item) {
-                const text = item.textContent.toLowerCase();
-                const api = (item.getAttribute('data-object') || '').toLowerCase();
-                const label = (item.getAttribute('data-object-label') || '').toLowerCase();
-                
-                // Show/hide based on match
-                if (text.includes(searchTerm) || api.includes(searchTerm) || label.includes(searchTerm) || searchTerm === '') {
-                    item.style.display = '';
-                    found = true;
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-            
-            // Handle no results
-            let noResults = document.getElementById('no-results');
-            if (!found && searchTerm !== '') {
-                if (!noResults) {
-                    noResults = document.createElement('div');
-                    noResults.id = 'no-results';
-                    noResults.className = 'alert alert-warning mt-3';
-                    objList.parentNode.insertBefore(noResults, objList.nextSibling);
-                }
-                noResults.textContent = `No objects matching "${searchTerm}" found`;
-                noResults.style.display = 'block';
-            } else if (noResults) {
-                noResults.style.display = 'none';
-            }
-        });
-        
-        // Clear search
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
-                searchBox.value = '';
-                // Trigger the input event to update the list
-                searchBox.dispatchEvent(new Event('input'));
-                // Blur to remove focus
-                searchBox.blur();
-            });
-        }
+        // Make sure all list items are visible
+        const items = objList.querySelectorAll('li');
+        items.forEach(item => item.style.display = '');
     });
 </script>
 
