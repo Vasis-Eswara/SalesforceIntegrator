@@ -304,15 +304,17 @@ def generate_field_value(field):
                 max_val = 100
                 
                 # Try to get field-defined constraints
-                if field.get('minValue') is not None:
+                min_value = field.get('minValue')
+                if min_value is not None:
                     try:
-                        min_val = int(field.get('minValue'))
+                        min_val = int(min_value)
                     except (ValueError, TypeError):
                         pass
                         
-                if field.get('maxValue') is not None:
+                max_value = field.get('maxValue')
+                if max_value is not None:
                     try:
-                        max_val = int(field.get('maxValue'))
+                        max_val = int(max_value)
                     except (ValueError, TypeError):
                         pass
                         
@@ -361,22 +363,25 @@ def generate_field_value(field):
                 scale = 2  # Default decimal places
                 
                 # Try to get field-defined constraints
-                if field.get('minValue') is not None:
+                min_value = field.get('minValue')
+                if min_value is not None:
                     try:
-                        min_val = float(field.get('minValue'))
+                        min_val = float(min_value)
                     except (ValueError, TypeError):
                         pass
                         
-                if field.get('maxValue') is not None:
+                max_value = field.get('maxValue')
+                if max_value is not None:
                     try:
-                        max_val = float(field.get('maxValue'))
+                        max_val = float(max_value)
                     except (ValueError, TypeError):
                         pass
                         
                 # Get precision settings if available
-                if field.get('scale') is not None:
+                scale_value = field.get('scale')
+                if scale_value is not None:
                     try:
-                        scale = min(int(field.get('scale')), 10)  # Limit to 10 decimal places
+                        scale = min(int(scale_value), 10)  # Limit to 10 decimal places
                         scale = max(0, scale)  # Ensure non-negative
                     except (ValueError, TypeError):
                         pass
