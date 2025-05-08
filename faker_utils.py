@@ -69,36 +69,28 @@ def generate_test_data_with_faker(object_info, record_count=5):
     
     # Ensure fields is a list
     if not isinstance(fields, list):
-        logger.error(f"Fields is not a list, it's a {type(fields)}")
-        return []
+        logger.warning(f"Fields is not a list, it's a {type(fields)}")
+        
+        # Try to convert if it's a string (JSON)
+        if isinstance(fields, str):
+            try:
+                logger.info("Attempting to parse fields string as JSON")
+                parsed_fields = json.loads(fields)
+                if isinstance(parsed_fields, list):
+                    logger.info(f"Successfully converted fields string to list with {len(parsed_fields)} items")
+                    fields = parsed_fields
+                else:
+                    logger.error(f"Parsed fields is not a list: {type(parsed_fields)}")
+                    return []
+            except Exception as e:
+                logger.error(f"Failed to parse fields string as JSON: {e}")
+                return []
+        else:
+            # Not a string or list, can't process
+            return []
     
     # Count createable fields with additional error handling and detailed logging
     createable_fields = []
-    
-    # Check if fields is iterable
-    if not isinstance(fields, list):
-        logger.error(f"Fields is not a list, it's a {type(fields)}")
-        # Dump fields content for debugging
-        try:
-            logger.error(f"Fields content: {str(fields)[:200]}...")
-        except Exception as e:
-            logger.error(f"Could not print fields content: {e}")
-        
-        # Try to convert non-list fields to list if it's a string
-        if isinstance(fields, str):
-            try:
-                logger.warning("Attempting to parse string fields as JSON")
-                fields = json.loads(fields)
-                if isinstance(fields, list):
-                    logger.info(f"Successfully converted string fields to list with {len(fields)} items")
-                else:
-                    logger.error(f"Parsed fields is not a list: {type(fields)}")
-                    fields = []
-            except Exception as e:
-                logger.error(f"Failed to parse fields string as JSON: {e}")
-                fields = []
-        else:
-            fields = []
     
     logger.debug(f"Processing {len(fields)} fields for createable check")
     
