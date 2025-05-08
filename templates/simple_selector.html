@@ -6,50 +6,16 @@
         <div class="col-md-8 col-lg-6">
             <div class="card shadow-sm my-4">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0"><i class="bi bi-list-stars me-2"></i>Select Salesforce Object</h3>
+                    <h3 class="mb-0"><i class="bi bi-info-circle me-2"></i>Page Deprecated</h3>
                 </div>
                 <div class="card-body">
-                    <p class="lead mb-4">
-                        Select an object from the list below to start generating test data
-                    </p>
-                    
-                    <div class="mb-4">
-                        <input type="text" class="form-control form-control-lg" 
-                               id="simple-search" 
-                               placeholder="Filter objects..." 
-                               autocomplete="off"
-                               data-form-type="other">
-                    </div>
-                    
-                    {% if objects %}
-                    <div class="list-group" id="simple-object-list">
-                        {% for obj in objects %}
-                        <a href="{{ url_for('combined', selected_object=obj.name) }}" 
-                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
-                            <span>{{ obj.label }}</span>
-                            <span class="badge rounded-pill {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
-                                {% if obj.custom %}Custom{% else %}Standard{% endif %}
-                            </span>
-                        </a>
-                        {% endfor %}
-                    </div>
-                    {% else %}
                     <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        No objects found or unable to retrieve schema.
+                        <p><strong>This page has been deprecated due to search functionality issues.</strong></p>
+                        <p>Please use the new Basic Selector instead, which offers a more reliable way to find and select Salesforce objects.</p>
+                        <a href="{{ url_for('basic_selector') }}" class="btn btn-primary">
+                            <i class="bi bi-list me-2"></i>Go to Basic Selector
+                        </a>
                     </div>
-                    {% endif %}
-                    
-                    <div id="no-results-message" class="alert alert-info mt-3" style="display: none;">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        No matching objects found. Try a different search term.
-                    </div>
-                </div>
-                <div class="card-footer">
-                    <small class="text-muted">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Select an object to view its schema and generate test data
-                    </small>
                 </div>
             </div>
         </div>
@@ -58,43 +24,4 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Simple search functionality
-    const searchInput = document.getElementById('simple-search');
-    const objectList = document.getElementById('simple-object-list');
-    const noResultsMessage = document.getElementById('no-results-message');
-    
-    if (!searchInput || !objectList) return;
-    
-    // Clear search on page load
-    searchInput.value = '';
-    
-    // Handle search input
-    searchInput.addEventListener('input', function() {
-        const searchTerm = this.value.toLowerCase().trim();
-        const items = objectList.querySelectorAll('a');
-        let matchCount = 0;
-        
-        // Search through items
-        items.forEach(function(item) {
-            const text = item.textContent.toLowerCase();
-            
-            if (searchTerm === '' || text.includes(searchTerm)) {
-                item.style.display = '';
-                matchCount++;
-            } else {
-                item.style.display = 'none';
-            }
-        });
-        
-        // Show/hide no results message
-        if (matchCount === 0 && searchTerm !== '') {
-            noResultsMessage.style.display = 'block';
-        } else {
-            noResultsMessage.style.display = 'none';
-        }
-    });
-});
-</script>
 {% endblock %}
