@@ -30,6 +30,7 @@ from salesforce_soap_utils import (
 )
 
 from openai_utils import generate_test_data_with_gpt
+from faker_utils import generate_test_data_with_faker, analyze_schema
 from salesforce_config_utils import analyze_prompt_for_configuration, apply_configuration
 from excel_utils import generate_object_template, process_excel_configuration
 
@@ -509,8 +510,8 @@ def init_routes(app):
                     if isinstance(object_info, dict):
                         object_info['nlp_requirements'] = nlp_requirements
                     
-                # Generate data with GPT
-                generated_data = generate_test_data_with_gpt(object_info, record_count)
+                # Generate data with Faker instead of GPT
+                generated_data = generate_test_data_with_faker(object_info, record_count)
                 
                 # Store the raw generated data before attempting to insert into Salesforce
                 job.raw_data = json.dumps(generated_data)

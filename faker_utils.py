@@ -160,6 +160,7 @@ def generate_string_value(field):
     """Generate a value for a string field based on the field name/label"""
     field_name = field.get('name', '').lower()
     field_label = field.get('label', '').lower()
+    field_type = field.get('type', '')
     max_length = field.get('length', 255)
     
     # Check for common field patterns and generate appropriate data
