@@ -788,6 +788,45 @@ def init_routes(app):
             logger.error(f"Error in simple_selector: {str(e)}")
             flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
             return redirect(url_for('index'))
+            
+    @app.route('/basic-selector')
+    def basic_selector():
+        """Extremely basic object selector with no fancy JS"""
+        # Check if logged in
+        if 'salesforce_org_id' not in session:
+            flash('Please log in to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+            
+        try:
+            # Get the org
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            if not sf_org:
+                flash('Salesforce connection not found', 'danger')
+                return redirect(url_for('login'))
+                
+            # Get objects
+            objects = []
+            
+            # Try REST API first
+            try:
+                objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Retrieved {len(objects)} objects via REST API")
+            except Exception as e:
+                logger.error(f"Error fetching objects via REST API: {e}")
+                
+                # Fall back to SOAP API
+                try:
+                    objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                    logger.debug(f"Retrieved {len(objects)} objects via SOAP API")
+                except Exception as e2:
+                    logger.error(f"Error fetching objects via SOAP API: {e2}")
+                    flash(f"Could not retrieve Salesforce objects: {e2}", 'danger')
+            
+            return render_template('basic_selector.html', objects=objects, org_info=get_org_info())
+        except Exception as e:
+            logger.error(f"Error in basic_selector: {str(e)}")
+            flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
+            return redirect(url_for('index'))
     
     @app.route('/configure', methods=['GET', 'POST'])
     def configure():
