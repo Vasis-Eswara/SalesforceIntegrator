@@ -43,8 +43,14 @@ if SF_CLIENT_DOMAIN and SF_CLIENT_DOMAIN.strip():
     if domain.startswith('http'):
         SF_LOGIN_URL = domain
     else:
-        SF_LOGIN_URL = f"https://{domain}"
-    logger.debug(f"Using custom Salesforce domain: {SF_LOGIN_URL}")
+        # For sandbox or developer orgs that use my.salesforce.com domain
+        if 'develop' in domain or 'sandbox' in domain or 'my.salesforce' in domain:
+            # Use login.salesforce.com for authentication even for sandbox
+            SF_LOGIN_URL = 'https://login.salesforce.com'
+            logger.debug(f"Using standard login URL for sandbox/developer org: {SF_LOGIN_URL}")
+        else:
+            SF_LOGIN_URL = f"https://{domain}"
+    logger.debug(f"Custom Salesforce domain configured: {domain}")
 else:
     # Try production URL as default
     SF_LOGIN_URL = 'https://login.salesforce.com'

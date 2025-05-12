@@ -93,6 +93,10 @@
                                     This is the recommended method for most users.
                                 </p>
                                 
+                                <div class="alert alert-warning text-start mt-2 mb-3">
+                                    <p class="mb-0"><strong>Troubleshooting:</strong> If you see "<em>login.salesforce.com refused to connect</em>" error, try the direct SOAP login method instead.</p>
+                                </div>
+                                
                                 <h6 class="mt-4">Permissions Required:</h6>
                                 <ul class="list-group list-group-flush text-start mb-4">
                                     <li class="list-group-item bg-dark">Access basic information (your user identity)</li>
@@ -115,8 +119,8 @@
                     </div>
                     
                     <div class="col-md-6 mb-4">
-                        <div class="card bg-dark h-100">
-                            <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card border-primary h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center bg-primary bg-opacity-25">
                                 <h5 class="card-title mb-0">Direct SOAP API Login</h5>
                                 <a href="{{ url_for('credentials') }}" class="btn btn-sm btn-outline-secondary">
                                     <i class="bi bi-save-fill me-1"></i> Manage Saved
@@ -145,7 +149,16 @@
                                     <div class="mb-3">
                                         <label for="security_token" class="form-label">Security Token (if required)</label>
                                         <input type="password" class="form-control" id="security_token" name="security_token">
-                                        <div class="form-text">Leave empty if your IP is whitelisted or your token is appended to your password</div>
+                                        <div class="form-text">
+                                            Required for API access from unrecognized IPs. You can either:
+                                            <ol class="mt-1 mb-0">
+                                                <li>Enter it in this field, OR</li>
+                                                <li>Append it to your password (e.g., if password is "mypass" and token is "ABCDE", enter "mypassABCDE" as your password)</li>
+                                            </ol>
+                                            <a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm" target="_blank" class="mt-1 d-inline-block">
+                                                How to reset your security token
+                                            </a>
+                                        </div>
                                     </div>
                                     
                                     <div class="mb-3">
@@ -166,7 +179,7 @@
                                     </div>
                                     
                                     <div class="d-grid gap-2">
-                                        <button type="submit" class="btn btn-secondary">
+                                        <button type="submit" class="btn btn-primary btn-lg">
                                             <i class="bi bi-key-fill me-2"></i>
                                             Login with SOAP API
                                         </button>
