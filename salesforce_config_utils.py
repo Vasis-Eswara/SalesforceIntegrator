@@ -12,7 +12,7 @@ fake = Faker()
 def analyze_prompt_for_configuration(prompt, org_info=None):
     """
     Analyze a natural language prompt to determine what Salesforce configurations 
-    should be created or modified using rule-based analysis and Faker for realistic data
+    should be created or modified using comprehensive rule-based analysis
     
     Args:
         prompt (str): The user's natural language prompt describing desired changes
@@ -21,11 +21,16 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
     Returns:
         dict: Structured configuration changes to apply
     """
+    # Use the comprehensive parser for better pattern matching
+    from comprehensive_config_parser import analyze_prompt_for_configuration as comprehensive_analyze
+    existing_objects = org_info.get('objects', []) if org_info else []
+    return comprehensive_analyze(prompt, existing_objects)
+
+
+# Legacy function preserved for reference
+def analyze_prompt_for_configuration_legacy(prompt, org_info=None):
+    """Legacy implementation - preserved for reference"""
     try:
-        prompt_lower = prompt.lower().strip()
-        logger.info(f"Analyzing prompt: '{prompt_lower}'")
-        actions = []
-        
         # Extract object names and field types from the prompt
         existing_objects = []
         if org_info and 'objects' in org_info:
@@ -80,7 +85,12 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
                     }
                 })
         
-        # Pattern 2: Create fields  
+        # Pattern 2: Create fields with comprehensive parsing
+        # First, check for multi-field list patterns
+        if self._parse_field_list(prompt_lower, actions):
+            pass  # Field list was processed
+        
+        # Then check for single field patterns
         field_patterns = [
             # Pattern: create/add field named "name" under/on object "object"
             (r'(?:create|add)\s+(?:a\s+)?field\s+(?:called|named)\s+["\']([a-zA-Z_][a-zA-Z0-9_]*)["\']?\s+(?:under|on|to|in)\s+(?:the\s+)?(?:object\s+)?["\']?([a-zA-Z_][a-zA-Z0-9_]*)["\']?', 'named_field_to_object'),
