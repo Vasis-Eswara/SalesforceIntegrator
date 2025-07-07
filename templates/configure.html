@@ -33,7 +33,7 @@
                                     <div class="card-body">
                                         <h6>Your Prompt</h6>
                                         <div class="bg-secondary p-3 mb-3 rounded">
-                                            <p class="mb-0 text-light">{{ prompt }}</p>
+                                            <p class="mb-0 text-light">{{ prompt if prompt else 'No prompt provided' }}</p>
                                         </div>
                                         
                                         <h6>Generated Configuration</h6>

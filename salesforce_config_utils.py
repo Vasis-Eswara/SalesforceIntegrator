@@ -376,19 +376,64 @@ def apply_configuration(instance_url, access_token, config):
 
 def create_custom_object(instance_url, access_token, object_name, details):
     """
-    Create a new custom object in Salesforce
-    
-    Currently a simulation that just shows what would be created
+    Create a new custom object in Salesforce using Metadata API
     """
     logger.info(f"Creating custom object: {object_name}")
-    # Simulate successful creation
-    return {
-        "action": "create_object",
-        "target": object_name,
-        "success": True,
-        "message": f"Would create custom object: {object_name}",
-        "details": details
-    }
+    
+    try:
+        # Create the custom object using Salesforce REST API
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Use Tooling API to create custom object
+        url = f"{instance_url}/services/data/v58.0/tooling/sobjects/CustomObject"
+        
+        # Build the object payload
+        payload = {
+            "FullName": object_name,
+            "Label": details.get('label', object_name.replace('__c', '').replace('_', ' ').title()),
+            "PluralLabel": details.get('plural_label', details.get('label', object_name.replace('__c', '').replace('_', ' ').title()) + 's'),
+            "NameField": {
+                "Type": "Text",
+                "Label": details.get('name_field_label', 'Name')
+            },
+            "SharingModel": "ReadWrite",
+            "DeploymentStatus": "Deployed"
+        }
+        
+        import requests
+        response = requests.post(url, json=payload, headers=headers)
+        
+        if response.status_code == 201:
+            return {
+                "action": "create_object",
+                "target": object_name,
+                "success": True,
+                "message": f"Successfully created custom object: {object_name}",
+                "details": details,
+                "salesforce_id": response.json().get('id')
+            }
+        else:
+            error_msg = response.json().get('message', 'Unknown error') if response.text else f"HTTP {response.status_code}"
+            return {
+                "action": "create_object",
+                "target": object_name,
+                "success": False,
+                "message": f"Failed to create custom object: {error_msg}",
+                "details": details
+            }
+            
+    except Exception as e:
+        logger.error(f"Error creating custom object {object_name}: {str(e)}")
+        return {
+            "action": "create_object",
+            "target": object_name,
+            "success": False,
+            "message": f"Error creating custom object: {str(e)}",
+            "details": details
+        }
 
 def modify_custom_object(instance_url, access_token, object_name, details):
     """
