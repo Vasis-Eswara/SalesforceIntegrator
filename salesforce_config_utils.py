@@ -23,6 +23,7 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
     """
     try:
         prompt_lower = prompt.lower().strip()
+        logger.info(f"Analyzing prompt: '{prompt_lower}'")
         actions = []
         
         # Extract object names and field types from the prompt
@@ -34,18 +35,28 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
         
         # Pattern 1: Create new object
         create_object_patterns = [
-            r'create.*object.*called\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
-            r'add.*object.*named\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
-            r'new.*object.*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
-            r'make.*object.*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1'
+            r'create.*(?:object|custom object).*(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
+            r'add.*(?:object|custom object).*(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
+            r'new.*(?:object|custom object)\s+(?:called|named)?\s*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
+            r'make.*(?:object|custom object)\s+(?:called|named)?\s*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
+            r'(?:create|add|make)\s+(?:an?|the)?\s*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1\s+(?:object|custom object)',
+            r'(?:object|custom object)\s+(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1'
         ]
         
         for pattern in create_object_patterns:
             matches = re.finditer(pattern, prompt_lower)
             for match in matches:
-                object_name = match.group(2).replace(' ', '_')
+                logger.info(f"Pattern '{pattern}' matched: {match.groups()}")
+                # Get the object name from the correct group
+                if len(match.groups()) >= 2:
+                    object_name = match.group(2).replace(' ', '_').strip()
+                else:
+                    object_name = match.group(1).replace(' ', '_').strip()
+                
                 if not object_name.endswith('__c'):
                     object_name += '__c'
+                
+                logger.info(f"Extracted object name: {object_name}")
                 
                 # Generate realistic object configuration
                 actions.append({
@@ -387,20 +398,26 @@ def create_custom_object(instance_url, access_token, object_name, details):
             'Content-Type': 'application/json'
         }
         
-        # Use Tooling API to create custom object
+        # Use Metadata API through REST to create custom object
         url = f"{instance_url}/services/data/v58.0/tooling/sobjects/CustomObject"
         
-        # Build the object payload
+        # Build the object payload for Tooling API
+        label = details.get('label', object_name.replace('__c', '').replace('_', ' ').title())
+        plural_label = details.get('plural_label', label + 's')
+        
         payload = {
             "FullName": object_name,
-            "Label": details.get('label', object_name.replace('__c', '').replace('_', ' ').title()),
-            "PluralLabel": details.get('plural_label', details.get('label', object_name.replace('__c', '').replace('_', ' ').title()) + 's'),
-            "NameField": {
-                "Type": "Text",
-                "Label": details.get('name_field_label', 'Name')
-            },
-            "SharingModel": "ReadWrite",
-            "DeploymentStatus": "Deployed"
+            "Metadata": {
+                "fullName": object_name,
+                "label": label,
+                "pluralLabel": plural_label,
+                "nameField": {
+                    "type": "Text",
+                    "label": details.get('name_field_label', 'Name')
+                },
+                "sharingModel": "ReadWrite",
+                "deploymentStatus": "Deployed"
+            }
         }
         
         import requests
@@ -416,7 +433,16 @@ def create_custom_object(instance_url, access_token, object_name, details):
                 "salesforce_id": response.json().get('id')
             }
         else:
-            error_msg = response.json().get('message', 'Unknown error') if response.text else f"HTTP {response.status_code}"
+            try:
+                error_data = response.json()
+                if isinstance(error_data, list) and len(error_data) > 0:
+                    error_msg = error_data[0].get('message', 'Unknown error')
+                elif isinstance(error_data, dict):
+                    error_msg = error_data.get('message', 'Unknown error')
+                else:
+                    error_msg = str(error_data)
+            except:
+                error_msg = f"HTTP {response.status_code}"
             return {
                 "action": "create_object",
                 "target": object_name,
