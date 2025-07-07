@@ -31,6 +31,9 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
         if org_info and 'objects' in org_info:
             existing_objects = [obj.get('name', '').lower() for obj in org_info['objects']]
         
+        # Remove duplicate actions
+        seen_objects = set()
+        
         # Rule-based analysis patterns
         
         # Pattern 1: Create new object
@@ -39,7 +42,7 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
             r'add.*(?:object|custom object).*(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
             r'new.*(?:object|custom object)\s+(?:called|named)?\s*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
             r'make.*(?:object|custom object)\s+(?:called|named)?\s*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
-            r'(?:create|add|make)\s+(?:an?|the)?\s*(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1\s+(?:object|custom object)',
+            r'(?:create|add|make)\s+(?:an?|the)?\s*object\s+(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
             r'(?:object|custom object)\s+(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1'
         ]
         
@@ -57,6 +60,11 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
                     object_name += '__c'
                 
                 logger.info(f"Extracted object name: {object_name}")
+                
+                # Skip if we've already processed this object
+                if object_name in seen_objects:
+                    continue
+                seen_objects.add(object_name)
                 
                 # Generate realistic object configuration
                 actions.append({
@@ -422,6 +430,10 @@ def create_custom_object(instance_url, access_token, object_name, details):
         
         import requests
         response = requests.post(url, json=payload, headers=headers)
+        
+        logger.info(f"API Response Status: {response.status_code}")
+        logger.info(f"API Response Body: {response.text}")
+        logger.info(f"Payload sent: {payload}")
         
         if response.status_code == 201:
             return {
