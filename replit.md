@@ -95,7 +95,12 @@ Required environment variables:
 
 ## Changelog
 
-- July 07, 2025. Initial setup
+- July 07, 2025: Removed OpenAI dependency from Salesforce configuration feature
+  - Updated salesforce_config_utils.py to use rule-based analysis with Faker instead of OpenAI
+  - Configuration now works without requiring OpenAI API key
+  - Enhanced natural language parsing using regex patterns
+  - Improved reliability and reduced external dependencies
+- July 07, 2025: Initial setup
 
 ## User Preferences
 

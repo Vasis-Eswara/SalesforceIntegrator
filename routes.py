@@ -766,10 +766,8 @@ def init_routes(app):
         is_logged_in = 'salesforce_org_id' in session
         logger.debug(f"Configure page access - logged in: {is_logged_in}")
         
-        # Check if OpenAI API key is configured
-        has_openai_key = bool(app.config.get('OPENAI_API_KEY'))
-        if not has_openai_key:
-            flash('OpenAI API key not configured. Please add your API key to use this feature.', 'warning')
+        # Configuration now uses rule-based analysis with Faker (no OpenAI dependency)
+        has_openai_key = True  # Always available now since we use Faker
         
         # Handle POST request (form submission)
         if request.method == 'POST':

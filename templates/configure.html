@@ -8,7 +8,7 @@
         <div class="col-md-12">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
-                    <h3 class="card-title mb-0">Configure Salesforce with Natural Language</h3>
+                    <h3 class="card-title mb-0">Configure Salesforce with Smart Analysis</h3>
                 </div>
                 <div class="card-body">
                     {% if not is_logged_in %}
@@ -17,12 +17,11 @@
                             <p class="mt-2"><a href="{{ url_for('login') }}" class="btn btn-primary">Connect to Salesforce</a></p>
                         </div>
                     {% else %}
-                        {% if not has_openai_key %}
-                            <div class="alert alert-warning">
-                                <strong>OpenAI API key not configured.</strong> Please add your OpenAI API key to enable this feature.
-                            </div>
-                        {% else %}
-                            {% if results %}
+                        <div class="alert alert-info">
+                            <strong>Smart Configuration Available!</strong> This feature uses intelligent rule-based analysis to understand your natural language prompts and suggest Salesforce configurations.
+                        </div>
+                        
+                        {% if results %}
                                 <div class="alert {% if results.get('success', False) %}alert-success{% else %}alert-danger{% endif %}">
                                     <strong>{{ results.get('message') }}</strong>
                                 </div>
@@ -120,24 +119,23 @@
                                 </div>
                             {% endif %}
                             
-                            <div class="mt-5">
-                                <h5>Example prompts you can try:</h5>
-                                <ul class="list-group">
-                                    <li class="list-group-item">
-                                        Create a custom object called Project with fields for name, start date, end date, budget, status, and description.
-                                    </li>
-                                    <li class="list-group-item">
-                                        Add a validation rule to Account to require phone number when type is Customer.
-                                    </li>
-                                    <li class="list-group-item">
-                                        Create a trigger on Opportunity that updates the related Account's total opportunity amount when an opportunity is created or updated.
-                                    </li>
-                                    <li class="list-group-item">
-                                        Add a custom field called Customer Satisfaction Score to the Case object. It should be a number from 1 to 10 with a default value of 5.
-                                    </li>
-                                </ul>
-                            </div>
-                        {% endif %}
+                        <div class="mt-5">
+                            <h5>Example prompts you can try:</h5>
+                            <ul class="list-group">
+                                <li class="list-group-item">
+                                    Create a custom object called Project with fields for name, start date, end date, budget, status, and description.
+                                </li>
+                                <li class="list-group-item">
+                                    Add a validation rule to Account to require phone number when type is Customer.
+                                </li>
+                                <li class="list-group-item">
+                                    Create a trigger on Opportunity that updates the related Account's total opportunity amount when an opportunity is created or updated.
+                                </li>
+                                <li class="list-group-item">
+                                    Add a custom field called Customer Satisfaction Score to the Case object. It should be a number from 1 to 10 with a default value of 5.
+                                </li>
+                            </ul>
+                        </div>
                     {% endif %}
                 </div>
             </div>
