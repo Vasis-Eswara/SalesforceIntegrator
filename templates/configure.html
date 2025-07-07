@@ -31,14 +31,29 @@
                                         <h5 class="mb-0">Configuration Details</h5>
                                     </div>
                                     <div class="card-body">
-                                        <h6>Prompt</h6>
-                                        <div class="bg-light p-3 mb-3 rounded">
-                                            <p class="mb-0">{{ prompt }}</p>
+                                        <h6>Your Prompt</h6>
+                                        <div class="bg-secondary p-3 mb-3 rounded">
+                                            <p class="mb-0 text-light">{{ prompt }}</p>
                                         </div>
                                         
                                         <h6>Generated Configuration</h6>
-                                        <div class="bg-light p-3 rounded">
-                                            <pre class="mb-0"><code>{{ results.get('details')|tojson(indent=2) }}</code></pre>
+                                        <div class="bg-dark p-3 rounded" style="max-height: 400px; overflow-y: auto;">
+                                            <pre class="mb-0 text-light"><code>{{ results.get('details')|tojson(indent=2) }}</code></pre>
+                                        </div>
+                                        
+                                        <div class="mt-3">
+                                            <h6>Edit Configuration (Optional)</h6>
+                                            <div class="form-text mb-2">
+                                                You can modify the configuration below before applying it to Salesforce.
+                                            </div>
+                                            <textarea 
+                                                class="form-control" 
+                                                id="editableConfig" 
+                                                name="editable_config" 
+                                                rows="12" 
+                                                style="font-family: monospace; font-size: 0.9em;"
+                                                placeholder="Edit the configuration JSON here..."
+                                            >{{ results.get('details')|tojson(indent=2) }}</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -50,12 +65,29 @@
                                         </div>
                                         <div class="card-body">
                                             <p>Review the configuration above and click "Apply Changes" to implement these changes in your Salesforce organization.</p>
-                                            <form action="{{ url_for('apply_config') }}" method="post">
-                                                <input type="hidden" name="configuration" value="{{ results.get('details')|tojson }}">
+                                            <form action="{{ url_for('apply_config') }}" method="post" onsubmit="return submitConfig()">
+                                                <input type="hidden" name="configuration" id="finalConfig" value="{{ results.get('details')|tojson }}">
                                                 <button type="submit" class="btn btn-success">Apply Changes</button>
                                                 <a href="{{ url_for('configure') }}" class="btn btn-secondary">Start Over</a>
                                             </form>
                                         </div>
+                                        
+                                        <script>
+                                        function submitConfig() {
+                                            // Get the edited configuration from the textarea
+                                            const editedConfig = document.getElementById('editableConfig').value;
+                                            
+                                            // Validate JSON
+                                            try {
+                                                JSON.parse(editedConfig);
+                                                document.getElementById('finalConfig').value = editedConfig;
+                                                return true;
+                                            } catch (e) {
+                                                alert('Invalid JSON format. Please check your configuration and try again.');
+                                                return false;
+                                            }
+                                        }
+                                        </script>
                                     </div>
                                 {% else %}
                                     <a href="{{ url_for('configure') }}" class="btn btn-primary">Try Again</a>

@@ -909,7 +909,12 @@ def init_routes(app):
                 flash('No configuration provided', 'warning')
                 return redirect(url_for('configure'))
                 
-            config = json.loads(config_json)
+            try:
+                config = json.loads(config_json)
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in configuration: {str(e)}")
+                flash(f'Invalid configuration format: {str(e)}', 'danger')
+                return redirect(url_for('configure'))
             
             # Apply the configuration
             result = apply_configuration(sf_org.instance_url, sf_org.access_token, config)
