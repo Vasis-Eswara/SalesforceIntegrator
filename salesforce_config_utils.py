@@ -82,6 +82,8 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
         
         # Pattern 2: Create fields  
         field_patterns = [
+            # Pattern: create/add field named "name" under/on object "object"
+            (r'(?:create|add)\s+(?:a\s+)?field\s+(?:called|named)\s+["\']([a-zA-Z_][a-zA-Z0-9_]*)["\']?\s+(?:under|on|to|in)\s+(?:the\s+)?(?:object\s+)?["\']?([a-zA-Z_][a-zA-Z0-9_]*)["\']?', 'named_field_to_object'),
             # Pattern: add [field_name] field to [object_name]
             (r'add\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field\s+to\s+([a-zA-Z_][a-zA-Z0-9_\s]*)', 'field_to_object'),
             # Pattern: create [field_name] field for [object_name]
@@ -95,7 +97,11 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
         for pattern, pattern_type in field_patterns:
             matches = re.finditer(pattern, prompt_lower)
             for match in matches:
-                if pattern_type == 'field_to_object':
+                if pattern_type == 'named_field_to_object':
+                    field_name = match.group(1).strip().replace(' ', '_')
+                    target_object = match.group(2).strip().replace(' ', '_')
+                    field_type = _infer_field_type(field_name)
+                elif pattern_type == 'field_to_object':
                     field_name = match.group(1).strip().replace(' ', '_')
                     target_object = match.group(2).strip().replace(' ', '_')
                     field_type = _infer_field_type(field_name)
@@ -117,7 +123,7 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
                     field_name += '__c'
                 
                 # Clean up target object - handle standard objects properly
-                standard_objects = ['contact', 'account', 'lead', 'opportunity', 'case', 'user', 'campaign', 'task', 'event']
+                standard_objects = ['contact', 'account', 'lead', 'opportunity', 'case', 'user', 'campaign', 'task', 'event', 'activity']
                 if target_object.lower() in standard_objects:
                     target_object = target_object.capitalize()
                 elif not target_object.endswith('__c'):
