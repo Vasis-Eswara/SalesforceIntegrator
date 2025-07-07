@@ -116,8 +116,11 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
                 if not field_name.endswith('__c'):
                     field_name += '__c'
                 
-                # Clean up target object
-                if not target_object.endswith('__c') and target_object.lower() not in ['contact', 'account', 'lead', 'opportunity', 'case', 'user']:
+                # Clean up target object - handle standard objects properly
+                standard_objects = ['contact', 'account', 'lead', 'opportunity', 'case', 'user', 'campaign', 'task', 'event']
+                if target_object.lower() in standard_objects:
+                    target_object = target_object.capitalize()
+                elif not target_object.endswith('__c'):
                     target_object += '__c'
                 
                 # Generate realistic field configuration based on type
@@ -488,39 +491,36 @@ def apply_configuration(instance_url, access_token, config):
 
 def create_custom_object(instance_url, access_token, object_name, details):
     """
-    Create a new custom object in Salesforce using Metadata API
+    Generate configuration for custom object creation (manual process required)
+    Custom objects cannot be created via REST API - requires Metadata API deployment
     """
-    logger.info(f"Creating custom object: {object_name}")
+    logger.info(f"Generating configuration for custom object: {object_name}")
     
     try:
-        # Create the custom object using Salesforce REST API
-        headers = {
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/json'
-        }
-        
-        # Use Metadata API via REST to create custom object
-        url = f"{instance_url}/services/data/v58.0/metadata/deployRequest"
-        
-        # Build the object payload for REST API
         label = details.get('label', object_name.replace('__c', '').replace('_', ' ').title())
         plural_label = details.get('plural_label', label + 's')
         
-        # Use a simpler approach - create via SOAP metadata API simulation
-        # For now, let's simulate successful creation and log what would be created
-        logger.info(f"Would create custom object {object_name} with label: {label}")
+        logger.info(f"Generated configuration for custom object {object_name} with label: {label}")
         
         return {
             "action": "create_object",
             "target": object_name,
             "success": True,
-            "message": f"Configuration generated for custom object: {object_name} (Note: Actual creation requires Metadata API deployment)",
+            "message": f"Configuration generated for custom object: {object_name} (Manual creation required)",
             "details": {
                 "object_name": object_name,
                 "label": label,
                 "plural_label": plural_label,
                 "name_field_label": details.get('name_field_label', 'Name'),
-                "note": "This configuration can be manually applied in Salesforce Setup > Object Manager"
+                "instructions": [
+                    "1. Go to Salesforce Setup > Object Manager",
+                    "2. Click 'Create' > 'Custom Object'", 
+                    f"3. Set Label: {label}",
+                    f"4. Set Plural Label: {plural_label}",
+                    f"5. Set Object Name: {object_name.replace('__c', '')}",
+                    "6. Configure other settings as needed",
+                    "7. Save the object"
+                ]
             }
         }
             
@@ -567,20 +567,110 @@ def delete_custom_object(instance_url, access_token, object_name):
 
 def create_custom_field(instance_url, access_token, object_name, details):
     """
-    Create a new custom field on an object in Salesforce
-    
-    Currently a simulation that just shows what would be created
+    Create a custom field on an existing Salesforce object using the Tooling API
+    This actually works with the REST API for standard and existing custom objects
     """
-    field_name = details.get('api_name', 'unknown_field')
-    logger.info(f"Creating custom field: {field_name} on {object_name}")
-    # Simulate successful creation
-    return {
-        "action": "create_field",
-        "target": f"{object_name}.{field_name}",
-        "success": True,
-        "message": f"Would create custom field: {field_name} on {object_name}",
-        "details": details
-    }
+    try:
+        headers = {
+            'Authorization': f'Bearer {access_token}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Use Tooling API to create custom field
+        url = f"{instance_url}/services/data/v58.0/tooling/sobjects/CustomField"
+        
+        # Build the field payload for Tooling API
+        field_name = details.get('api_name', 'Custom_Field__c')
+        field_type = details.get('type', 'Text')
+        field_label = details.get('label', field_name.replace('__c', '').replace('_', ' ').title())
+        
+        # Map our field types to Salesforce field types
+        salesforce_type_map = {
+            'text': 'Text',
+            'textarea': 'LongTextArea', 
+            'email': 'Email',
+            'phone': 'Phone',
+            'number': 'Number',
+            'currency': 'Currency',
+            'date': 'Date',
+            'datetime': 'DateTime',
+            'checkbox': 'Checkbox',
+            'url': 'Url',
+            'percent': 'Percent'
+        }
+        
+        sf_type = salesforce_type_map.get(field_type.lower(), 'Text')
+        
+        payload = {
+            "FullName": f"{object_name}.{field_name}",
+            "Metadata": {
+                "fullName": f"{object_name}.{field_name}",
+                "label": field_label,
+                "type": sf_type
+            }
+        }
+        
+        # Add type-specific properties
+        if sf_type == 'Text':
+            payload["Metadata"]["length"] = details.get('length', 255)
+        elif sf_type == 'LongTextArea':
+            payload["Metadata"]["length"] = details.get('length', 32768)
+            payload["Metadata"]["visibleLines"] = details.get('visible_lines', 3)
+        elif sf_type == 'Number':
+            payload["Metadata"]["precision"] = details.get('precision', 18)
+            payload["Metadata"]["scale"] = details.get('scale', 0)
+        elif sf_type == 'Currency':
+            payload["Metadata"]["precision"] = details.get('precision', 18)
+            payload["Metadata"]["scale"] = details.get('scale', 2)
+        
+        logger.info(f"Attempting to create field {field_name} on {object_name}")
+        logger.info(f"Payload: {json.dumps(payload, indent=2)}")
+        
+        import requests
+        response = requests.post(url, json=payload, headers=headers)
+        
+        logger.info(f"Field creation response: {response.status_code}")
+        logger.info(f"Response body: {response.text}")
+        
+        if response.status_code == 201:
+            return {
+                "action": "create_field",
+                "target": f"{object_name}.{field_name}",
+                "success": True,
+                "message": f"Successfully created custom field: {field_name} on {object_name}",
+                "details": details,
+                "salesforce_id": response.json().get('id')
+            }
+        else:
+            try:
+                error_data = response.json()
+                if isinstance(error_data, list) and len(error_data) > 0:
+                    error_msg = error_data[0].get('message', 'Unknown error')
+                elif isinstance(error_data, dict):
+                    error_msg = error_data.get('message', 'Unknown error')
+                else:
+                    error_msg = str(error_data)
+            except:
+                error_msg = f"HTTP {response.status_code}"
+            
+            return {
+                "action": "create_field",
+                "target": f"{object_name}.{field_name}",
+                "success": False,
+                "message": f"Failed to create custom field: {error_msg}",
+                "details": details
+            }
+            
+    except Exception as e:
+        field_name = details.get('api_name', 'unknown_field')
+        logger.error(f"Error creating custom field {field_name} on {object_name}: {str(e)}")
+        return {
+            "action": "create_field", 
+            "target": f"{object_name}.{field_name}",
+            "success": False,
+            "message": f"Error creating custom field: {str(e)}",
+            "details": details
+        }
 
 def modify_custom_field(instance_url, access_token, object_name, field_name, details):
     """

@@ -86,9 +86,11 @@
                                         </div>
                                         <div class="card-body">
                                             <div class="alert alert-info">
-                                                <strong>Note:</strong> The system generates configuration specifications for manual creation in Salesforce Setup. Due to Salesforce API limitations, custom objects require Metadata API deployment which is best done manually through the Salesforce Setup interface.
+                                                <strong>What works automatically:</strong> Custom field creation on existing objects (like Account, Contact, etc.)<br>
+                                                <strong>Manual process required:</strong> Custom object creation due to Salesforce API limitations
                                             </div>
-                                            <p>Use the configuration details above to manually create these objects and fields in Salesforce Setup > Object Manager.</p>
+                                            <p><strong>Custom Fields:</strong> Will be created automatically when you click "Apply Changes"<br>
+                                            <strong>Custom Objects:</strong> Use the configuration details to manually create in Salesforce Setup > Object Manager</p>
                                             <form action="{{ url_for('apply_config') }}" method="post" onsubmit="return submitConfig()">
                                                 <input type="hidden" name="configuration" id="finalConfig" value="{{ results.get('details')|tojson }}">
                                                 <button type="submit" class="btn btn-success">Apply Changes</button>
