@@ -95,6 +95,14 @@ Required environment variables:
 
 ## Changelog
 
+- July 07, 2025: Major improvements to Salesforce configuration feature
+  - Fixed pattern matching bugs that were incorrectly extracting object names ("n__c" issue resolved)
+  - Enhanced field detection with smart type inference (email, phone, date, etc.)
+  - Improved object and field creation with proper labeling and formatting
+  - Added support for complex object creation with fields in single prompts
+  - Enhanced UI display with structured configuration cards instead of raw JSON
+  - Fixed API call errors by switching to configuration specification generation
+  - System now provides detailed specifications for manual Salesforce Setup creation
 - July 07, 2025: Removed OpenAI dependency from Salesforce configuration feature
   - Updated salesforce_config_utils.py to use rule-based analysis with Faker instead of OpenAI
   - Configuration now works without requiring OpenAI API key

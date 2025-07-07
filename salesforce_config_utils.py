@@ -72,42 +72,62 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
                     "target": {"object": object_name},
                     "details": {
                         "api_name": object_name,
-                        "label": object_name.replace('_', ' ').replace('__c', '').title(),
-                        "plural_label": object_name.replace('_', ' ').replace('__c', '').title() + 's',
-                        "description": f"Custom object for {object_name.replace('_', ' ').replace('__c', '').lower()} data management",
+                        "label": object_name.replace('__c', '').replace('_', ' ').title(),
+                        "plural_label": object_name.replace('__c', '').replace('_', ' ').title() + 's',
+                        "description": f"Custom object for {object_name.replace('__c', '').replace('_', ' ').lower()} data management",
                         "deployment_status": "Deployed",
                         "sharing_model": "ReadWrite"
                     }
                 })
         
-        # Pattern 2: Create fields
+        # Pattern 2: Create fields  
         field_patterns = [
-            r'(?:with|add|create|include).*field.*(["\']?)([a-zA-Z_][a-zA-Z0-9_\s]*)\1.*(?:for|type|as)\s*(text|number|email|phone|date|datetime|checkbox|picklist|currency|percent|url)',
-            r'(?:text|number|email|phone|date|datetime|checkbox|picklist|currency|percent|url)\s*field.*(["\']?)([a-zA-Z_][a-zA-Z0-9_\s]*)\1',
-            r'field.*(["\']?)([a-zA-Z_][a-zA-Z0-9_\s]*)\1.*(?:type|as)\s*(text|number|email|phone|date|datetime|checkbox|picklist|currency|percent|url)'
+            # Pattern: add [field_name] field to [object_name]
+            (r'add\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field\s+to\s+([a-zA-Z_][a-zA-Z0-9_\s]*)', 'field_to_object'),
+            # Pattern: create [field_name] field for [object_name]
+            (r'create\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field\s+for\s+([a-zA-Z_][a-zA-Z0-9_\s]*)', 'field_for_object'),
+            # Pattern: add [type] field [field_name] to [object_name]
+            (r'add\s+(text|number|email|phone|date|datetime|checkbox|picklist|currency|percent|url)\s+field\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+to\s+([a-zA-Z_][a-zA-Z0-9_\s]*)', 'type_field_to_object'),
+            # Pattern: [object_name] with [field_name] field
+            (r'([a-zA-Z_][a-zA-Z0-9_\s]*)\s+with\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field', 'object_with_field')
         ]
         
-        for pattern in field_patterns:
+        for pattern, pattern_type in field_patterns:
             matches = re.finditer(pattern, prompt_lower)
             for match in matches:
-                if len(match.groups()) >= 3:
+                if pattern_type == 'field_to_object':
+                    field_name = match.group(1).strip().replace(' ', '_')
+                    target_object = match.group(2).strip().replace(' ', '_')
+                    field_type = _infer_field_type(field_name)
+                elif pattern_type == 'field_for_object':
+                    field_name = match.group(1).strip().replace(' ', '_')
+                    target_object = match.group(2).strip().replace(' ', '_')
+                    field_type = _infer_field_type(field_name)
+                elif pattern_type == 'type_field_to_object':
+                    field_type = match.group(1).strip()
                     field_name = match.group(2).strip().replace(' ', '_')
-                    field_type = match.group(3)
-                    
-                    # Find target object - look for context in prompt
-                    target_object = _extract_target_object(prompt_lower, existing_objects)
-                    
-                    if not field_name.endswith('__c'):
-                        field_name += '__c'
-                    
-                    # Generate realistic field configuration based on type
-                    field_details = _generate_field_details(field_name, field_type)
-                    
-                    actions.append({
-                        "type": "create_field",
-                        "target": {"object": target_object, "field": field_name},
-                        "details": field_details
-                    })
+                    target_object = match.group(3).strip().replace(' ', '_')
+                elif pattern_type == 'object_with_field':
+                    target_object = match.group(1).strip().replace(' ', '_')
+                    field_name = match.group(2).strip().replace(' ', '_')
+                    field_type = _infer_field_type(field_name)
+                
+                # Clean up field name
+                if not field_name.endswith('__c'):
+                    field_name += '__c'
+                
+                # Clean up target object
+                if not target_object.endswith('__c') and target_object.lower() not in ['contact', 'account', 'lead', 'opportunity', 'case', 'user']:
+                    target_object += '__c'
+                
+                # Generate realistic field configuration based on type
+                field_details = _generate_field_details(field_name, field_type)
+                
+                actions.append({
+                    "type": "create_field",
+                    "target": {"object": target_object, "field": field_name},
+                    "details": field_details
+                })
         
         # Pattern 3: Create validation rules
         validation_patterns = [
@@ -134,6 +154,52 @@ def analyze_prompt_for_configuration(prompt, org_info=None):
                     }
                 })
         
+        # Pattern 4: Complex object creation with fields 
+        complex_patterns = [
+            r'create\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+object\s+with\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field',
+            r'make\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+object\s+with\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field'
+        ]
+        
+        for pattern in complex_patterns:
+            matches = re.finditer(pattern, prompt_lower)
+            for match in matches:
+                object_name = match.group(1).strip().replace(' ', '_')
+                field_name = match.group(2).strip().replace(' ', '_')
+                
+                if not object_name.endswith('__c'):
+                    object_name += '__c'
+                if not field_name.endswith('__c'):
+                    field_name += '__c'
+                
+                # Skip if we've already processed this object
+                if object_name in seen_objects:
+                    continue
+                seen_objects.add(object_name)
+                
+                # Add object creation
+                actions.append({
+                    "type": "create_object",
+                    "target": {"object": object_name},
+                    "details": {
+                        "api_name": object_name,
+                        "label": object_name.replace('__c', '').replace('_', ' ').title(),
+                        "plural_label": object_name.replace('__c', '').replace('_', ' ').title() + 's',
+                        "description": f"Custom object for {object_name.replace('__c', '').replace('_', ' ').lower()} data management",
+                        "deployment_status": "Deployed",
+                        "sharing_model": "ReadWrite"
+                    }
+                })
+                
+                # Add field creation
+                field_type = _infer_field_type(field_name)
+                field_details = _generate_field_details(field_name, field_type)
+                
+                actions.append({
+                    "type": "create_field",
+                    "target": {"object": object_name, "field": field_name},
+                    "details": field_details
+                })
+
         # If no specific patterns match, provide a generic suggestion
         if not actions:
             # Try to extract any object-like words and suggest creating them
@@ -208,6 +274,33 @@ def _extract_target_object(prompt_lower, existing_objects):
         return existing_objects[0]
     else:
         return "Custom_Object__c"
+
+def _infer_field_type(field_name):
+    """Infer field type from field name"""
+    field_name_lower = field_name.lower()
+    
+    if any(keyword in field_name_lower for keyword in ['email', 'e_mail']):
+        return 'email'
+    elif any(keyword in field_name_lower for keyword in ['phone', 'telephone', 'mobile']):
+        return 'phone'
+    elif any(keyword in field_name_lower for keyword in ['date', 'birthday', 'anniversary']):
+        return 'date'
+    elif any(keyword in field_name_lower for keyword in ['datetime', 'timestamp', 'created', 'modified']):
+        return 'datetime'
+    elif any(keyword in field_name_lower for keyword in ['price', 'cost', 'amount', 'salary', 'revenue']):
+        return 'currency'
+    elif any(keyword in field_name_lower for keyword in ['percent', 'percentage', 'rate']):
+        return 'percent'
+    elif any(keyword in field_name_lower for keyword in ['url', 'website', 'link']):
+        return 'url'
+    elif any(keyword in field_name_lower for keyword in ['number', 'count', 'quantity', 'age']):
+        return 'number'
+    elif any(keyword in field_name_lower for keyword in ['active', 'enabled', 'approved', 'verified']):
+        return 'checkbox'
+    elif any(keyword in field_name_lower for keyword in ['description', 'notes', 'comments', 'details']):
+        return 'textarea'
+    else:
+        return 'text'
 
 def _generate_field_details(field_name, field_type):
     """Generate realistic field configuration using Faker"""

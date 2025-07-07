@@ -38,7 +38,28 @@
                                         
                                         <h6>Generated Configuration</h6>
                                         <div class="bg-dark p-3 rounded" style="max-height: 400px; overflow-y: auto;">
-                                            <pre class="mb-0 text-light"><code>{{ results.get('details')|tojson(indent=2) }}</code></pre>
+                                            {% if results.get('details') and results.get('details').get('actions') %}
+                                                {% for action in results.get('details').get('actions') %}
+                                                    <div class="mb-3 p-2 bg-secondary rounded">
+                                                        <h6 class="text-primary">{{ action.type|title|replace('_', ' ') }}</h6>
+                                                        {% if action.type == 'create_object' %}
+                                                            <p class="mb-1"><strong>Object:</strong> {{ action.target.object }}</p>
+                                                            <p class="mb-1"><strong>Label:</strong> {{ action.details.label }}</p>
+                                                            <p class="mb-1"><strong>Plural Label:</strong> {{ action.details.plural_label }}</p>
+                                                            <p class="mb-0"><strong>Description:</strong> {{ action.details.description }}</p>
+                                                        {% elif action.type == 'create_field' %}
+                                                            <p class="mb-1"><strong>Field:</strong> {{ action.target.field }}</p>
+                                                            <p class="mb-1"><strong>Object:</strong> {{ action.target.object }}</p>
+                                                            <p class="mb-1"><strong>Type:</strong> {{ action.details.type }}</p>
+                                                            <p class="mb-0"><strong>Label:</strong> {{ action.details.label }}</p>
+                                                        {% else %}
+                                                            <pre class="mb-0 text-light"><code>{{ action|tojson(indent=2) }}</code></pre>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            {% else %}
+                                                <pre class="mb-0 text-light"><code>{{ results.get('details')|tojson(indent=2) }}</code></pre>
+                                            {% endif %}
                                         </div>
                                         
                                         <div class="mt-3">
@@ -64,7 +85,10 @@
                                             <h5 class="mb-0">Apply Configuration</h5>
                                         </div>
                                         <div class="card-body">
-                                            <p>Review the configuration above and click "Apply Changes" to implement these changes in your Salesforce organization.</p>
+                                            <div class="alert alert-info">
+                                                <strong>Note:</strong> The system generates configuration specifications for manual creation in Salesforce Setup. Due to Salesforce API limitations, custom objects require Metadata API deployment which is best done manually through the Salesforce Setup interface.
+                                            </div>
+                                            <p>Use the configuration details above to manually create these objects and fields in Salesforce Setup > Object Manager.</p>
                                             <form action="{{ url_for('apply_config') }}" method="post" onsubmit="return submitConfig()">
                                                 <input type="hidden" name="configuration" id="finalConfig" value="{{ results.get('details')|tojson }}">
                                                 <button type="submit" class="btn btn-success">Apply Changes</button>
