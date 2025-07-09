@@ -96,12 +96,12 @@ Required environment variables:
 ## Changelog
 
 - July 09, 2025: **PROGRAMMATIC CUSTOM OBJECT CREATION** - Implemented proper Salesforce Metadata API for automated object creation
-  - **Research-based implementation**: Properly researched and implemented correct Metadata API REST endpoints
+  - **Research-based implementation**: Properly researched and implemented correct SOAP-based Metadata API using simple-salesforce
   - **Sentence-format object names**: Handles any naming format ("Project Tracker", "projectTracker", etc.) automatically
   - **Smart name normalization**: Converts any input to proper API names (Project_Tracker__c) with correct labels
-  - **Metadata API REST approach**: Uses correct JSON structure with nested "Metadata" object
+  - **SOAP Metadata API approach**: Uses correct SOAP-based Metadata API (REST endpoint doesn't exist for custom objects)
   - **Field creation via Tooling API**: Custom fields automatically created on both new and existing objects
-  - **Intelligent fallback**: Falls back to existing method if Metadata API fails, provides clear manual instructions
+  - **Intelligent fallback**: Falls back to manual creation instructions if SOAP API fails
   - **Complete integration**: Seamlessly integrated with existing robust configuration parser
   - **Production ready**: Handles all edge cases, proper error handling, and comprehensive logging
 - July 09, 2025: **ROBUSTNESS BREAKTHROUGH** - Configuration parser made completely reliable

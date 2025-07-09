@@ -1,12 +1,13 @@
 """
 Salesforce Metadata API client for programmatic custom object creation
-Implements the CORRECT approach using proper Metadata API endpoints
+Implements the CORRECT approach using SOAP-based Metadata API
 """
 import logging
 import requests
 import json
 import re
 from typing import Dict, List, Any, Optional
+from simple_salesforce import Salesforce
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +18,14 @@ class SalesforceMetadataClient:
     Uses the proper Metadata API REST endpoints with correct JSON structure
     """
     
-    def __init__(self, instance_url: str, access_token: str):
+    def __init__(self, instance_url: str, access_token: str, salesforce_connection=None):
         """
         Initialize the Metadata API client
         
         Args:
             instance_url (str): Salesforce instance URL
             access_token (str): Valid Salesforce access token
+            salesforce_connection: Optional Salesforce connection object
         """
         self.instance_url = instance_url.rstrip('/')
         self.access_token = access_token
@@ -32,6 +34,7 @@ class SalesforceMetadataClient:
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         }
+        self.sf_connection = salesforce_connection
     
     def _normalize_object_name(self, name: str) -> str:
         """
@@ -109,10 +112,12 @@ class SalesforceMetadataClient:
         label = self._create_label_from_name(name)
         
         # Simple pluralization rules
-        if label.endswith('y'):
+        if label.endswith('y') and not label.endswith('ay'):
             return label[:-1] + 'ies'
         elif label.endswith(('s', 'sh', 'ch', 'x', 'z')):
             return label + 'es'
+        elif label.endswith('on'):
+            return label[:-2] + 'ons'
         else:
             return label + 's'
     
@@ -168,32 +173,58 @@ class SalesforceMetadataClient:
             logger.info(f"Creating custom object: {api_name}__c (Label: {label})")
             logger.debug(f"Metadata payload: {json.dumps(custom_object_metadata, indent=2)}")
             
-            # Use Metadata API REST endpoint
-            url = f"{self.instance_url}/services/data/v{self.api_version}/metadata/CustomObject"
-            
-            response = requests.post(
-                url,
-                headers=self.headers,
-                json=custom_object_metadata,
-                timeout=30
-            )
-            
-            logger.info(f"Custom object creation response: {response.status_code}")
-            logger.debug(f"Response body: {response.text}")
-            
-            if response.status_code in [200, 201]:
-                result = response.json()
-                return {
-                    'success': True,
-                    'id': result.get('id'),
-                    'object_name': f"{api_name}__c",
-                    'object_label': label,
-                    'message': f"Successfully created custom object '{label}' ({api_name}__c)"
-                }
+            # Use SOAP-based Metadata API through simple-salesforce
+            if self.sf_connection:
+                try:
+                    # Use simple-salesforce metadata API
+                    metadata_api = self.sf_connection.mdapi
+                    
+                    # Create custom object metadata for SOAP API
+                    custom_object = {
+                        'fullName': f"{api_name}__c",
+                        'label': label,
+                        'pluralLabel': plural_label,
+                        'nameField': {
+                            'type': 'Text',
+                            'label': 'Name'
+                        },
+                        'deploymentStatus': 'Deployed',
+                        'sharingModel': 'ReadWrite',
+                        'enableActivities': True,
+                        'enableReports': True,
+                        'enableSearch': True,
+                        'enableHistory': False,
+                        'enableFeeds': False,
+                        'enableBulkApi': True,
+                        'enableStreamingApi': True,
+                        'description': custom_object_metadata["Metadata"]["description"]
+                    }
+                    
+                    # Create the custom object
+                    result = metadata_api.create('CustomObject', custom_object)
+                    
+                    if result and result.success:
+                        return {
+                            'success': True,
+                            'id': result.id,
+                            'object_name': f"{api_name}__c",
+                            'object_label': label,
+                            'message': f"Successfully created custom object '{label}' ({api_name}__c)"
+                        }
+                    else:
+                        error_msg = getattr(result, 'errors', ['Unknown error'])
+                        return {
+                            'success': False,
+                            'error': f"Failed to create custom object: {error_msg}",
+                            'object_name': f"{api_name}__c",
+                            'object_label': label
+                        }
+                except Exception as e:
+                    logger.error(f"SOAP Metadata API error: {str(e)}")
+                    return self._create_object_via_tooling_fallback(api_name, label, plural_label, object_config)
             else:
-                # If Metadata API REST fails, try alternative approach
-                logger.warning(f"Metadata API REST failed with {response.status_code}, trying alternative approach")
-                return self._create_object_via_soap_wrapper(api_name, label, plural_label, object_config)
+                # Fall back to manual creation instructions
+                return self._create_object_via_tooling_fallback(api_name, label, plural_label, object_config)
                 
         except Exception as e:
             logger.error(f"Error creating custom object: {str(e)}")
@@ -202,22 +233,28 @@ class SalesforceMetadataClient:
                 'error': f"Exception during custom object creation: {str(e)}"
             }
     
-    def _create_object_via_soap_wrapper(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _create_object_via_tooling_fallback(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Alternative approach using SOAP-based Metadata API
+        Fallback approach with manual creation instructions
         """
         try:
-            # For now, return a structured response that indicates the object needs manual creation
-            # In a production system, this would implement the SOAP Metadata API call
             return {
                 'success': False,
                 'error': f"Custom object creation requires manual setup. Please create object '{label}' ({api_name}__c) manually in Salesforce Setup, then fields will be created automatically.",
                 'object_name': f"{api_name}__c",
                 'object_label': label,
-                'manual_creation_needed': True
+                'manual_creation_needed': True,
+                'instructions': [
+                    f"1. Go to Setup → Object Manager → Create → Custom Object",
+                    f"2. Set Object Label: {label}",
+                    f"3. Set Plural Label: {plural_label}",
+                    f"4. Set Object Name: {api_name}",
+                    f"5. Enable desired features and save",
+                    f"6. Return here and create fields automatically"
+                ]
             }
         except Exception as e:
-            logger.error(f"Error in SOAP wrapper: {str(e)}")
+            logger.error(f"Error in fallback: {str(e)}")
             return {
                 'success': False,
                 'error': f"Failed to create custom object: {str(e)}"
@@ -457,15 +494,16 @@ class SalesforceMetadataClient:
             }
 
 
-def create_metadata_client(instance_url: str, access_token: str) -> SalesforceMetadataClient:
+def create_metadata_client(instance_url: str, access_token: str, salesforce_connection=None) -> SalesforceMetadataClient:
     """
     Factory function to create a Salesforce Metadata API client
     
     Args:
         instance_url (str): Salesforce instance URL
         access_token (str): Valid Salesforce access token
+        salesforce_connection: Optional Salesforce connection object
         
     Returns:
         SalesforceMetadataClient: Configured client instance
     """
-    return SalesforceMetadataClient(instance_url, access_token)
+    return SalesforceMetadataClient(instance_url, access_token, salesforce_connection)

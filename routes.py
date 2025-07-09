@@ -947,8 +947,18 @@ def init_routes(app):
             
             # Apply the configuration using new Metadata API approach
             try:
+                # Create Salesforce connection for SOAP metadata operations
+                sf_connection = None
+                try:
+                    from simple_salesforce import Salesforce
+                    # Create connection using session ID
+                    sf_connection = Salesforce(instance_url=sf_org.instance_url, session_id=sf_org.access_token)
+                    logger.info("Created simple-salesforce connection for metadata operations")
+                except Exception as e:
+                    logger.warning(f"Could not create simple-salesforce connection: {str(e)}")
+                
                 # Create metadata client for programmatic object creation
-                metadata_client = create_metadata_client(sf_org.instance_url, sf_org.access_token)
+                metadata_client = create_metadata_client(sf_org.instance_url, sf_org.access_token, sf_connection)
                 result = metadata_client.apply_configuration(config)
                 
                 logger.info(f"Metadata API configuration result: {result}")
