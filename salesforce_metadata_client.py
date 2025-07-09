@@ -908,7 +908,7 @@ class SalesforceMetadataClient:
                 # Check if objects were skipped because they already exist
                 skipped_count = 0
                 skipped_names = []
-                for action in config.get('actions', []):
+                for action in configuration.get('actions', []):
                     if action.get('type') == 'create_object':
                         object_name = action.get('target', {}).get('object', '')
                         if object_name:
