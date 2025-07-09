@@ -331,9 +331,18 @@ def _parse_single_field(prompt_lower, actions):
 
 def _parse_object_creation(prompt_lower, actions, seen_objects):
     """
-    Parse object creation patterns
+    Parse object creation patterns - Enhanced for multiple objects
     """
+    # Enhanced patterns for multiple object creation
     object_patterns = [
+        # Multiple objects patterns - key addition for your use case
+        r'create.*?(?:custom\s+)?objects?\s+called\s+([^.!?]+)',
+        r'create.*?(?:custom\s+)?objects?\s+named\s+([^.!?]+)', 
+        r'create.*?(?:custom\s+)?objects?\s+for\s+([^.!?]+)',
+        r'(?:make|build).*?(?:custom\s+)?objects?\s+called\s+([^.!?]+)',
+        r'add.*?(?:custom\s+)?objects?\s+called\s+([^.!?]+)',
+        
+        # Single object patterns (fallback)
         r'create.*(?:object|custom object).*(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
         r'(?:create|add|make)\s+(?:an?|the)?\s*object\s+(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
         r'(?:object|custom object)\s+(?:called|named)\s+(["\']?)([a-zA-Z_][a-zA-Z0-9_]*)\1',
@@ -341,10 +350,53 @@ def _parse_object_creation(prompt_lower, actions, seen_objects):
     ]
     
     found_objects = False
-    for pattern in object_patterns:
+    
+    # First try multiple object patterns
+    for i, pattern in enumerate(object_patterns[:5]):  # First 5 are multiple object patterns
+        match = re.search(pattern, prompt_lower)
+        if match:
+            objects_text = match.group(1).strip()
+            logger.info(f"Found multiple objects text: '{objects_text}'")
+            
+            # Parse multiple object names with enhanced splitting
+            object_names = _parse_multiple_object_names(objects_text)
+            logger.info(f"Parsed object names: {object_names}")
+            
+            for obj_name in object_names:
+                obj_name = obj_name.strip().strip('"\'.,')
+                if obj_name and obj_name.lower() not in seen_objects:
+                    object_name = obj_name
+                    if not object_name.endswith('__c'):
+                        object_name += '__c'
+                    
+                    seen_objects.add(obj_name.lower())
+                    
+                    actions.append({
+                        "type": "create_object",
+                        "target": {"object": object_name},
+                        "details": {
+                            "api_name": object_name,
+                            "label": _create_label_from_name(obj_name),
+                            "plural_label": _create_label_from_name(obj_name) + 's',
+                            "description": f"Custom object for {obj_name.lower()} management",
+                            "deployment_status": "Deployed",
+                            "sharing_model": "ReadWrite"
+                        }
+                    })
+                    found_objects = True
+                    logger.info(f"Added object action for '{obj_name}' -> '{object_name}'")
+            
+            if found_objects:
+                return found_objects
+    
+    # If no multiple objects found, try single object patterns
+    for pattern in object_patterns[5:]:  # Single object patterns
         matches = re.finditer(pattern, prompt_lower)
         for match in matches:
-            object_name = match.group(2).strip()
+            if len(match.groups()) >= 2:
+                object_name = match.group(2).strip()
+            else:
+                object_name = match.group(1).strip()
             
             # Clean up object name
             if not object_name.endswith('__c'):
@@ -573,3 +625,32 @@ def _extract_target_object(prompt_lower, existing_objects):
         return existing_objects[0]
     
     return 'Custom_Object__c'
+
+
+def _parse_multiple_object_names(objects_text):
+    """
+    Parse multiple object names from text like "Project, projections, prompting, proper"
+    """
+    # Handle comma-separated, "and" separated, or space-separated names
+    objects_text = objects_text.replace(' and ', ', ').replace(', and ', ', ')
+    
+    # Split by commas first, then by spaces if no commas
+    if ',' in objects_text:
+        object_names = [name.strip() for name in objects_text.split(',') if name.strip()]
+    else:
+        # Split by spaces, but be careful with multi-word names
+        potential_names = objects_text.split()
+        object_names = []
+        for name in potential_names:
+            name = name.strip().strip(',')
+            if name:
+                object_names.append(name)
+    
+    return [name for name in object_names if name and len(name) > 1]
+
+
+def _create_label_from_name(name):
+    """
+    Create a proper label from object name
+    """
+    return name.replace('_', ' ').title()
