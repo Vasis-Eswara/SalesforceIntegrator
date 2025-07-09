@@ -816,7 +816,18 @@ def init_routes(app):
                 sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
                 
                 # Get org schema information for context
-                objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                try:
+                    objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                    logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
+                except Exception as rest_error:
+                    logger.warning(f"REST API failed for objects, falling back to SOAP: {str(rest_error)}")
+                    try:
+                        objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                        logger.debug(f"Successfully retrieved {len(objects)} objects via SOAP API")
+                    except Exception as soap_error:
+                        logger.error(f"Both REST and SOAP APIs failed for objects: {str(soap_error)}")
+                        # Continue with empty objects list - configuration can still work
+                        objects = []
                 
                 # Simplified org info for context
                 org_info = {
@@ -824,7 +835,9 @@ def init_routes(app):
                 }
                 
                 # Analyze prompt to determine configuration
+                logger.info(f"Analyzing prompt: '{prompt}' with {len(objects)} objects in org context")
                 config = analyze_prompt_for_configuration(prompt, org_info)
+                logger.info(f"Configuration analysis completed: {len(config.get('actions', []))} actions found")
                 
                 if 'error' in config:
                     flash(f'Error analyzing prompt: {config["error"]}', 'danger')
