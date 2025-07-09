@@ -304,21 +304,27 @@ class SalesforceMetadataClient:
         Authenticate with Salesforce CLI using existing access token
         """
         try:
-            # Use the access token we already have to authenticate CLI
+            # Use the correct auth command for newer SF CLI
+            # Set SF_ACCESS_TOKEN environment variable and use --no-prompt
             auth_cmd = [
                 cli_command, 'org', 'login', 'access-token',
                 '--instance-url', self.instance_url,
-                '--access-token', self.access_token,
-                '--alias', 'default'
+                '--no-prompt',
+                '--set-default'
             ]
             
-            logger.debug(f"Authenticating CLI with: {cli_command} org login access-token")
+            logger.debug(f"Authenticating CLI with: {' '.join(auth_cmd)}")
+            
+            # Set the access token via environment variable as required by CLI
+            env = os.environ.copy()
+            env['SF_ACCESS_TOKEN'] = self.access_token
             
             result = subprocess.run(
                 auth_cmd,
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
+                env=env
             )
             
             if result.returncode == 0:
@@ -326,10 +332,69 @@ class SalesforceMetadataClient:
                 return True
             else:
                 logger.error(f"CLI authentication failed: {result.stderr or result.stdout}")
-                return False
+                
+                # Try alternative authentication method
+                return self._try_alternative_auth(cli_command)
                 
         except Exception as e:
             logger.error(f"Error authenticating CLI: {str(e)}")
+            return self._try_alternative_auth(cli_command)
+    
+    def _try_alternative_auth(self, cli_command: str) -> bool:
+        """
+        Try alternative authentication methods
+        """
+        try:
+            # Method 1: Try with different flags
+            logger.debug("Trying alternative auth with different flags")
+            
+            auth_cmd = [
+                cli_command, 'org', 'login', 'access-token',
+                '--instance-url', self.instance_url,
+                '--no-prompt'
+            ]
+            
+            env = os.environ.copy()
+            env['SF_ACCESS_TOKEN'] = self.access_token
+            
+            result = subprocess.run(
+                auth_cmd,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                env=env
+            )
+            
+            if result.returncode == 0:
+                logger.info("✓ Successfully authenticated with alternative method")
+                return True
+            
+            # Method 2: Use sfdx auth:accesstoken:store if available
+            logger.debug("Trying sfdx auth method")
+            
+            sfdx_auth_cmd = [
+                'sfdx', 'auth:accesstoken:store',
+                '--instanceurl', self.instance_url,
+                '--setdefaultusername'
+            ]
+            
+            result = subprocess.run(
+                sfdx_auth_cmd,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                input=self.access_token + '\n'
+            )
+            
+            if result.returncode == 0:
+                logger.info("✓ Successfully authenticated with sfdx auth method")
+                return True
+            
+            logger.warning("All authentication methods failed")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Error in alternative auth: {str(e)}")
             return False
     
     def _create_object_via_metadata_deployment(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
