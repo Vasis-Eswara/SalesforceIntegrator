@@ -6,6 +6,10 @@ import logging
 import requests
 import json
 import re
+import subprocess
+import tempfile
+import os
+import shutil
 from typing import Dict, List, Any, Optional
 try:
     from zeep import Client
@@ -277,57 +281,16 @@ class SalesforceMetadataClient:
             object_name = f"{api_name}__c"
             description = object_config.get('description', f"Custom object for {label.lower()} management")
             
-            # Build the CLI command
+            # Build the CLI command using correct metadata approach
             if cli_command == 'sf':
-                # New SF CLI syntax
-                cmd = [
-                    'sf', 'sobject', 'create',
-                    '--label', label,
-                    '--plural-label', plural_label,
-                    '--api-name', object_name,
-                    '--description', description,
-                    '--target-org', 'default'
-                ]
+                # Use sf schema generate sobject to create metadata files, then deploy
+                return self._create_object_via_metadata_deployment(api_name, label, plural_label, object_config)
             else:
-                # Legacy sfdx syntax - check if this command exists
-                cmd = [
-                    'sfdx', 'force:object:create',
-                    '--objectname', object_name,
-                    '--label', label,
-                    '--plural', plural_label,
-                    '--description', description
-                ]
+                # Legacy sfdx approach - create metadata files and deploy
+                return self._create_object_via_metadata_deployment(api_name, label, plural_label, object_config)
             
-            logger.debug(f"Running CLI command: {' '.join(cmd)}")
-            
-            # Execute the command
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60  # 60 second timeout
-            )
-            
-            logger.info(f"CLI command result - Return code: {result.returncode}")
-            logger.debug(f"CLI stdout: {result.stdout}")
-            if result.stderr:
-                logger.debug(f"CLI stderr: {result.stderr}")
-            
-            if result.returncode == 0:
-                logger.info(f"✓ Successfully created custom object {object_name} via Salesforce CLI")
-                return {
-                    'success': True,
-                    'object_name': object_name,
-                    'object_label': label,
-                    'message': f"Successfully created custom object '{label}' ({object_name}) via Salesforce CLI",
-                    'cli_output': result.stdout
-                }
-            else:
-                error_msg = result.stderr or result.stdout or "Unknown CLI error"
-                logger.error(f"CLI object creation failed: {error_msg}")
-                
-                # If CLI fails, fall back to manual instructions
-                return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+            # This part was moved to _create_object_via_metadata_deployment
+            # Call that method instead
                 
         except subprocess.TimeoutExpired:
             logger.error("CLI command timed out")
@@ -368,6 +331,137 @@ class SalesforceMetadataClient:
         except Exception as e:
             logger.error(f"Error authenticating CLI: {str(e)}")
             return False
+    
+    def _create_object_via_metadata_deployment(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create custom object using metadata deployment via Salesforce CLI
+        This is the CORRECT approach using sf schema generate sobject + sf project deploy
+        """
+        try:
+            logger.info(f"Creating custom object {api_name}__c via metadata deployment")
+            
+            # Create a temporary directory for the SFDX project structure
+            temp_dir = tempfile.mkdtemp(prefix='sf_metadata_')
+            logger.debug(f"Created temp directory: {temp_dir}")
+            
+            try:
+                # Initialize a basic SFDX project structure
+                sfdx_project_json = {
+                    "packageDirectories": [
+                        {
+                            "path": "force-app",
+                            "default": True
+                        }
+                    ],
+                    "namespace": "",
+                    "sfdcLoginUrl": "https://login.salesforce.com",
+                    "sourceApiVersion": "58.0"
+                }
+                
+                # Create the project structure
+                os.makedirs(os.path.join(temp_dir, "force-app", "main", "default", "objects"), exist_ok=True)
+                
+                # Write sfdx-project.json
+                with open(os.path.join(temp_dir, "sfdx-project.json"), "w") as f:
+                    json.dump(sfdx_project_json, f, indent=2)
+                
+                # Change to temp directory
+                original_cwd = os.getcwd()
+                os.chdir(temp_dir)
+                
+                try:
+                    # Authenticate CLI first
+                    auth_result = self._authenticate_sfdx_cli('sf')
+                    if not auth_result:
+                        logger.error("Failed to authenticate CLI for metadata deployment")
+                        return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+                    
+                    # Generate the custom object metadata using sf schema generate sobject
+                    generate_cmd = [
+                        'sf', 'schema', 'generate', 'sobject',
+                        '--label', label,
+                        '--use-default-features'  # Skip interactive prompts
+                    ]
+                    
+                    logger.debug(f"Generating metadata: {' '.join(generate_cmd)}")
+                    
+                    # Execute schema generation
+                    result = subprocess.run(
+                        generate_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        input=f"{api_name}\n{plural_label}\ny\n"  # Provide inputs for interactive prompts
+                    )
+                    
+                    logger.debug(f"Schema generation result: {result.returncode}")
+                    logger.debug(f"stdout: {result.stdout}")
+                    if result.stderr:
+                        logger.debug(f"stderr: {result.stderr}")
+                    
+                    if result.returncode != 0:
+                        logger.error(f"Schema generation failed: {result.stderr or result.stdout}")
+                        return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+                    
+                    # Deploy the generated metadata to Salesforce
+                    deploy_cmd = [
+                        'sf', 'project', 'deploy', 'start',
+                        '--source-dir', 'force-app/main/default/objects',
+                        '--target-org', 'default'
+                    ]
+                    
+                    logger.debug(f"Deploying metadata: {' '.join(deploy_cmd)}")
+                    
+                    # Execute deployment
+                    deploy_result = subprocess.run(
+                        deploy_cmd,
+                        capture_output=True,
+                        text=True,
+                        timeout=120  # Deployment can take longer
+                    )
+                    
+                    logger.debug(f"Deployment result: {deploy_result.returncode}")
+                    logger.debug(f"stdout: {deploy_result.stdout}")
+                    if deploy_result.stderr:
+                        logger.debug(f"stderr: {deploy_result.stderr}")
+                    
+                    if deploy_result.returncode == 0:
+                        logger.info(f"✓ Successfully created and deployed custom object {api_name}__c")
+                        return {
+                            'success': True,
+                            'object_name': f"{api_name}__c",
+                            'object_label': label,
+                            'message': f"Successfully created custom object '{label}' ({api_name}__c) via metadata deployment",
+                            'cli_output': deploy_result.stdout,
+                            'temp_dir': temp_dir  # Keep for debugging if needed
+                        }
+                    else:
+                        error_msg = deploy_result.stderr or deploy_result.stdout or "Unknown deployment error"
+                        logger.error(f"Deployment failed: {error_msg}")
+                        return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+                        
+                finally:
+                    # Restore original directory
+                    os.chdir(original_cwd)
+                    
+            except Exception as e:
+                logger.error(f"Error in metadata deployment process: {str(e)}")
+                return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+            
+            finally:
+                # Clean up temp directory
+                try:
+                    shutil.rmtree(temp_dir)
+                    logger.debug(f"Cleaned up temp directory: {temp_dir}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to cleanup temp directory: {cleanup_error}")
+                    
+        except subprocess.TimeoutExpired:
+            logger.error("Metadata deployment command timed out")
+            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+        except Exception as e:
+            logger.error(f"Error creating object via metadata deployment: {str(e)}")
+            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
 
     def _create_object_via_manual_fallback(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
         """
