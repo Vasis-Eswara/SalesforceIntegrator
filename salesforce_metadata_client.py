@@ -1,13 +1,22 @@
 """
 Salesforce Metadata API client for programmatic custom object creation
-Implements the CORRECT approach using SOAP-based Metadata API
+Implements the CORRECT approach using SOAP-based Metadata API with zeep
 """
 import logging
 import requests
 import json
 import re
 from typing import Dict, List, Any, Optional
-from simple_salesforce import Salesforce
+try:
+    from zeep import Client
+    from zeep.transports import Transport
+    from requests import Session
+    ZEEP_AVAILABLE = True
+except ImportError:
+    ZEEP_AVAILABLE = False
+    Client = None
+    Transport = None
+    Session = None
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +44,10 @@ class SalesforceMetadataClient:
             'Content-Type': 'application/json'
         }
         self.sf_connection = salesforce_connection
+        
+        # Initialize SOAP client for Metadata API
+        self.soap_client = None
+        self._initialize_soap_client()
     
     def _normalize_object_name(self, name: str) -> str:
         """
@@ -121,6 +134,36 @@ class SalesforceMetadataClient:
         else:
             return label + 's'
     
+    def _initialize_soap_client(self):
+        """
+        Initialize the SOAP client for Metadata API using zeep
+        """
+        if not ZEEP_AVAILABLE:
+            logger.warning("zeep library not available - SOAP client disabled")
+            self.soap_client = None
+            return
+            
+        try:
+            # Metadata API WSDL URL
+            metadata_wsdl_url = f"{self.instance_url}/services/wsdl/metadata/{self.api_version}"
+            
+            # Create session with authentication
+            session = Session()
+            session.headers.update({
+                'Authorization': f'Bearer {self.access_token}',
+                'SOAPAction': 'urn:create'
+            })
+            
+            # Create transport and client
+            transport = Transport(session=session)
+            self.soap_client = Client(metadata_wsdl_url, transport=transport)
+            
+            logger.info("✓ Successfully initialized zeep SOAP Metadata API client")
+            
+        except Exception as e:
+            logger.error(f"Failed to initialize zeep SOAP client: {str(e)}")
+            self.soap_client = None
+    
     def create_custom_object(self, object_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a custom object using Metadata API
@@ -173,15 +216,12 @@ class SalesforceMetadataClient:
             logger.info(f"Creating custom object: {api_name}__c (Label: {label})")
             logger.debug(f"Metadata payload: {json.dumps(custom_object_metadata, indent=2)}")
             
-            # Use SOAP-based Metadata API through simple-salesforce
-            if self.sf_connection:
+            # Use SOAP-based Metadata API through zeep
+            if self.soap_client:
                 try:
-                    logger.info(f"Attempting SOAP Metadata API object creation for {api_name}__c")
+                    logger.info(f"Attempting zeep SOAP Metadata API object creation for {api_name}__c")
                     
-                    # Use simple-salesforce metadata API
-                    metadata_api = self.sf_connection.mdapi
-                    
-                    # Create custom object metadata for SOAP API
+                    # Create custom object metadata for SOAP API using zeep structure
                     custom_object = {
                         'fullName': f"{api_name}__c",
                         'label': label,
@@ -202,36 +242,44 @@ class SalesforceMetadataClient:
                         'description': custom_object_metadata["Metadata"]["description"]
                     }
                     
-                    logger.debug(f"SOAP metadata payload: {json.dumps(custom_object, indent=2)}")
+                    logger.debug(f"zeep SOAP metadata payload: {json.dumps(custom_object, indent=2)}")
                     
-                    # Create the custom object
-                    result = metadata_api.create('CustomObject', custom_object)
-                    logger.info(f"SOAP API call completed, result type: {type(result)}")
+                    # Create the custom object using zeep client
+                    result = self.soap_client.service.create([custom_object])
+                    logger.info(f"zeep SOAP API call completed, result: {result}")
                     
-                    if result and hasattr(result, 'success') and result.success:
-                        logger.info(f"✓ Successfully created custom object via SOAP: {api_name}__c")
+                    if result and len(result) > 0 and hasattr(result[0], 'success') and result[0].success:
+                        logger.info(f"✓ Successfully created custom object via zeep SOAP: {api_name}__c")
                         return {
                             'success': True,
-                            'id': getattr(result, 'id', 'unknown'),
+                            'id': getattr(result[0], 'id', 'unknown'),
                             'object_name': f"{api_name}__c",
                             'object_label': label,
-                            'message': f"Successfully created custom object '{label}' ({api_name}__c) via SOAP Metadata API"
+                            'message': f"Successfully created custom object '{label}' ({api_name}__c) via zeep SOAP Metadata API"
                         }
                     else:
-                        error_msg = getattr(result, 'errors', ['Unknown SOAP error'])
-                        logger.error(f"SOAP object creation failed: {error_msg}")
+                        error_msg = []
+                        if result and len(result) > 0:
+                            if hasattr(result[0], 'errors') and result[0].errors:
+                                error_msg = [err.message for err in result[0].errors]
+                            else:
+                                error_msg = ['zeep SOAP creation failed - no specific error']
+                        else:
+                            error_msg = ['zeep SOAP - no result returned']
+                        
+                        logger.error(f"zeep SOAP object creation failed: {error_msg}")
                         return {
                             'success': False,
-                            'error': f"SOAP Metadata API failed: {error_msg}",
+                            'error': f"zeep SOAP Metadata API failed: {'; '.join(error_msg)}",
                             'object_name': f"{api_name}__c",
                             'object_label': label
                         }
                 except Exception as e:
-                    logger.error(f"SOAP Metadata API exception: {str(e)}")
+                    logger.error(f"zeep SOAP Metadata API exception: {str(e)}")
                     # Try direct Tooling API approach as fallback
                     return self._try_tooling_api_object_creation(api_name, label, plural_label, object_config)
             else:
-                logger.warning("No SOAP connection available, trying Tooling API")
+                logger.warning("No zeep SOAP client available, trying Tooling API")
                 # Try direct Tooling API approach
                 return self._try_tooling_api_object_creation(api_name, label, plural_label, object_config)
                 
