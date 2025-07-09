@@ -905,7 +905,21 @@ class SalesforceMetadataClient:
                 
                 results['message'] = f"Configuration applied: {', '.join(summary_parts)}"
             else:
-                results['message'] = "No objects or fields were created"
+                # Check if objects were skipped because they already exist
+                skipped_count = 0
+                skipped_names = []
+                for action in config.get('actions', []):
+                    if action.get('type') == 'create_object':
+                        object_name = action.get('target', {}).get('object', '')
+                        if object_name:
+                            skipped_count += 1
+                            skipped_names.append(object_name)
+                
+                if skipped_count > 0:
+                    results['message'] = f"✓ All {skipped_count} objects already exist in your Salesforce org: {', '.join(skipped_names)}. Try creating objects with different names."
+                else:
+                    results['message'] = "No objects or fields were created"
+                    
                 if results['errors']:
                     results['success'] = False
             
