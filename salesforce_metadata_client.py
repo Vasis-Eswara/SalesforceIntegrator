@@ -240,17 +240,83 @@ class SalesforceMetadataClient:
             logger.info(f"Creating custom object: {api_name}__c (Label: {label})")
             logger.debug(f"Metadata payload: {json.dumps(custom_object_metadata, indent=2)}")
             
-            # NEW APPROACH: Use Salesforce CLI (sfdx) via subprocess to create custom objects
-            logger.info(f"Attempting to create custom object {api_name}__c via Salesforce CLI")
+            # NEW APPROACH: Try SOAP Metadata API first, then CLI as fallback
+            logger.info(f"Attempting to create custom object {api_name}__c via SOAP Metadata API")
             
-            # Try SFDX CLI object creation
+            # Try SOAP Metadata API first
+            soap_result = self._create_object_via_soap_metadata(api_name, label, plural_label, object_config)
+            if soap_result.get('success'):
+                return soap_result
+            
+            logger.info(f"SOAP method failed, trying Salesforce CLI fallback")
+            
+            # Fallback to SFDX CLI object creation
             return self._create_object_via_sfdx_cli(api_name, label, plural_label, object_config)
                 
         except Exception as e:
             logger.error(f"Error creating custom object: {str(e)}")
             return {
                 'success': False,
-                'error': f"Exception during custom object creation: {str(e)}"
+                'error': str(e)
+            }
+    
+    def _create_object_via_soap_metadata(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create custom object using SOAP Metadata API with XML generation
+        
+        Args:
+            api_name (str): Object API name
+            label (str): Object label
+            plural_label (str): Object plural label
+            object_config (dict): Object configuration
+            
+        Returns:
+            dict: Creation result
+        """
+        try:
+            # Import and create SOAP client
+            from soap_metadata_client import create_soap_metadata_client
+            
+            soap_client = create_soap_metadata_client(self.instance_url, self.access_token)
+            
+            if not soap_client:
+                return {
+                    'success': False,
+                    'error': 'Failed to initialize SOAP Metadata client'
+                }
+            
+            # Prepare object configuration for SOAP client
+            soap_config = {
+                'api_name': api_name,
+                'label': label,
+                'pluralLabel': plural_label,
+                'description': object_config.get('description', f"Custom object for {label.lower()}")
+            }
+            
+            # Create custom object
+            result = soap_client.create_custom_object(soap_config)
+            
+            if result.get('success'):
+                logger.info(f"✓ Successfully created custom object {api_name}__c via SOAP Metadata API")
+                return {
+                    'success': True,
+                    'object_name': f"{api_name}__c",
+                    'object_label': label,
+                    'method': 'soap_metadata',
+                    'message': f"Custom object {label} created successfully via SOAP Metadata API"
+                }
+            else:
+                logger.warning(f"SOAP Metadata API failed: {result.get('error')}")
+                return {
+                    'success': False,
+                    'error': result.get('error', 'Unknown SOAP error')
+                }
+                
+        except Exception as e:
+            logger.error(f"Error in SOAP Metadata creation: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
             }
     
     def _try_tooling_api_object_creation(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
