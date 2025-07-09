@@ -30,7 +30,7 @@ def analyze_prompt_for_configuration(prompt, existing_objects=None):
         
         # PHASE 2: Single field patterns
         elif _parse_single_field(prompt_lower, actions):
-            logger.info(f"Single field parsed successfully")
+            logger.info(f"Single field parsed successfully, {len(actions)} actions generated")
         
         # PHASE 3: Object creation patterns
         elif _parse_object_creation(prompt_lower, actions, seen_objects):
@@ -219,8 +219,8 @@ def _parse_single_field(prompt_lower, actions):
     Parse single field creation patterns
     """
     field_patterns = [
-        # Pattern: create/add field named "name" under/on object "object"
-        (r'(?:create|add)\s+(?:a\s+)?field\s+(?:called|named)\s+["\']([a-zA-Z_][a-zA-Z0-9_]*)["\']?\s+(?:under|on|to|in)\s+(?:the\s+)?(?:object\s+)?["\']?([a-zA-Z_][a-zA-Z0-9_]*)["\']?', 'named_field_to_object'),
+        # Pattern: create/add field named "name" under/on object "object" (handles quotes and no quotes)
+        (r'(?:create|add)\s+(?:a\s+)?field\s+(?:called|named)\s+["\']?([a-zA-Z_][a-zA-Z0-9_]*)["\']?\s+(?:under|on|to|in)\s+(?:the\s+)?(?:object\s+)?["\']?([a-zA-Z_][a-zA-Z0-9_]*)["\']?', 'named_field_to_object'),
         # Pattern: add [field_name] field to [object_name]
         (r'add\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field\s+to\s+([a-zA-Z_][a-zA-Z0-9_\s]*)', 'field_to_object'),
         # Pattern: create [field_name] field for [object_name]
@@ -271,8 +271,10 @@ def _parse_single_field(prompt_lower, actions):
                 "details": field_details
             })
             
+            logger.info(f"Successfully created field action: {field_name} on {target_object}")
             return True
     
+    logger.info("No single field patterns matched")
     return False
 
 
