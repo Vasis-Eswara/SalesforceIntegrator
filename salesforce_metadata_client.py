@@ -922,6 +922,50 @@ class SalesforceMetadataClient:
             }
 
 
+    def _create_object_from_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create object from configuration action
+        
+        Args:
+            action (dict): Object creation action
+            
+        Returns:
+            dict: Creation result
+        """
+        try:
+            object_config = action.get('details', {})
+            return self.create_custom_object(object_config)
+        except Exception as e:
+            logger.error(f"Error creating object from action: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _create_field_from_action(self, action: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create field from configuration action
+        
+        Args:
+            action (dict): Field creation action
+            
+        Returns:
+            dict: Creation result
+        """
+        try:
+            target = action.get('target', {})
+            object_name = target.get('object')
+            field_config = action.get('details', {})
+            
+            return self.create_custom_field(object_name, field_config)
+        except Exception as e:
+            logger.error(f"Error creating field from action: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+
 def create_metadata_client(instance_url: str, access_token: str, salesforce_connection=None) -> SalesforceMetadataClient:
     """
     Factory function to create a Salesforce Metadata API client
