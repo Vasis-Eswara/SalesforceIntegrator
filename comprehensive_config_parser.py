@@ -69,13 +69,14 @@ def _parse_field_list(prompt_lower, actions):
     list_patterns = [
         # Standard colon-separated formats
         r'(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+(?:under|to|on|in|for)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:\s*(.*)',
+        r'(?:add|create|make)\s+(?:these\s+)?(?:the\s+)?(?:following\s+)?fields?\s+(?:to|under|on|in|for)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:\s*(.*)',
         r'(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s+(?:needs|requires)\s*:\s*(.*)',
         r'(?:create|make)\s+fields?\s+(?:for|on)\s+(?:the\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:\s*(.*)',
         r'(?:under|on|in)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:?\s+(?:create|add)\s+(?:the\s+)?(?:following\s+)?fields?\s*:?\s*(.*)',
         # NEW: Handle comma-separated lists without colon - "create fields A, B, C under object X"
-        r'(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+([a-zA-Z0-9_,\s]*?)\s+(?:under|to|on|in|for)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)',
+        r'(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+([a-zA-Z0-9_,\s]+?)\s+(?:under|to|on|in|for)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)',
         # NEW: Handle "under object X create fields A, B, C" 
-        r'(?:under|on|in)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s+(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+([a-zA-Z0-9_,\s]*)'
+        r'(?:under|on|in)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s+(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+([a-zA-Z0-9_,\s]+)'
     ]
     
     for i, pattern in enumerate(list_patterns):
@@ -84,11 +85,11 @@ def _parse_field_list(prompt_lower, actions):
             logger.info(f"Multi-field pattern {i+1} matched: {pattern}")
             
             # Handle different group arrangements based on pattern
-            if i < 4:  # Traditional patterns: object first, then fields
+            if i < 5:  # Traditional patterns: object first, then fields
                 object_name = match.group(1).strip().replace(' ', '_')
                 field_list_text = match.group(2).strip()
             else:  # New patterns: fields first, then object
-                if i == 4:  # "create fields A, B, C under object X"
+                if i == 5:  # "create fields A, B, C under object X"
                     field_list_text = match.group(1).strip()
                     object_name = match.group(2).strip().replace(' ', '_')
                 else:  # "under object X create fields A, B, C"
