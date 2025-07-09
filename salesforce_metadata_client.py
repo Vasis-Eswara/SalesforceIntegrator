@@ -148,21 +148,41 @@ class SalesforceMetadataClient:
             return
             
         try:
-            # Metadata API WSDL URL - correct format without version
-            metadata_wsdl_url = f"{self.instance_url}/services/wsdl/metadata"
+            # Check for local WSDL files first (recommended approach per ChatGPT)
+            metadata_wsdl_path = None
             
-            # Create session with authentication - using Cookie-based auth for WSDL
-            session = Session()
-            session.headers.update({
-                'Cookie': f'sid={self.access_token}',
-                'SOAPAction': 'urn:create'
-            })
+            # Look for WSDL files in current directory
+            local_wsdl_files = ['metadata.wsdl.xml', 'metadata.wsdl', 'salesforce_metadata.wsdl']
+            for wsdl_file in local_wsdl_files:
+                if os.path.exists(wsdl_file):
+                    metadata_wsdl_path = wsdl_file
+                    logger.info(f"Found local WSDL file: {wsdl_file}")
+                    break
             
-            # Create transport and client
-            transport = Transport(session=session)
-            self.soap_client = Client(metadata_wsdl_url, transport=transport)
-            
-            logger.info("✓ Successfully initialized zeep SOAP Metadata API client")
+            if metadata_wsdl_path:
+                # Use local WSDL file (more reliable per ChatGPT recommendation)
+                self.soap_client = Client(metadata_wsdl_path)
+                logger.info("✓ Successfully initialized SOAP client with local WSDL file")
+            else:
+                # Fallback to remote WSDL URL
+                logger.info("No local WSDL found, attempting remote download...")
+                logger.info("For better reliability, consider downloading WSDL files manually:")
+                logger.info("Go to Setup → API → Generate WSDL → Download Metadata WSDL as 'metadata.wsdl.xml'")
+                
+                metadata_wsdl_url = f"{self.instance_url}/services/wsdl/metadata"
+                
+                # Create session with authentication - using Cookie-based auth for WSDL
+                session = Session()
+                session.headers.update({
+                    'Cookie': f'sid={self.access_token}',
+                    'SOAPAction': 'urn:create'
+                })
+                
+                # Create transport and client
+                transport = Transport(session=session)
+                self.soap_client = Client(metadata_wsdl_url, transport=transport)
+                
+                logger.info("✓ Successfully initialized SOAP client with remote WSDL")
             
         except Exception as e:
             logger.error(f"Failed to initialize zeep SOAP client: {str(e)}")
