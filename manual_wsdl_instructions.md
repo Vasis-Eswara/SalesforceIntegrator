@@ -1,35 +1,52 @@
 # Manual WSDL Download Instructions
 
-Since the automatic download may not work due to authentication requirements, here's how to manually get the WSDL files:
+For enhanced SOAP API functionality, you'll need to download WSDL files manually from your Salesforce org:
 
-## Step 1: Get WSDL Files from Salesforce
+## Step 1: Access Salesforce Setup
 
-1. **Log into your Salesforce org** (https://smartcart-dev-ed.develop.my.salesforce.com)
+1. **Log into your Salesforce org**: https://smartcart-dev-ed.develop.my.salesforce.com
+2. **Go to Setup** (gear icon in top right)
+3. **Navigate to**: Platform Tools → Integration → API
 
-2. **Go to Setup** → **Platform Tools** → **Integration** → **API** 
+## Step 2: Generate WSDL Files
 
-3. **Generate WSDL Files**:
-   - Click **"Generate Enterprise WSDL"** or **"Generate Partner WSDL"**
-   - Save the file as `partner.wsdl.xml`
-   - Click **"Generate Metadata WSDL"** 
-   - Save the file as `metadata.wsdl.xml`
+**For Metadata WSDL:**
+1. Click **"Generate Metadata WSDL"**
+2. Click **"Generate"** button
+3. **Right-click** on the generated WSDL link and **"Save As"**
+4. Save the file as `metadata.wsdl.xml`
 
-## Step 2: Upload to Replit
+**For Partner WSDL:**
+1. Click **"Generate Partner WSDL"**
+2. Click **"Generate"** button  
+3. **Right-click** on the generated WSDL link and **"Save As"**
+4. Save the file as `partner.wsdl.xml`
+
+## Step 3: Upload to Replit
 
 1. **In Replit**: Click the **"Files"** panel on the left sidebar
-2. **Upload both files** to the root directory of your project:
-   - `partner.wsdl.xml`
+2. **Drag and drop** both files into the project root:
    - `metadata.wsdl.xml`
+   - `partner.wsdl.xml`
 
-## Step 3: Verify Installation
+## Step 4: Verify Installation
 
-The system will automatically detect these files and use them for enhanced SOAP API functionality.
+The system will automatically detect these files and use them for enhanced SOAP functionality. You'll see:
+```
+Found local WSDL file: metadata.wsdl.xml
+✓ Successfully initialized SOAP client with local WSDL file
+```
 
-## Alternative: Direct URLs
+## Why This Helps
 
-If you have admin access, you can also access these URLs directly:
+- **More Reliable**: Local WSDL files avoid network authentication issues
+- **Better Performance**: No need to download WSDL on every request
+- **Enhanced Features**: Enables full SOAP Metadata API functionality
+- **Backup Method**: Provides alternative to CLI-based object creation
 
-- **Partner WSDL**: `https://your-org.salesforce.com/services/wsdl/class/YOUR_ORG_ID`
-- **Metadata WSDL**: `https://your-org.salesforce.com/services/wsdl/metadata`
+## Troubleshooting
 
-Replace `your-org` with your actual Salesforce domain and `YOUR_ORG_ID` with your org ID.
+If you get XML parsing errors, ensure:
+1. Files are saved with `.xml` extension
+2. Files contain actual XML content (not HTML error pages)
+3. Files are uploaded to the project root directory

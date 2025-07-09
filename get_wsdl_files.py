@@ -23,7 +23,7 @@ def download_wsdl_files():
         session_id = sf.sf.session_id
         
         # WSDL URLs
-        partner_wsdl_url = f"{instance_url}/services/wsdl/class/00DQy00000PzsecMAB"  # Replace with your org ID
+        partner_wsdl_url = f"{instance_url}/services/wsdl/partner"
         metadata_wsdl_url = f"{instance_url}/services/wsdl/metadata"
         
         headers = {

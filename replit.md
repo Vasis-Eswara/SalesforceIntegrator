@@ -95,6 +95,13 @@ Required environment variables:
 
 ## Changelog
 
+- July 09, 2025: **WSDL INTEGRATION ENHANCEMENT** - Added comprehensive WSDL file support per ChatGPT recommendation
+  - **Local WSDL detection**: System now checks for local metadata.wsdl.xml and partner.wsdl.xml files
+  - **Enhanced SOAP client**: Prioritizes local WSDL files over remote downloads for better reliability
+  - **Manual download guide**: Created detailed step-by-step instructions for WSDL file acquisition
+  - **Automatic fallback**: System gracefully falls back to CLI methods if WSDL files unavailable
+  - **Improved authentication**: Better handling of SOAP authentication with local files
+  - **Performance boost**: Local WSDL files eliminate network dependency for SOAP operations
 - July 09, 2025: **SALESFORCE CLI BREAKTHROUGH** - Implemented REAL programmatic custom object creation via metadata deployment
   - **Salesforce CLI integration**: Using `sf schema generate sobject` + `sf project deploy start` for actual object creation
   - **True programmatic workflow**: Creates temp SFDX project, generates metadata, deploys to Salesforce org
