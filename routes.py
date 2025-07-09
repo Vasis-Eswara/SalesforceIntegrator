@@ -1326,3 +1326,8 @@ def init_routes(app):
             logger.error(f"Error exporting JSON: {str(e)}")
             flash(f'Error exporting JSON: {str(e)}', 'danger')
             return redirect(url_for('combined'))
+    
+    @app.route('/auth-help')
+    def auth_help():
+        """Show authentication troubleshooting guide"""
+        return render_template('auth_help.html')

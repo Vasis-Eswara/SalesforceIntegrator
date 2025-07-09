@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Authentication Troubleshooting{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="container">
+                <div class="row justify-content-center">
+                    <div class="col-lg-10">
+                        <h1 class="mb-4">
+                            <i class="bi bi-tools me-2"></i>
+                            Authentication Troubleshooting Guide
+                        </h1>
+                        
+                        <div class="alert alert-info">
+                            <h5><i class="bi bi-info-circle-fill me-2"></i>Common Authentication Issues</h5>
+                            <p>If you're getting "INVALID_LOGIN" errors, here are the most common causes and solutions:</p>
+                        </div>
+                        
+                        <!-- Security Token Issues -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary bg-opacity-25">
+                                <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Security Token Issues (Most Common)</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="alert alert-warning">
+                                    <strong>⚠️ Even with a fresh security token, you might still have issues if:</strong>
+                                    <ul class="mb-0 mt-2">
+                                        <li>The token wasn't copy-pasted correctly (extra spaces, etc.)</li>
+                                        <li>You're using an old token from a previous email</li>
+                                        <li>The token is being entered in the wrong format</li>
+                                    </ul>
+                                </div>
+                                
+                                <h6>🔧 Solutions to try:</h6>
+                                <ol>
+                                    <li><strong>Append token to password method:</strong>
+                                        <ul>
+                                            <li>If your password is: <code>mypassword123</code></li>
+                                            <li>And your security token is: <code>ABCDEF1234567890</code></li>
+                                            <li>Enter as password: <code>mypassword123ABCDEF1234567890</code></li>
+                                            <li>Leave the security token field empty</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Double-check your latest token:</strong>
+                                        <ul>
+                                            <li>Go to Setup → My Personal Information → Reset Security Token</li>
+                                            <li>Click "Reset Security Token" again (even if you just did it)</li>
+                                            <li>Use the NEWEST token from your email</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Copy-paste carefully:</strong>
+                                        <ul>
+                                            <li>Copy the token from your email</li>
+                                            <li>Paste into a text editor first to check for extra spaces</li>
+                                            <li>Then copy from the text editor to the login form</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <!-- IP Restrictions -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-warning bg-opacity-25">
+                                <h5 class="mb-0"><i class="bi bi-geo-alt me-2"></i>IP Address Restrictions</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Your Salesforce organization might restrict API access to specific IP addresses.</p>
+                                
+                                <h6>🔧 Solutions:</h6>
+                                <ol>
+                                    <li><strong>Contact your Salesforce administrator</strong> and ask them to:
+                                        <ul>
+                                            <li>Whitelist your current IP address for API access</li>
+                                            <li>Or temporarily disable IP restrictions for testing</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Check your current IP:</strong> Your IP is likely changing if you're on a mobile connection</li>
+                                    <li><strong>Use OAuth instead:</strong> OAuth authentication often bypasses IP restrictions</li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <!-- User Permissions -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-info bg-opacity-25">
+                                <h5 class="mb-0"><i class="bi bi-person-gear me-2"></i>User Profile & Permissions</h5>
+                            </div>
+                            <div class="card-body">
+                                <p>Your user profile might not have API access enabled.</p>
+                                
+                                <h6>🔧 What to check:</h6>
+                                <ol>
+                                    <li><strong>API Enabled permission:</strong>
+                                        <ul>
+                                            <li>Contact your admin to verify "API Enabled" is checked on your user profile</li>
+                                            <li>This is found in Setup → Users → [Your User] → Edit</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Profile permissions:</strong>
+                                        <ul>
+                                            <li>Your user profile needs "API Enabled" permission</li>
+                                            <li>Some profiles have API access disabled by default</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <!-- Account Status -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-danger bg-opacity-25">
+                                <h5 class="mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Account Status Issues</h5>
+                            </div>
+                            <div class="card-body">
+                                <h6>🔧 Quick checks:</h6>
+                                <ol>
+                                    <li><strong>Test web login first:</strong>
+                                        <ul>
+                                            <li>Can you log into Salesforce normally through the web interface?</li>
+                                            <li>If not, your account might be locked or frozen</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Check for account locks:</strong>
+                                        <ul>
+                                            <li>Too many failed login attempts can temporarily lock your account</li>
+                                            <li>Wait 15-30 minutes before trying again</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <!-- Environment Issues -->
+                        <div class="card mb-4">
+                            <div class="card-header bg-secondary bg-opacity-25">
+                                <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Environment & Configuration</h5>
+                            </div>
+                            <div class="card-body">
+                                <h6>🔧 Double-check these settings:</h6>
+                                <ol>
+                                    <li><strong>Sandbox vs Production:</strong>
+                                        <ul>
+                                            <li>Make sure you're connecting to the right environment</li>
+                                            <li>Sandbox credentials won't work for Production and vice versa</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Username format:</strong>
+                                        <ul>
+                                            <li>Use your full email address as the username</li>
+                                            <li>For sandboxes, it might be: username@company.com.sandboxname</li>
+                                        </ul>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-success">
+                            <h6><i class="bi bi-lightbulb-fill me-2"></i>Quick Test Recommendation</h6>
+                            <p><strong>Try this right now:</strong></p>
+                            <ol class="mb-0">
+                                <li>Reset your security token one more time</li>
+                                <li>Copy the new token from your email</li>
+                                <li>Go back to the login page</li>
+                                <li>Enter your username and password</li>
+                                <li>Leave the security token field EMPTY</li>
+                                <li>Instead, append the token directly to your password</li>
+                                <li>Click "Login with SOAP API"</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <a href="{{ url_for('login') }}" class="btn btn-primary">
+                                <i class="bi bi-arrow-left me-2"></i>
+                                Back to Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

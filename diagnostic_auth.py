@@ -152,14 +152,40 @@ def diagnose_auth_issue(username, password, security_token=None, sandbox=False):
                         ]
                         
             except ET.ParseError:
-                results["error_type"] = "NETWORK_ERROR"
-                results["error_message"] = f"HTTP {response.status_code}: {response.text[:200]}..."
-                results["recommendations"] = [
-                    "🌐 **Network or server error**",
-                    "🔄 Check your internet connection", 
-                    "⏰ Try again in a few minutes",
-                    "🏢 Contact your IT department if issue persists"
-                ]
+                # If we can't parse XML, try to extract error from raw response
+                response_text = response.text
+                if "INVALID_LOGIN" in response_text:
+                    results["error_type"] = "INVALID_LOGIN"
+                    results["error_message"] = "Invalid username, password, security token; or user locked out"
+                    results["recommendations"] = [
+                        "🔑 **Most likely causes and solutions:**",
+                        "1. **Security Token Issue:** Even with a fresh token, try these steps:",
+                        "   • Make sure you're using the LATEST token from your email",
+                        "   • Try appending the token directly to your password (no spaces)",
+                        "   • Example: password='mypass123' + token='ABCDEF' = enter 'mypass123ABCDEF' as password",
+                        "2. **IP Restrictions:** Your org may restrict API access by IP",
+                        "   • Contact your Salesforce admin to whitelist your IP",
+                        "   • Or ask them to temporarily disable IP restrictions for testing",
+                        "3. **User Profile Settings:** Your user may lack API access",
+                        "   • Contact admin to ensure 'API Enabled' permission is granted",
+                        "4. **Account Status:** Verify your account is not locked/frozen",
+                        "   • Try logging into Salesforce web interface first"
+                    ]
+                    results["next_steps"] = [
+                        "1. **Immediate fix:** Try appending token directly to password",
+                        "2. **If still failing:** Contact your Salesforce administrator",
+                        "3. **Check:** Can you log into Salesforce web interface normally?",
+                        "4. **Verify:** Ask admin if API access is enabled for your user profile"
+                    ]
+                else:
+                    results["error_type"] = "NETWORK_ERROR"
+                    results["error_message"] = f"HTTP {response.status_code}: {response.text[:200]}..."
+                    results["recommendations"] = [
+                        "🌐 **Network or server error**",
+                        "🔄 Check your internet connection", 
+                        "⏰ Try again in a few minutes",
+                        "🏢 Contact your IT department if issue persists"
+                    ]
     
     except requests.exceptions.Timeout:
         results["error_type"] = "TIMEOUT"
