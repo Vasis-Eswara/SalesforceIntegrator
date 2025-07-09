@@ -67,17 +67,35 @@ def _parse_field_list(prompt_lower, actions):
     
     # Pattern 1: "create/add fields under/to object X: list"
     list_patterns = [
+        # Standard colon-separated formats
         r'(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+(?:under|to|on|in|for)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:\s*(.*)',
         r'(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s+(?:needs|requires)\s*:\s*(.*)',
         r'(?:create|make)\s+fields?\s+(?:for|on)\s+(?:the\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:\s*(.*)',
-        r'(?:under|on|in)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:?\s+(?:create|add)\s+(?:the\s+)?(?:following\s+)?fields?\s*:?\s*(.*)'
+        r'(?:under|on|in)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s*:?\s+(?:create|add)\s+(?:the\s+)?(?:following\s+)?fields?\s*:?\s*(.*)',
+        # NEW: Handle comma-separated lists without colon - "create fields A, B, C under object X"
+        r'(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+([a-zA-Z0-9_,\s]*?)\s+(?:under|to|on|in|for)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)',
+        # NEW: Handle "under object X create fields A, B, C" 
+        r'(?:under|on|in)\s+(?:the\s+)?(?:custom\s+)?(?:object\s+)?([a-zA-Z_][a-zA-Z0-9_\s]*)\s+(?:create|add|make)\s+(?:the\s+)?(?:following\s+)?fields?\s+([a-zA-Z0-9_,\s]*)'
     ]
     
-    for pattern in list_patterns:
+    for i, pattern in enumerate(list_patterns):
         match = re.search(pattern, prompt_lower, re.DOTALL)
         if match:
-            object_name = match.group(1).strip().replace(' ', '_')
-            field_list_text = match.group(2).strip()
+            logger.info(f"Multi-field pattern {i+1} matched: {pattern}")
+            
+            # Handle different group arrangements based on pattern
+            if i < 4:  # Traditional patterns: object first, then fields
+                object_name = match.group(1).strip().replace(' ', '_')
+                field_list_text = match.group(2).strip()
+            else:  # New patterns: fields first, then object
+                if i == 4:  # "create fields A, B, C under object X"
+                    field_list_text = match.group(1).strip()
+                    object_name = match.group(2).strip().replace(' ', '_')
+                else:  # "under object X create fields A, B, C"
+                    object_name = match.group(1).strip().replace(' ', '_')
+                    field_list_text = match.group(2).strip()
+            
+            logger.info(f"Extracted object: {object_name}, fields: {field_list_text}")
             
             # Clean up target object name
             object_name = _normalize_object_name(object_name)
@@ -103,6 +121,7 @@ def _parse_field_list(prompt_lower, actions):
                         "details": field_details
                     })
                 
+                logger.info(f"Successfully parsed {len(parsed_fields)} fields for {object_name}")
                 return True
     
     return False
@@ -167,6 +186,37 @@ def _parse_field_list_content(field_list_text):
                 'name': field_name.strip(),
                 'type': _normalize_field_type(field_type.strip())
             })
+        return fields
+    
+    # Pattern 5: Simple comma-separated field names WITHOUT types
+    # "phonenumber, pincode, SSN, date of birth" - infer types from names
+    if ',' in field_list_text:
+        field_names = [name.strip() for name in field_list_text.split(',')]
+        field_names = [name for name in field_names if name and re.match(r'^[a-zA-Z_][a-zA-Z0-9_\s]*$', name)]
+        
+        if field_names:
+            logger.info(f"Found comma-separated fields: {field_names}")
+            for field_name in field_names:
+                # Clean up field name (replace spaces with underscores)
+                clean_name = field_name.replace(' ', '_')
+                # Infer type from field name
+                field_type = _infer_field_type(clean_name)
+                fields.append({
+                    'name': clean_name,
+                    'type': field_type
+                })
+            return fields
+    
+    # Pattern 6: Single field name (fallback)
+    # Just "fieldname" - infer type from name
+    single_field_match = re.match(r'^([a-zA-Z_][a-zA-Z0-9_\s]*)$', field_list_text.strip())
+    if single_field_match:
+        field_name = single_field_match.group(1).strip().replace(' ', '_')
+        field_type = _infer_field_type(field_name)
+        fields.append({
+            'name': field_name,
+            'type': field_type
+        })
         return fields
     
     return fields
@@ -416,9 +466,9 @@ def _infer_field_type(field_name):
     
     if any(keyword in field_name_lower for keyword in ['email', 'mail']):
         return 'email'
-    elif any(keyword in field_name_lower for keyword in ['phone', 'mobile', 'tel']):
+    elif any(keyword in field_name_lower for keyword in ['phone', 'mobile', 'tel', 'phonenumber', 'phone_number']):
         return 'phone'
-    elif any(keyword in field_name_lower for keyword in ['date', 'created', 'modified', 'birth']):
+    elif any(keyword in field_name_lower for keyword in ['date', 'created', 'modified', 'birth', 'dob', 'date_of_birth']):
         return 'date'
     elif any(keyword in field_name_lower for keyword in ['time', 'timestamp']):
         return 'datetime'
@@ -432,8 +482,10 @@ def _infer_field_type(field_name):
         return 'url'
     elif any(keyword in field_name_lower for keyword in ['active', 'enabled', 'flag', 'is_']):
         return 'checkbox'
-    elif any(keyword in field_name_lower for keyword in ['count', 'number', 'quantity', 'id']):
+    elif any(keyword in field_name_lower for keyword in ['count', 'number', 'quantity', 'id', 'pincode', 'pin_code', 'zipcode', 'zip_code']):
         return 'number'
+    elif any(keyword in field_name_lower for keyword in ['ssn', 'social_security', 'tax_id', 'ein', 'passport']):
+        return 'text'  # Use text for sensitive data that needs formatting
     else:
         return 'text'
 
