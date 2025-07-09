@@ -216,15 +216,11 @@ class SalesforceMetadataClient:
             logger.info(f"Creating custom object: {api_name}__c (Label: {label})")
             logger.debug(f"Metadata payload: {json.dumps(custom_object_metadata, indent=2)}")
             
-            # TRUTH: Salesforce does NOT allow creating custom objects programmatically
-            # This is a platform limitation - only manual creation through Setup is supported
+            # NEW APPROACH: Use Salesforce CLI (sfdx) via subprocess to create custom objects
+            logger.info(f"Attempting to create custom object {api_name}__c via Salesforce CLI")
             
-            logger.info(f"Custom object creation for {api_name}__c must be done manually")
-            logger.info("Salesforce platform limitation: Custom objects cannot be created via any API")
-            logger.info("However, custom fields CAN be created programmatically on existing objects")
-            
-            # Provide clear manual creation instructions
-            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+            # Try SFDX CLI object creation
+            return self._create_object_via_sfdx_cli(api_name, label, plural_label, object_config)
                 
         except Exception as e:
             logger.error(f"Error creating custom object: {str(e)}")
@@ -242,6 +238,136 @@ class SalesforceMetadataClient:
         
         # Return manual creation instructions immediately
         return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+    
+    def _create_object_via_sfdx_cli(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Create custom object using Salesforce CLI (sfdx) via subprocess
+        """
+        try:
+            logger.info(f"Creating custom object {api_name}__c via Salesforce CLI")
+            
+            # Check if sfdx CLI is available
+            try:
+                result = subprocess.run(['sf', '--version'], capture_output=True, text=True, timeout=10)
+                if result.returncode != 0:
+                    logger.warning("Salesforce CLI (sf) not available, trying legacy sfdx command")
+                    # Try legacy sfdx command
+                    result = subprocess.run(['sfdx', '--version'], capture_output=True, text=True, timeout=10)
+                    if result.returncode != 0:
+                        logger.error("Neither 'sf' nor 'sfdx' CLI commands available")
+                        return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+                    cli_command = 'sfdx'
+                else:
+                    cli_command = 'sf'
+                    
+                logger.info(f"Using Salesforce CLI: {cli_command}")
+                
+            except Exception as e:
+                logger.error(f"Error checking CLI availability: {str(e)}")
+                return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+            
+            # First, authenticate or use existing auth
+            # We'll use the access token we already have
+            auth_result = self._authenticate_sfdx_cli(cli_command)
+            if not auth_result:
+                logger.error("Failed to authenticate with Salesforce CLI")
+                return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+            
+            # Create custom object using CLI
+            object_name = f"{api_name}__c"
+            description = object_config.get('description', f"Custom object for {label.lower()} management")
+            
+            # Build the CLI command
+            if cli_command == 'sf':
+                # New SF CLI syntax
+                cmd = [
+                    'sf', 'sobject', 'create',
+                    '--label', label,
+                    '--plural-label', plural_label,
+                    '--api-name', object_name,
+                    '--description', description,
+                    '--target-org', 'default'
+                ]
+            else:
+                # Legacy sfdx syntax - check if this command exists
+                cmd = [
+                    'sfdx', 'force:object:create',
+                    '--objectname', object_name,
+                    '--label', label,
+                    '--plural', plural_label,
+                    '--description', description
+                ]
+            
+            logger.debug(f"Running CLI command: {' '.join(cmd)}")
+            
+            # Execute the command
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=60  # 60 second timeout
+            )
+            
+            logger.info(f"CLI command result - Return code: {result.returncode}")
+            logger.debug(f"CLI stdout: {result.stdout}")
+            if result.stderr:
+                logger.debug(f"CLI stderr: {result.stderr}")
+            
+            if result.returncode == 0:
+                logger.info(f"✓ Successfully created custom object {object_name} via Salesforce CLI")
+                return {
+                    'success': True,
+                    'object_name': object_name,
+                    'object_label': label,
+                    'message': f"Successfully created custom object '{label}' ({object_name}) via Salesforce CLI",
+                    'cli_output': result.stdout
+                }
+            else:
+                error_msg = result.stderr or result.stdout or "Unknown CLI error"
+                logger.error(f"CLI object creation failed: {error_msg}")
+                
+                # If CLI fails, fall back to manual instructions
+                return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+                
+        except subprocess.TimeoutExpired:
+            logger.error("CLI command timed out")
+            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+        except Exception as e:
+            logger.error(f"Error creating object via CLI: {str(e)}")
+            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+    
+    def _authenticate_sfdx_cli(self, cli_command: str) -> bool:
+        """
+        Authenticate with Salesforce CLI using existing access token
+        """
+        try:
+            # Use the access token we already have to authenticate CLI
+            auth_cmd = [
+                cli_command, 'org', 'login', 'access-token',
+                '--instance-url', self.instance_url,
+                '--access-token', self.access_token,
+                '--alias', 'default'
+            ]
+            
+            logger.debug(f"Authenticating CLI with: {cli_command} org login access-token")
+            
+            result = subprocess.run(
+                auth_cmd,
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                logger.info("✓ Successfully authenticated Salesforce CLI")
+                return True
+            else:
+                logger.error(f"CLI authentication failed: {result.stderr or result.stdout}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error authenticating CLI: {str(e)}")
+            return False
 
     def _create_object_via_manual_fallback(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
         """
