@@ -33,7 +33,7 @@ from salesforce_soap_utils import (
 from openai_utils import generate_test_data_with_gpt
 from faker_utils import generate_test_data_with_faker, analyze_schema
 from salesforce_config_utils import analyze_prompt_for_configuration, apply_configuration
-from salesforce_metadata_utils import create_metadata_client
+from salesforce_metadata_client import create_metadata_client
 from diagnostic_auth import diagnose_auth_issue, format_diagnostic_report
 from excel_utils import generate_object_template, process_excel_configuration
 
