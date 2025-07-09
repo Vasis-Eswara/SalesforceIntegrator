@@ -5,6 +5,7 @@ import io
 import logging
 from urllib.parse import urlencode
 from flask import render_template, request, redirect, url_for, session, jsonify, flash, send_file, Response
+from markupsafe import Markup
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 
@@ -32,6 +33,7 @@ from salesforce_soap_utils import (
 from openai_utils import generate_test_data_with_gpt
 from faker_utils import generate_test_data_with_faker, analyze_schema
 from salesforce_config_utils import analyze_prompt_for_configuration, apply_configuration
+from diagnostic_auth import diagnose_auth_issue, format_diagnostic_report
 from excel_utils import generate_object_template, process_excel_configuration
 
 logger = logging.getLogger(__name__)
@@ -151,7 +153,20 @@ def init_routes(app):
                     
                 except Exception as e:
                     logger.error(f"SOAP login error: {str(e)}")
-                    flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
+                    
+                    # Run diagnostic and provide detailed feedback
+                    try:
+                        diagnostic_results = diagnose_auth_issue(
+                            username, 
+                            password, 
+                            security_token,
+                            sandbox
+                        )
+                        diagnostic_html = format_diagnostic_report(diagnostic_results)
+                        flash(Markup(diagnostic_html), 'danger')
+                    except:
+                        flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
+                        
                     return redirect(url_for('login'))
             
             # Login with saved credentials
@@ -212,7 +227,20 @@ def init_routes(app):
                     
                 except Exception as e:
                     logger.error(f"Error using saved credentials: {str(e)}")
-                    flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
+                    
+                    # Run diagnostic and provide detailed feedback
+                    try:
+                        diagnostic_results = diagnose_auth_issue(
+                            cred.username, 
+                            password, 
+                            cred.security_token,
+                            cred.sandbox
+                        )
+                        diagnostic_html = format_diagnostic_report(diagnostic_results)
+                        flash(Markup(diagnostic_html), 'danger')
+                    except:
+                        flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
+                        
                     return redirect(url_for('login'))
                 
         # GET request - show login form with saved credentials

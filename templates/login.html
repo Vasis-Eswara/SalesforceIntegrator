@@ -93,8 +93,13 @@
                                     This is the recommended method for most users.
                                 </p>
                                 
-                                <div class="alert alert-warning text-start mt-2 mb-3">
-                                    <p class="mb-0"><strong>Troubleshooting:</strong> If you see "<em>login.salesforce.com refused to connect</em>" error, try the direct SOAP login method instead.</p>
+                                <div class="alert alert-info text-start mt-2 mb-3">
+                                    <h6 class="mb-2"><i class="bi bi-info-circle me-1"></i> When to use OAuth:</h6>
+                                    <ul class="mb-0 small">
+                                        <li>Recommended for most users</li>
+                                        <li>Works with all Salesforce editions</li>
+                                        <li>No need for security tokens</li>
+                                    </ul>
                                 </div>
                                 
                                 <h6 class="mt-4">Permissions Required:</h6>
@@ -132,6 +137,21 @@
                                     This is an alternative if OAuth isn't working for your organization.
                                 </p>
                                 
+                                <div class="alert alert-warning text-start mt-2 mb-3">
+                                    <h6 class="mb-2"><i class="bi bi-exclamation-triangle me-1"></i> Common Issues & Solutions:</h6>
+                                    <ul class="mb-0 small">
+                                        <li><strong>Invalid Login Error:</strong> Most often caused by missing security token</li>
+                                        <li><strong>Security Token:</strong> Required for API access from unknown IPs</li>
+                                        <li><strong>IP Restrictions:</strong> Check if your org has IP restrictions enabled</li>
+                                        <li><strong>Account Status:</strong> Verify your account is active and not locked</li>
+                                    </ul>
+                                    <div class="mt-2">
+                                        <a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm" target="_blank" class="btn btn-sm btn-outline-warning">
+                                            <i class="bi bi-shield-lock me-1"></i> Get Security Token
+                                        </a>
+                                    </div>
+                                </div>
+                                
                                 <form method="post" action="{{ url_for('login') }}" class="text-start">
                                     <input type="hidden" name="login_type" value="direct">
                                     
@@ -150,13 +170,22 @@
                                         <label for="security_token" class="form-label">Security Token (if required)</label>
                                         <input type="password" class="form-control" id="security_token" name="security_token">
                                         <div class="form-text">
-                                            Required for API access from unrecognized IPs. You can either:
-                                            <ol class="mt-1 mb-0">
+                                            <strong>Required for API access from unrecognized IPs.</strong> You can either:
+                                            <ol class="mt-1 mb-2">
                                                 <li>Enter it in this field, OR</li>
                                                 <li>Append it to your password (e.g., if password is "mypass" and token is "ABCDE", enter "mypassABCDE" as your password)</li>
                                             </ol>
-                                            <a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm" target="_blank" class="mt-1 d-inline-block">
-                                                How to reset your security token
+                                            <div class="alert alert-success p-2 mt-2">
+                                                <strong>💡 How to get your security token:</strong>
+                                                <ol class="mb-0 mt-1">
+                                                    <li>Log into Salesforce in your browser</li>
+                                                    <li>Go to Setup → My Personal Information → Reset Security Token</li>
+                                                    <li>Click "Reset Security Token" - it will be emailed to you</li>
+                                                    <li>Use that token here or append it to your password</li>
+                                                </ol>
+                                            </div>
+                                            <a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
+                                                <i class="bi bi-link-45deg me-1"></i> Official Documentation
                                             </a>
                                         </div>
                                     </div>
