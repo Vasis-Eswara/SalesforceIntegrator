@@ -15,12 +15,15 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
+    import zeep
     from zeep import Client, Session, Transport
     from zeep.wsdl import wsdl
     ZEEP_AVAILABLE = True
-except ImportError:
+    logger.info("zeep library found and imported successfully")
+except ImportError as e:
     ZEEP_AVAILABLE = False
-    logger.warning("zeep library not available - SOAP client disabled")
+    logger.error(f"zeep library not available - SOAP client disabled: {str(e)}")
+    logger.info("To enable SOAP functionality, install zeep: pip install zeep")
 
 class SOAPMetadataClient:
     """

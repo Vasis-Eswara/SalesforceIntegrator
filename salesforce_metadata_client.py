@@ -527,23 +527,42 @@ class SalesforceMetadataClient:
                         logger.error("Failed to authenticate CLI for metadata deployment")
                         return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
                     
-                    # Generate the custom object metadata using sf schema generate sobject
-                    generate_cmd = [
-                        'sf', 'schema', 'generate', 'sobject',
-                        '--label', label,
-                        '--use-default-features'  # Skip interactive prompts
-                    ]
+                    # Generate the custom object metadata using sf schema generate sobject (non-interactive)
+                    # Try using direct metadata creation instead of interactive CLI
+                    object_dir = os.path.join("force-app", "main", "default", "objects", f"{api_name}__c")
+                    os.makedirs(object_dir, exist_ok=True)
                     
-                    logger.debug(f"Generating metadata: {' '.join(generate_cmd)}")
+                    # Create the object metadata file manually
+                    object_metadata = f"""<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>{label}</label>
+    <pluralLabel>{plural_label}</pluralLabel>
+    <nameField>
+        <label>Name</label>
+        <type>Text</type>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ReadWrite</sharingModel>
+    <enableActivities>true</enableActivities>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <enableHistory>false</enableHistory>
+    <enableFeeds>false</enableFeeds>
+    <enableBulkApi>true</enableBulkApi>
+    <enableStreamingApi>true</enableStreamingApi>
+    <description>Custom object for {label.lower()} management</description>
+</CustomObject>"""
                     
-                    # Execute schema generation
-                    result = subprocess.run(
-                        generate_cmd,
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        input=f"{api_name}\n{plural_label}\ny\n"  # Provide inputs for interactive prompts
-                    )
+                    # Write the metadata file
+                    metadata_file = os.path.join(object_dir, f"{api_name}__c.object-meta.xml")
+                    with open(metadata_file, 'w') as f:
+                        f.write(object_metadata)
+                    
+                    logger.info(f"Created metadata file: {metadata_file}")
+                    
+                    # Mark as successful (bypass CLI generation)
+                    result = type('MockResult', (), {'returncode': 0, 'stdout': 'Metadata created manually', 'stderr': ''})
+                    
                     
                     logger.debug(f"Schema generation result: {result.returncode}")
                     logger.debug(f"stdout: {result.stdout}")
