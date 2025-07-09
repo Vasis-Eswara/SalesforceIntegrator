@@ -33,6 +33,7 @@ from salesforce_soap_utils import (
 from openai_utils import generate_test_data_with_gpt
 from faker_utils import generate_test_data_with_faker, analyze_schema
 from salesforce_config_utils import analyze_prompt_for_configuration, apply_configuration
+from salesforce_metadata_utils import create_metadata_client
 from diagnostic_auth import diagnose_auth_issue, format_diagnostic_report
 from excel_utils import generate_object_template, process_excel_configuration
 
@@ -944,8 +945,18 @@ def init_routes(app):
                 flash(f'Invalid configuration format: {str(e)}', 'danger')
                 return redirect(url_for('configure'))
             
-            # Apply the configuration
-            result = apply_configuration(sf_org.instance_url, sf_org.access_token, config)
+            # Apply the configuration using new Metadata API approach
+            try:
+                # Create metadata client for programmatic object creation
+                metadata_client = create_metadata_client(sf_org.instance_url, sf_org.access_token)
+                result = metadata_client.apply_configuration(config)
+                
+                logger.info(f"Metadata API configuration result: {result}")
+                
+            except Exception as metadata_error:
+                logger.warning(f"Metadata API failed, falling back to old method: {str(metadata_error)}")
+                # Fallback to original configuration method
+                result = apply_configuration(sf_org.instance_url, sf_org.access_token, config)
             
             if 'success' in result and result['success']:
                 flash('Configuration applied successfully', 'success')
