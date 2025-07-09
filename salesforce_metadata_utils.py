@@ -44,31 +44,30 @@ class SalesforceMetadataClient:
         try:
             object_name = object_config.get('api_name', '').replace('__c', '')
             
-            # Prepare custom object metadata
+            # Prepare custom object metadata for Tooling API
             custom_object_metadata = {
                 "FullName": f"{object_name}__c",
-                "Metadata": {
-                    "fullName": f"{object_name}__c",
-                    "label": object_config.get('label', object_name),
-                    "pluralLabel": object_config.get('plural_label', f"{object_name}s"),
-                    "deploymentStatus": "Deployed",
-                    "sharingModel": "ReadWrite",
-                    "nameField": {
-                        "label": "Name",
-                        "type": "Text"
-                    },
-                    "enableActivities": True,
-                    "enableBulkApi": True,
-                    "enableReports": True,
-                    "enableSearch": True,
-                    "enableSharing": True,
-                    "enableStreamingApi": True
-                }
+                "Label": object_config.get('label', object_name),
+                "PluralLabel": object_config.get('plural_label', f"{object_name}s"),
+                "DeploymentStatus": "Deployed",
+                "SharingModel": "ReadWrite",
+                "NameField": {
+                    "Label": "Name",
+                    "Type": "Text"
+                },
+                "EnableActivities": True,
+                "EnableBulkApi": True,
+                "EnableReports": True,
+                "EnableSearch": True,
+                "EnableSharing": True,
+                "EnableStreamingApi": True
             }
             
             # Add description if provided
             if object_config.get('description'):
-                custom_object_metadata["Metadata"]["description"] = object_config['description']
+                custom_object_metadata["Description"] = object_config['description']
+            else:
+                custom_object_metadata["Description"] = f"Custom object for {object_name.lower()} management"
             
             logger.info(f"Creating custom object: {object_name}__c")
             logger.debug(f"Metadata payload: {json.dumps(custom_object_metadata, indent=2)}")
@@ -129,42 +128,39 @@ class SalesforceMetadataClient:
         try:
             field_name = field_config.get('api_name', '').replace('__c', '')
             
-            # Prepare field metadata based on type
+            # Prepare field metadata for Tooling API
             field_metadata = {
                 "FullName": f"{object_name}.{field_name}__c",
-                "Metadata": {
-                    "fullName": f"{object_name}.{field_name}__c",
-                    "label": field_config.get('label', field_name),
-                    "type": self._map_field_type(field_config.get('type', 'Text'))
-                }
+                "Label": field_config.get('label', field_name),
+                "Type": self._map_field_type(field_config.get('type', 'Text'))
             }
             
             # Add type-specific properties
             field_type = field_config.get('type', 'Text').lower()
             
             if field_type in ['text', 'string']:
-                field_metadata["Metadata"]["length"] = field_config.get('length', 255)
+                field_metadata["Length"] = field_config.get('length', 255)
             elif field_type in ['textarea', 'longtext']:
-                field_metadata["Metadata"]["length"] = field_config.get('length', 32768)
-                field_metadata["Metadata"]["visibleLines"] = field_config.get('visible_lines', 3)
+                field_metadata["Length"] = field_config.get('length', 32768)
+                field_metadata["VisibleLines"] = field_config.get('visible_lines', 3)
             elif field_type in ['number', 'currency', 'percent']:
-                field_metadata["Metadata"]["precision"] = field_config.get('precision', 18)
-                field_metadata["Metadata"]["scale"] = field_config.get('scale', 0 if field_type == 'number' else 2)
+                field_metadata["Precision"] = field_config.get('precision', 18)
+                field_metadata["Scale"] = field_config.get('scale', 0 if field_type == 'number' else 2)
             elif field_type == 'picklist':
                 # Handle picklist values if provided
                 values = field_config.get('picklist_values', ['Option 1', 'Option 2'])
-                field_metadata["Metadata"]["valueSet"] = {
-                    "valueSetDefinition": {
-                        "value": [{"fullName": val, "default": i == 0} for i, val in enumerate(values)]
+                field_metadata["ValueSet"] = {
+                    "ValueSetDefinition": {
+                        "Value": [{"FullName": val, "Default": i == 0} for i, val in enumerate(values)]
                     }
                 }
             
             # Add description and required flag
             if field_config.get('description'):
-                field_metadata["Metadata"]["description"] = field_config['description']
+                field_metadata["Description"] = field_config['description']
             
             if field_config.get('required', False):
-                field_metadata["Metadata"]["required"] = True
+                field_metadata["Required"] = True
             
             logger.info(f"Creating custom field: {field_name}__c on {object_name}")
             logger.debug(f"Field metadata: {json.dumps(field_metadata, indent=2)}")
