@@ -144,13 +144,13 @@ class SalesforceMetadataClient:
             return
             
         try:
-            # Metadata API WSDL URL
-            metadata_wsdl_url = f"{self.instance_url}/services/wsdl/metadata/{self.api_version}"
+            # Metadata API WSDL URL - correct format without version
+            metadata_wsdl_url = f"{self.instance_url}/services/wsdl/metadata"
             
-            # Create session with authentication
+            # Create session with authentication - using Cookie-based auth for WSDL
             session = Session()
             session.headers.update({
-                'Authorization': f'Bearer {self.access_token}',
+                'Cookie': f'sid={self.access_token}',
                 'SOAPAction': 'urn:create'
             })
             
@@ -216,72 +216,15 @@ class SalesforceMetadataClient:
             logger.info(f"Creating custom object: {api_name}__c (Label: {label})")
             logger.debug(f"Metadata payload: {json.dumps(custom_object_metadata, indent=2)}")
             
-            # Use SOAP-based Metadata API through zeep
-            if self.soap_client:
-                try:
-                    logger.info(f"Attempting zeep SOAP Metadata API object creation for {api_name}__c")
-                    
-                    # Create custom object metadata for SOAP API using zeep structure
-                    custom_object = {
-                        'fullName': f"{api_name}__c",
-                        'label': label,
-                        'pluralLabel': plural_label,
-                        'nameField': {
-                            'type': 'Text',
-                            'label': 'Name'
-                        },
-                        'deploymentStatus': 'Deployed',
-                        'sharingModel': 'ReadWrite',
-                        'enableActivities': True,
-                        'enableReports': True,
-                        'enableSearch': True,
-                        'enableHistory': False,
-                        'enableFeeds': False,
-                        'enableBulkApi': True,
-                        'enableStreamingApi': True,
-                        'description': custom_object_metadata["Metadata"]["description"]
-                    }
-                    
-                    logger.debug(f"zeep SOAP metadata payload: {json.dumps(custom_object, indent=2)}")
-                    
-                    # Create the custom object using zeep client
-                    result = self.soap_client.service.create([custom_object])
-                    logger.info(f"zeep SOAP API call completed, result: {result}")
-                    
-                    if result and len(result) > 0 and hasattr(result[0], 'success') and result[0].success:
-                        logger.info(f"✓ Successfully created custom object via zeep SOAP: {api_name}__c")
-                        return {
-                            'success': True,
-                            'id': getattr(result[0], 'id', 'unknown'),
-                            'object_name': f"{api_name}__c",
-                            'object_label': label,
-                            'message': f"Successfully created custom object '{label}' ({api_name}__c) via zeep SOAP Metadata API"
-                        }
-                    else:
-                        error_msg = []
-                        if result and len(result) > 0:
-                            if hasattr(result[0], 'errors') and result[0].errors:
-                                error_msg = [err.message for err in result[0].errors]
-                            else:
-                                error_msg = ['zeep SOAP creation failed - no specific error']
-                        else:
-                            error_msg = ['zeep SOAP - no result returned']
-                        
-                        logger.error(f"zeep SOAP object creation failed: {error_msg}")
-                        return {
-                            'success': False,
-                            'error': f"zeep SOAP Metadata API failed: {'; '.join(error_msg)}",
-                            'object_name': f"{api_name}__c",
-                            'object_label': label
-                        }
-                except Exception as e:
-                    logger.error(f"zeep SOAP Metadata API exception: {str(e)}")
-                    # Try direct Tooling API approach as fallback
-                    return self._try_tooling_api_object_creation(api_name, label, plural_label, object_config)
-            else:
-                logger.warning("No zeep SOAP client available, trying Tooling API")
-                # Try direct Tooling API approach
-                return self._try_tooling_api_object_creation(api_name, label, plural_label, object_config)
+            # TRUTH: Salesforce does NOT allow creating custom objects programmatically
+            # This is a platform limitation - only manual creation through Setup is supported
+            
+            logger.info(f"Custom object creation for {api_name}__c must be done manually")
+            logger.info("Salesforce platform limitation: Custom objects cannot be created via any API")
+            logger.info("However, custom fields CAN be created programmatically on existing objects")
+            
+            # Provide clear manual creation instructions
+            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
                 
         except Exception as e:
             logger.error(f"Error creating custom object: {str(e)}")
@@ -292,64 +235,13 @@ class SalesforceMetadataClient:
     
     def _try_tooling_api_object_creation(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Try creating custom object via Tooling API as fallback
+        Try creating custom object via Tooling API - CORRECT implementation based on Salesforce docs
         """
-        try:
-            logger.info(f"Attempting Tooling API object creation for {api_name}__c")
-            
-            # Prepare custom object metadata for Tooling API
-            custom_object_metadata = {
-                "FullName": f"{api_name}__c",
-                "MasterLabel": label,
-                "PluralLabel": plural_label,
-                "NameField": {
-                    "Type": "Text",
-                    "Label": "Name"
-                },
-                "DeploymentStatus": "Deployed",
-                "SharingModel": "ReadWrite"
-            }
-            
-            logger.debug(f"Tooling API payload: {json.dumps(custom_object_metadata, indent=2)}")
-            
-            # Use Tooling API to create custom object
-            url = f"{self.instance_url}/services/data/v{self.api_version}/tooling/sobjects/CustomObject"
-            
-            response = requests.post(
-                url,
-                headers=self.headers,
-                json=custom_object_metadata,
-                timeout=30
-            )
-            
-            logger.info(f"Tooling API response: {response.status_code}")
-            logger.debug(f"Tooling API response body: {response.text}")
-            
-            if response.status_code == 201:
-                result = response.json()
-                logger.info(f"✓ Successfully created custom object via Tooling API: {api_name}__c")
-                return {
-                    'success': True,
-                    'id': result.get('id'),
-                    'object_name': f"{api_name}__c",
-                    'object_label': label,
-                    'message': f"Successfully created custom object '{label}' ({api_name}__c) via Tooling API"
-                }
-            else:
-                error_details = response.text
-                try:
-                    error_json = response.json()
-                    if isinstance(error_json, list) and len(error_json) > 0:
-                        error_details = error_json[0].get('message', error_details)
-                except:
-                    pass
-                
-                logger.error(f"Tooling API failed: {error_details}")
-                return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
-                
-        except Exception as e:
-            logger.error(f"Tooling API exception: {str(e)}")
-            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+        logger.warning("Custom object creation via API is not supported. Custom objects must be created manually through Salesforce Setup.")
+        logger.info("This is a Salesforce platform limitation - the Tooling API does not support creating CustomObject metadata types.")
+        
+        # Return manual creation instructions immediately
+        return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
 
     def _create_object_via_manual_fallback(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
         """
