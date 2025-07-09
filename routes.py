@@ -951,11 +951,28 @@ def init_routes(app):
                 sf_connection = None
                 try:
                     from simple_salesforce import Salesforce
-                    # Create connection using session ID
-                    sf_connection = Salesforce(instance_url=sf_org.instance_url, session_id=sf_org.access_token)
-                    logger.info("Created simple-salesforce connection for metadata operations")
+                    
+                    # Extract domain from instance URL for proper connection
+                    instance_domain = sf_org.instance_url.replace('https://', '').replace('http://', '')
+                    
+                    # Create connection using session ID with proper domain
+                    sf_connection = Salesforce(
+                        instance=instance_domain,
+                        session_id=sf_org.access_token,
+                        version='58.0'
+                    )
+                    
+                    # Test the connection by making a simple API call
+                    try:
+                        sf_connection.describe()
+                        logger.info("✓ Successfully created and tested simple-salesforce connection")
+                    except Exception as test_error:
+                        logger.warning(f"Connection created but test failed: {str(test_error)}")
+                        sf_connection = None
+                        
                 except Exception as e:
                     logger.warning(f"Could not create simple-salesforce connection: {str(e)}")
+                    sf_connection = None
                 
                 # Create metadata client for programmatic object creation
                 metadata_client = create_metadata_client(sf_org.instance_url, sf_org.access_token, sf_connection)

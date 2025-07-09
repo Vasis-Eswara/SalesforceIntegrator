@@ -176,6 +176,8 @@ class SalesforceMetadataClient:
             # Use SOAP-based Metadata API through simple-salesforce
             if self.sf_connection:
                 try:
+                    logger.info(f"Attempting SOAP Metadata API object creation for {api_name}__c")
+                    
                     # Use simple-salesforce metadata API
                     metadata_api = self.sf_connection.mdapi
                     
@@ -200,31 +202,38 @@ class SalesforceMetadataClient:
                         'description': custom_object_metadata["Metadata"]["description"]
                     }
                     
+                    logger.debug(f"SOAP metadata payload: {json.dumps(custom_object, indent=2)}")
+                    
                     # Create the custom object
                     result = metadata_api.create('CustomObject', custom_object)
+                    logger.info(f"SOAP API call completed, result type: {type(result)}")
                     
-                    if result and result.success:
+                    if result and hasattr(result, 'success') and result.success:
+                        logger.info(f"✓ Successfully created custom object via SOAP: {api_name}__c")
                         return {
                             'success': True,
-                            'id': result.id,
+                            'id': getattr(result, 'id', 'unknown'),
                             'object_name': f"{api_name}__c",
                             'object_label': label,
-                            'message': f"Successfully created custom object '{label}' ({api_name}__c)"
+                            'message': f"Successfully created custom object '{label}' ({api_name}__c) via SOAP Metadata API"
                         }
                     else:
-                        error_msg = getattr(result, 'errors', ['Unknown error'])
+                        error_msg = getattr(result, 'errors', ['Unknown SOAP error'])
+                        logger.error(f"SOAP object creation failed: {error_msg}")
                         return {
                             'success': False,
-                            'error': f"Failed to create custom object: {error_msg}",
+                            'error': f"SOAP Metadata API failed: {error_msg}",
                             'object_name': f"{api_name}__c",
                             'object_label': label
                         }
                 except Exception as e:
-                    logger.error(f"SOAP Metadata API error: {str(e)}")
-                    return self._create_object_via_tooling_fallback(api_name, label, plural_label, object_config)
+                    logger.error(f"SOAP Metadata API exception: {str(e)}")
+                    # Try direct Tooling API approach as fallback
+                    return self._try_tooling_api_object_creation(api_name, label, plural_label, object_config)
             else:
-                # Fall back to manual creation instructions
-                return self._create_object_via_tooling_fallback(api_name, label, plural_label, object_config)
+                logger.warning("No SOAP connection available, trying Tooling API")
+                # Try direct Tooling API approach
+                return self._try_tooling_api_object_creation(api_name, label, plural_label, object_config)
                 
         except Exception as e:
             logger.error(f"Error creating custom object: {str(e)}")
@@ -233,7 +242,68 @@ class SalesforceMetadataClient:
                 'error': f"Exception during custom object creation: {str(e)}"
             }
     
-    def _create_object_via_tooling_fallback(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
+    def _try_tooling_api_object_creation(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Try creating custom object via Tooling API as fallback
+        """
+        try:
+            logger.info(f"Attempting Tooling API object creation for {api_name}__c")
+            
+            # Prepare custom object metadata for Tooling API
+            custom_object_metadata = {
+                "FullName": f"{api_name}__c",
+                "MasterLabel": label,
+                "PluralLabel": plural_label,
+                "NameField": {
+                    "Type": "Text",
+                    "Label": "Name"
+                },
+                "DeploymentStatus": "Deployed",
+                "SharingModel": "ReadWrite"
+            }
+            
+            logger.debug(f"Tooling API payload: {json.dumps(custom_object_metadata, indent=2)}")
+            
+            # Use Tooling API to create custom object
+            url = f"{self.instance_url}/services/data/v{self.api_version}/tooling/sobjects/CustomObject"
+            
+            response = requests.post(
+                url,
+                headers=self.headers,
+                json=custom_object_metadata,
+                timeout=30
+            )
+            
+            logger.info(f"Tooling API response: {response.status_code}")
+            logger.debug(f"Tooling API response body: {response.text}")
+            
+            if response.status_code == 201:
+                result = response.json()
+                logger.info(f"✓ Successfully created custom object via Tooling API: {api_name}__c")
+                return {
+                    'success': True,
+                    'id': result.get('id'),
+                    'object_name': f"{api_name}__c",
+                    'object_label': label,
+                    'message': f"Successfully created custom object '{label}' ({api_name}__c) via Tooling API"
+                }
+            else:
+                error_details = response.text
+                try:
+                    error_json = response.json()
+                    if isinstance(error_json, list) and len(error_json) > 0:
+                        error_details = error_json[0].get('message', error_details)
+                except:
+                    pass
+                
+                logger.error(f"Tooling API failed: {error_details}")
+                return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+                
+        except Exception as e:
+            logger.error(f"Tooling API exception: {str(e)}")
+            return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
+
+    def _create_object_via_manual_fallback(self, api_name: str, label: str, plural_label: str, object_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Fallback approach with manual creation instructions
         """
