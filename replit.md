@@ -95,6 +95,11 @@ Required environment variables:
 
 ## Changelog
 
+- July 09, 2025: **UI STREAMLINING** - Removed unnecessary navigation options per user request
+  - **Removed navigation items**: Simple Selector, Basic Selector, and Object Selector from main menu
+  - **Streamlined homepage**: Removed Basic Object Selector button from homepage
+  - **Focused navigation**: Menu now contains only core features (Schema & Data Gen, Configure Salesforce, Manage Credentials)
+  - **Cleaner user experience**: Simplified interface focuses on primary workflows
 - July 09, 2025: **MULTIPLE OBJECT CREATION ROBUSTNESS FIX** - Fixed internal server error with multiple object creation
   - **Added missing helper methods**: `_create_object_from_action` and `_create_field_from_action` in metadata client
   - **Enhanced error handling**: Better logging and traceback for debugging metadata operations
