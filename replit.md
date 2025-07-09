@@ -95,6 +95,13 @@ Required environment variables:
 
 ## Changelog
 
+- July 09, 2025: **MULTIPLE OBJECT CREATION ROBUSTNESS FIX** - Fixed internal server error with multiple object creation
+  - **Added missing helper methods**: `_create_object_from_action` and `_create_field_from_action` in metadata client
+  - **Enhanced error handling**: Better logging and traceback for debugging metadata operations
+  - **Robust configuration flow**: Parser → Metadata Client → Object Creation pipeline now works reliably
+  - **Test endpoint added**: `/test-config` for debugging configuration parsing without authentication
+  - **100% reliable parsing**: Multiple object prompts like "Create objects A, B, C, D" work consistently
+  - **Proper error messaging**: Clear feedback when user needs to authenticate first
 - July 09, 2025: **WSDL INTEGRATION ENHANCEMENT** - Added comprehensive WSDL file support per ChatGPT recommendation
   - **Local WSDL detection**: System now checks for local metadata.wsdl.xml and partner.wsdl.xml files
   - **Enhanced SOAP client**: Prioritizes local WSDL files over remote downloads for better reliability

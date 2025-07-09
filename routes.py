@@ -842,12 +842,15 @@ def init_routes(app):
                 }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
                 
             except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
                 logger.error(f"Error configuring Salesforce: {str(e)}")
+                logger.error(f"Full traceback: {error_details}")
                 flash(f'Error configuring Salesforce: {str(e)}', 'danger')
                 return render_template('configure.html', prompt=prompt, results={
                     'success': False,
                     'message': str(e),
-                    'details': {'error': str(e)}
+                    'details': {'error': str(e), 'traceback': error_details}
                 }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
         
         # GET request - show form
@@ -1002,6 +1005,32 @@ def init_routes(app):
             logger.error(f"Error applying configuration: {str(e)}")
             flash(f'Error applying configuration: {str(e)}', 'danger')
             return redirect(url_for('configure'))
+    
+    @app.route('/test-config', methods=['POST'])
+    def test_config():
+        """Test configuration generation without requiring Salesforce authentication"""
+        try:
+            prompt = request.form.get('prompt', 'Create the custom objects called Project, projections, prompting, proper')
+            
+            # Test the parser without authentication
+            config = analyze_prompt_for_configuration(prompt, [])
+            
+            return jsonify({
+                'success': True,
+                'message': f'Configuration parsed successfully: found {len(config.get("actions", []))} actions',
+                'config': config
+            })
+            
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            logger.error(f"Error testing configuration: {str(e)}")
+            logger.error(f"Full traceback: {error_details}")
+            return jsonify({
+                'success': False,
+                'error': str(e),
+                'traceback': error_details
+            }), 500
             
     @app.route('/api/chat', methods=['POST'])
     def chat():
