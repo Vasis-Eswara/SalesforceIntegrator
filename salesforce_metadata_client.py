@@ -468,12 +468,40 @@ class SalesforceMetadataClient:
                         logger.error(f"Schema generation failed: {result.stderr or result.stdout}")
                         return self._create_object_via_manual_fallback(api_name, label, plural_label, object_config)
                     
-                    # Deploy the generated metadata to Salesforce
-                    deploy_cmd = [
-                        'sf', 'project', 'deploy', 'start',
-                        '--source-dir', 'force-app/main/default/objects',
-                        '--target-org', 'default'
-                    ]
+                    # First, check what orgs are available
+                    org_list_result = subprocess.run(
+                        ['sf', 'org', 'list'], 
+                        capture_output=True, 
+                        text=True, 
+                        timeout=10
+                    )
+                    
+                    # Use authenticated org or first available org
+                    target_org = None
+                    if org_list_result.returncode == 0 and org_list_result.stdout:
+                        # Look for default org or use the first one
+                        lines = org_list_result.stdout.split('\n')
+                        for line in lines:
+                            if 'default' in line.lower() or 'smartcart-dev-ed' in line or 'vs@abc.com' in line:
+                                # Extract org alias/username from CLI output
+                                # Format: │ 🍁 │       │ vs@abc.com │ 00DQy00000PzsecMAB │ Connected │
+                                parts = [p.strip() for p in line.split('│') if p.strip()]
+                                if len(parts) >= 3 and '@' in parts[2]:
+                                    target_org = parts[2]  # Use the username
+                                    break
+                    
+                    # If no specific org found, try without --target-org (uses default)
+                    if target_org:
+                        deploy_cmd = [
+                            'sf', 'project', 'deploy', 'start',
+                            '--source-dir', 'force-app/main/default/objects',
+                            '--target-org', target_org
+                        ]
+                    else:
+                        deploy_cmd = [
+                            'sf', 'project', 'deploy', 'start',
+                            '--source-dir', 'force-app/main/default/objects'
+                        ]
                     
                     logger.debug(f"Deploying metadata: {' '.join(deploy_cmd)}")
                     
