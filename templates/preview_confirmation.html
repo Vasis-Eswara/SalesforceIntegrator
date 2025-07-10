@@ -1,0 +1,240 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-10 col-lg-8">
+            <div class="p-3">
+                <h2 class="mb-4">
+                    <i class="bi bi-eye me-2"></i>
+                    Preview Confirmation
+                </h2>
+                
+                <!-- Preview Summary Card -->
+                <div class="card mb-4">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0">
+                            <i class="bi bi-clipboard-check me-2"></i>
+                            Execution Plan Summary
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if preview.objects %}
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h3 class="text-primary">{{ preview.objects|length }}</h3>
+                                    <p class="mb-0">Objects Affected</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h3 class="text-success">
+                                        {{ preview.objects.values() | map(attribute='record_count', default=0) | sum }}
+                                    </h3>
+                                    <p class="mb-0">Total Records</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h3 class="text-warning">{{ preview.execution_order|length if preview.execution_order else 0 }}</h3>
+                                    <p class="mb-0">Execution Steps</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% if preview.relationships %}
+                        <div class="mt-3">
+                            <h6>Relationships Detected:</h6>
+                            <div class="badge-container">
+                                {% for relationship in preview.relationships %}
+                                <span class="badge bg-secondary me-1">{{ relationship }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Detailed Execution Plan -->
+                {% if preview.objects %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-list-ol me-2"></i>
+                            Detailed Execution Plan
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if preview.execution_order %}
+                            {% for object_name in preview.execution_order %}
+                            {% set object_config = preview.objects[object_name] %}
+                            <div class="execution-step mb-3 p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <span class="badge bg-primary me-2">{{ loop.index }}</span>
+                                            {{ object_name }}
+                                        </h6>
+                                        <p class="text-muted mb-1">
+                                            Generate {{ object_config.record_count or 'default' }} records
+                                        </p>
+                                        
+                                        {% if object_config.fields %}
+                                        <div class="mt-2">
+                                            <small class="text-muted">Fields to populate:</small>
+                                            <div class="ms-2">
+                                                {% for field in object_config.fields %}
+                                                <span class="badge bg-light text-dark me-1">{{ field }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if object_config.relationships %}
+                                        <div class="mt-2">
+                                            <small class="text-muted">Relationships:</small>
+                                            <div class="ms-2">
+                                                {% for rel in object_config.relationships %}
+                                                <span class="badge bg-warning text-dark me-1">{{ rel }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-success">{{ object_config.record_count or 10 }} records</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            {% for object_name, object_config in preview.objects.items() %}
+                            <div class="execution-step mb-3 p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">{{ object_name }}</h6>
+                                        <p class="text-muted mb-1">
+                                            Generate {{ object_config.record_count or 'default' }} records
+                                        </p>
+                                    </div>
+                                    <div class="text-end">
+                                        <span class="badge bg-success">{{ object_config.record_count or 10 }} records</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Original Input Display -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0">
+                            <i class="bi bi-input-cursor-text me-2"></i>
+                            Original Input
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if original_prompt %}
+                        <div class="bg-light p-3 rounded">
+                            <h6>Natural Language Prompt:</h6>
+                            <p class="mb-0 font-monospace">{{ original_prompt }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if original_config %}
+                        <div class="bg-light p-3 rounded">
+                            <h6>GitHub Configuration:</h6>
+                            <pre class="mb-0"><code>{{ original_config | tojson(indent=2) }}</code></pre>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Warning Messages -->
+                {% if preview.warnings %}
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle me-2"></i>Warnings:</h6>
+                    <ul class="mb-0">
+                        {% for warning in preview.warnings %}
+                        <li>{{ warning }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between flex-column flex-md-row">
+                    <div class="mb-2 mb-md-0">
+                        <a href="{{ url_for('combined') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>
+                            Back to Editor
+                        </a>
+                    </div>
+                    <div>
+                        <form method="POST" action="{{ url_for('combined') }}" class="d-inline">
+                            <!-- Pass through all the original form data -->
+                            {% if original_prompt %}
+                            <input type="hidden" name="prompt" value="{{ original_prompt }}">
+                            {% endif %}
+                            {% if original_config %}
+                            <input type="hidden" name="github_url" value="{{ original_config.source_url or '' }}">
+                            {% endif %}
+                            <input type="hidden" name="mode" value="execute">
+                            <input type="hidden" name="preview_mode" value="off">
+                            <input type="hidden" name="default_record_count" value="{{ request.form.get('default_record_count', 10) }}">
+                            <input type="hidden" name="data_quality" value="{{ request.form.get('data_quality', 'realistic') }}">
+                            <input type="hidden" name="respect_relationships" value="{{ 'on' if request.form.get('respect_relationships') else 'off' }}">
+                            
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-play-fill me-2"></i>
+                                Execute Plan
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.execution-step {
+    transition: all 0.2s ease;
+}
+
+.execution-step:hover {
+    background-color: var(--bs-light);
+    border-color: var(--bs-primary) !important;
+}
+
+.badge-container .badge {
+    margin-bottom: 0.25rem;
+}
+
+pre code {
+    font-size: 0.85rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+    .execution-step {
+        padding: 1rem !important;
+    }
+    
+    .execution-step .d-flex {
+        flex-direction: column !important;
+    }
+    
+    .execution-step .text-end {
+        text-align: start !important;
+        margin-top: 0.5rem;
+    }
+}
+</style>
+{% endblock %}

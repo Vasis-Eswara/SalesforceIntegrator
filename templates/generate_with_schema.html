@@ -3,8 +3,8 @@
 {% block content %}
 <div class="container-fluid">
     <div class="row">
-        <!-- Sidebar with object list -->
-        <div class="col-md-3 col-lg-2">
+        <!-- Sidebar with object list (Responsive: collapsible on mobile) -->
+        <div class="col-md-3 col-lg-2 d-md-block collapse" id="sidebar-collapse">
             <div class="sidebar">
                 <!-- Salesforce Objects Title & Real-time Search -->
                 <div class="mb-3">
@@ -57,8 +57,14 @@
         
         <!-- Main content area -->
         <div class="col-md-9 col-lg-10">
-            <div class="p-3">
-                <h2 class="mb-4 header-title">Schema & Data Gen</h2>
+            <div class="p-2 p-md-3">
+                <!-- Mobile-friendly header with sidebar toggle -->
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="header-title mb-0 fs-3 fs-md-2">Schema & Data Generation</h2>
+                    <button class="btn btn-outline-primary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false" aria-controls="sidebar-collapse">
+                        <i class="bi bi-list"></i> Objects
+                    </button>
+                </div>
                 
                 <div class="p-3 border rounded bg-body-tertiary">
                     <!-- Schema Viewer Content -->
@@ -97,10 +103,13 @@
                     <!-- Generate Data Section (Always Visible) -->
                     <div id="generate-content" class="mt-4">
                         <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h4 class="header-title"><i class="bi bi-lightning-fill me-2"></i>Generate Test Data <span id="object-name-display"></span></h4>
-                                <div class="generate-controls">
-                                    <button class="btn btn-sm btn-outline-primary" id="toggle-generate" title="Toggle generate form">
+                            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                                <h4 class="header-title mb-2 mb-md-0"><i class="bi bi-magic me-2"></i>Schema & Data Prompt</h4>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-sm btn-outline-info me-2" type="button" data-bs-toggle="modal" data-bs-target="#examplesModal" title="View examples">
+                                        <i class="bi bi-question-circle"></i> Examples
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" id="toggle-generate" title="Toggle prompt form">
                                         <i class="bi bi-chevron-up"></i>
                                     </button>
                                 </div>
@@ -120,39 +129,221 @@
                                     <p class="text-muted">OpenAI API key is required for AI-powered data generation.</p>
                                 </div>
                                 {% else %}
-                                <div id="generation-placeholder" class="text-center my-4">
-                                    <i class="bi bi-arrow-left-circle-fill text-primary" style="font-size: 3rem;"></i>
-                                    <p class="lead mt-3">Select an object from the list to generate test data</p>
-                                </div>
-                                <div id="generation-form" style="display:none;">
-                                    <form id="data-generation-form" method="POST" action="{{ url_for('combined') }}">
-                                        <input type="hidden" id="object-name-input" name="object_name" value="">
+                                <!-- Unified Prompt Interface -->
+                                <form id="unified-prompt-form" method="POST" action="{{ url_for('combined') }}">
+                                    <!-- Mode Selection (Hidden by default, auto-detected) -->
+                                    <input type="hidden" id="prompt-mode" name="mode" value="auto">
+                                    
+                                    <!-- Main Prompt Area -->
+                                    <div class="mb-4">
+                                        <label for="unified-prompt" class="form-label d-flex align-items-center">
+                                            <i class="bi bi-chat-text me-2"></i>
+                                            <span>Natural Language Prompt</span>
+                                        </label>
+                                        <textarea 
+                                            class="form-control" 
+                                            id="unified-prompt" 
+                                            name="prompt" 
+                                            rows="5" 
+                                            placeholder="Describe what you want to create:
+
+Schema Examples:
+• Create a Project object with Name, Status, and Budget fields
+• Add Description and Phone fields to the Contact object
+
+Data Examples:
+• Generate 10 Accounts with 5 Contacts each
+• Create 20 Leads and link them to 5 Opportunities
+
+Combined Examples:
+• Create a Task object with fields, then generate 50 Tasks linked to existing Accounts
+• Build a Product object with custom fields, then create 15 Products and 30 related Orders"
+                                            required
+                                        ></textarea>
+                                        <div class="form-text">
+                                            <i class="bi bi-lightbulb me-1"></i>
+                                            Describe schema changes, data generation, or both. The AI will automatically detect what you need.
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- GitHub Config Option -->
+                                    <div class="row mb-4">
+                                        <div class="col-md-12">
+                                            <div class="card border-secondary">
+                                                <div class="card-header">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" id="use-github-config">
+                                                        <label class="form-check-label" for="use-github-config">
+                                                            <i class="bi bi-github me-1"></i>
+                                                            Use GitHub Configuration File
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="card-body" id="github-config-section" style="display: none;">
+                                                    <div class="mb-3">
+                                                        <label for="github-url" class="form-label">GitHub File URL</label>
+                                                        <input 
+                                                            type="url" 
+                                                            class="form-control" 
+                                                            id="github-url" 
+                                                            name="github_url" 
+                                                            placeholder="https://github.com/user/repo/blob/main/data-config.yml"
+                                                        >
+                                                        <div class="form-text">
+                                                            Supports Snowfakery recipes and custom YAML/JSON configuration files
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Advanced Options (Collapsible) -->
+                                    <div class="card border-info mb-4">
+                                        <div class="card-header">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span><i class="bi bi-gear me-1"></i> Advanced Options</span>
+                                                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-options">
+                                                    <i class="bi bi-chevron-down"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="collapse" id="advanced-options">
+                                            <div class="card-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label for="default-record-count" class="form-label">Default Record Count</label>
+                                                            <input type="number" class="form-control" id="default-record-count" name="default_record_count" min="1" max="1000" value="10">
+                                                            <div class="form-text">Used when no count is specified in the prompt</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label for="data-quality" class="form-label">Data Quality</label>
+                                                            <select class="form-select" id="data-quality" name="data_quality">
+                                                                <option value="realistic">Realistic (Recommended)</option>
+                                                                <option value="diverse">Maximum Diversity</option>
+                                                                <option value="minimal">Minimal Valid Data</option>
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col-md-12">
+                                                        <div class="form-check mb-2">
+                                                            <input class="form-check-input" type="checkbox" id="preview-mode" name="preview_mode" checked>
+                                                            <label class="form-check-label" for="preview-mode">
+                                                                Show confirmation preview before execution
+                                                            </label>
+                                                        </div>
+                                                        <div class="form-check">
+                                                            <input class="form-check-input" type="checkbox" id="respect-relationships" name="respect_relationships" checked>
+                                                            <label class="form-check-label" for="respect-relationships">
+                                                                Automatically handle object relationships
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Submit Button -->
+                                    <div class="d-grid">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="bi bi-magic me-2"></i>
+                                            <span id="submit-text">Process Prompt</span>
+                                        </button>
+                                    </div>
+                                </form>
+                                
+                                <!-- Unified Results Display -->
+                                {% if unified_results %}
+                                <div class="card mt-4">
+                                    <div class="card-header">
+                                        <h5>
+                                            <i class="bi bi-magic me-2"></i>
+                                            Prompt Processing Results
+                                        </h5>
+                                    </div>
+                                    <div class="card-body">
+                                        {% if unified_results.status == 'success' %}
+                                        <div class="alert alert-success">
+                                            <h6><i class="bi bi-check-circle me-2"></i>Processing Completed Successfully</h6>
+                                            {% if unified_results.actions %}
+                                            <p>Completed {{ unified_results.actions|length }} actions</p>
+                                            {% endif %}
+                                            {% if unified_results.success %}
+                                            <p>Created {{ unified_results.success }} records successfully</p>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
                                         
+                                        {% if unified_results.actions %}
                                         <div class="mb-3">
-                                            <label for="record-count" class="form-label">Number of Records</label>
-                                            <input type="number" class="form-control" id="record-count" name="record_count" min="1" max="100" value="5" required>
-                                            <div class="form-text">How many test records would you like to generate? (1-100)</div>
+                                            <h6>Schema Actions Performed:</h6>
+                                            {% for action in unified_results.actions %}
+                                            <div class="alert alert-info">
+                                                <strong>{{ action.type|title }}:</strong> {{ action.description }}
+                                                {% if action.result %}
+                                                <br><small>Result: {{ action.result }}</small>
+                                                {% endif %}
+                                            </div>
+                                            {% endfor %}
                                         </div>
+                                        {% endif %}
                                         
+                                        {% if unified_results.success or unified_results.failure %}
+                                        <div class="row mb-3">
+                                            <div class="col-md-6">
+                                                <div class="text-center">
+                                                    <span class="fs-2 text-success">{{ unified_results.success or 0 }}</span>
+                                                    <p class="mb-0 text-muted">Records Created</p>
+                                                </div>
+                                            </div>
+                                            {% if unified_results.failure > 0 %}
+                                            <div class="col-md-6">
+                                                <div class="text-center">
+                                                    <span class="fs-2 text-danger">{{ unified_results.failure }}</span>
+                                                    <p class="mb-0 text-muted">Failed Records</p>
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if unified_results.created_ids %}
                                         <div class="mb-3">
-                                            <label for="nlp-requirements" class="form-label">Natural Language Requirements</label>
-                                            <textarea class="form-control" id="nlp-requirements" name="nlp_requirements" rows="4" placeholder="Describe specific requirements for the data generation, such as: 'Generate contacts mostly in California with phone numbers' or 'Create accounts with high annual revenue in tech industry'"></textarea>
-                                            <div class="form-text">Use plain English to describe special requirements for the data. Our AI will interpret your needs.</div>
+                                            <h6>Created Record IDs:</h6>
+                                            <div class="bg-light p-2 rounded">
+                                                <code>{{ unified_results.created_ids|join(', ') }}</code>
+                                            </div>
                                         </div>
+                                        {% endif %}
                                         
-                                        <div class="alert alert-info">
-                                            <i class="bi bi-info-circle-fill me-2"></i>
-                                            The application will analyze the object schema and generate realistic test data that respects all constraints and relationships. Use the natural language input to customize the data generation further.
+                                        {% if unified_results.errors %}
+                                        <div class="alert alert-warning">
+                                            <h6><i class="bi bi-exclamation-triangle me-2"></i>Issues Encountered:</h6>
+                                            <ul class="mb-0">
+                                                {% for error in unified_results.errors %}
+                                                <li>{{ error }}</li>
+                                                {% endfor %}
+                                            </ul>
                                         </div>
+                                        {% endif %}
                                         
-                                        <div class="d-grid">
-                                            <button type="submit" class="btn btn-primary btn-lg">
-                                                <i class="bi bi-lightning-fill me-2"></i>
-                                                Generate Test Data
-                                            </button>
+                                        {% if unified_results.preview %}
+                                        <div class="mt-3">
+                                            <h6>Execution Preview:</h6>
+                                            <div class="bg-light p-3 rounded">
+                                                <pre><code>{{ unified_results.preview | tojson(indent=2) }}</code></pre>
+                                            </div>
                                         </div>
-                                    </form>
+                                        {% endif %}
+                                    </div>
                                 </div>
+                                {% endif %}
                                 
                                 {% if job and results %}
                                 <!-- Show generation results -->
@@ -264,6 +455,93 @@
         </div>
     </div>
 </div>
+
+<!-- Examples Modal -->
+<div class="modal fade" id="examplesModal" tabindex="-1" aria-labelledby="examplesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="examplesModalLabel">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Prompt Examples
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-primary">Schema Creation Examples:</h6>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Create a Project object with Name (text), Status (picklist with Active, Completed, On Hold), and Budget (currency) fields">
+                                Create Project object with fields
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Add Description (long text) and Phone (phone) fields to the Contact object">
+                                Add fields to existing object
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Create a Task object with Subject, Priority (High, Medium, Low), Due Date, and Account lookup fields">
+                                Create Task with lookup relationship
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-success">Data Generation Examples:</h6>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Generate 10 Accounts with realistic company names and addresses">
+                                Generate basic data records
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Create 20 Leads and link each to a random existing Account">
+                                Generate with relationships
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Generate 5 Opportunities for each Account, with realistic stages and amounts">
+                                Generate related records
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h6 class="text-info">Combined Schema + Data Examples:</h6>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Create a Product object with Name, Price, Category fields, then generate 15 Products and 30 related Orders">
+                                Create object then generate data
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Build a Training object with Title, Duration, Instructor fields, then create 10 Trainings and assign 5 employees to each">
+                                Complex schema and data creation
+                            </button>
+                        </div>
+                        <div class="mb-3">
+                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
+                                    data-example="Use this GitHub config: https://github.com/SFDO-Tooling/Snowfakery/blob/main/examples/salesforce/simple_salesforce.yml and create 50 records">
+                                GitHub configuration example
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -299,6 +577,231 @@
             // First, let's find the last job ID from the page context
             // We'll extract it from the results section if available
             const jobId = {{ job.id if job else 'null' }};
+            
+            exportCsvBtn.addEventListener('click', function() {
+                if (jobId) {
+                    window.location.href = `/export/csv/${jobId}`;
+                } else {
+                    alert('No data available to export');
+                }
+            });
+            
+            exportJsonBtn.addEventListener('click', function() {
+                if (jobId) {
+                    window.location.href = `/export/json/${jobId}`;
+                } else {
+                    alert('No data available to export');
+                }
+            });
+        }
+    });
+</script>
+
+<!-- Enhanced UI Functionality for Unified Interface -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // GitHub config toggle
+    const useGithubCheck = document.getElementById('use-github-config');
+    const githubSection = document.getElementById('github-config-section');
+    const unifiedPrompt = document.getElementById('unified-prompt');
+    const githubUrl = document.getElementById('github-url');
+    
+    useGithubCheck?.addEventListener('change', function() {
+        if (this.checked) {
+            githubSection.style.display = 'block';
+            unifiedPrompt.placeholder = 'Describe how to use the GitHub configuration file or leave blank to use the config as-is...';
+            githubUrl.required = true;
+        } else {
+            githubSection.style.display = 'none';
+            unifiedPrompt.placeholder = `Describe what you want to create:
+
+Schema Examples:
+• Create a Project object with Name, Status, and Budget fields
+• Add Description and Phone fields to the Contact object
+
+Data Examples:
+• Generate 10 Accounts with 5 Contacts each
+• Create 20 Leads and link them to 5 Opportunities
+
+Combined Examples:
+• Create a Task object with fields, then generate 50 Tasks linked to existing Accounts
+• Build a Product object with custom fields, then create 15 Products and 30 related Orders`;
+            githubUrl.required = false;
+        }
+    });
+    
+    // Example buttons functionality
+    const exampleButtons = document.querySelectorAll('.example-btn');
+    exampleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const example = this.getAttribute('data-example');
+            unifiedPrompt.value = example;
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('examplesModal'));
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Focus on the prompt textarea
+            unifiedPrompt.focus();
+        });
+    });
+    
+    // Auto-detect prompt intent and update submit button text
+    unifiedPrompt?.addEventListener('input', function() {
+        const text = this.value.toLowerCase();
+        const submitText = document.getElementById('submit-text');
+        
+        if (text.includes('create') && text.includes('object')) {
+            if (text.includes('generate') || text.includes('insert') || text.includes('data')) {
+                submitText.textContent = 'Create Schema & Generate Data';
+            } else {
+                submitText.textContent = 'Create Schema';
+            }
+        } else if (text.includes('generate') || text.includes('insert') || text.includes('data')) {
+            submitText.textContent = 'Generate Data';
+        } else if (text.includes('github') || text.includes('config') || text.includes('yml') || text.includes('yaml')) {
+            submitText.textContent = 'Process Configuration';
+        } else {
+            submitText.textContent = 'Process Prompt';
+        }
+    });
+    
+    // Form submission handling
+    const unifiedForm = document.getElementById('unified-prompt-form');
+    unifiedForm?.addEventListener('submit', function(e) {
+        const prompt = unifiedPrompt.value.trim();
+        const useGithub = useGithubCheck.checked;
+        const githubUrlValue = githubUrl.value.trim();
+        
+        // Basic validation
+        if (!prompt && !useGithub) {
+            e.preventDefault();
+            alert('Please enter a prompt or enable GitHub configuration.');
+            return;
+        }
+        
+        if (useGithub && !githubUrlValue) {
+            e.preventDefault();
+            alert('Please enter a GitHub URL when using GitHub configuration.');
+            return;
+        }
+        
+        // Set mode based on content
+        const modeInput = document.getElementById('prompt-mode');
+        if (useGithub) {
+            modeInput.value = 'github';
+        } else if (prompt.toLowerCase().includes('github') || prompt.toLowerCase().includes('http')) {
+            modeInput.value = 'github_inline';
+        } else {
+            modeInput.value = 'natural';
+        }
+        
+        // Show loading state
+        const submitButton = this.querySelector('button[type="submit"]');
+        const originalText = submitButton.innerHTML;
+        submitButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+        submitButton.disabled = true;
+        
+        // Re-enable after a timeout to prevent permanent disable if form fails
+        setTimeout(() => {
+            submitButton.innerHTML = originalText;
+            submitButton.disabled = false;
+        }, 30000);
+    });
+    
+    // Responsive textarea height
+    function adjustTextareaHeight() {
+        if (unifiedPrompt) {
+            unifiedPrompt.style.height = 'auto';
+            unifiedPrompt.style.height = Math.min(unifiedPrompt.scrollHeight, 300) + 'px';
+        }
+    }
+    
+    unifiedPrompt?.addEventListener('input', adjustTextareaHeight);
+    
+    // Toggle functionality for collapsible sections
+    const toggleButtons = document.querySelectorAll('[id^="toggle-"]');
+    toggleButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('bi-chevron-up');
+                icon.classList.toggle('bi-chevron-down');
+            }
+        });
+    });
+});
+</script>
+
+<!-- Object Selection and Schema Loading -->
+<script>
+function loadObjectDiagram(objectName) {
+    // Existing object diagram loading logic
+    // ... (keep existing functionality)
+    
+    // Also update the unified prompt to include context about selected object
+    const unifiedPrompt = document.getElementById('unified-prompt');
+    if (unifiedPrompt && !unifiedPrompt.value.trim()) {
+        unifiedPrompt.placeholder = `Selected: ${objectName}
+
+Examples for ${objectName}:
+• Generate 10 ${objectName} records with realistic data
+• Add custom fields to ${objectName} object
+• Create relationships between ${objectName} and other objects`;
+    }
+}
+
+// Search functionality (enhanced for mobile)
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-objects');
+    const searchForm = document.createElement('form');
+    
+    if (searchInput) {
+        // Make search mobile-friendly
+        searchInput.addEventListener('input', debounce(function() {
+            const query = this.value.trim();
+            if (query.length >= 2) {
+                performSearch(query);
+            } else if (query.length === 0) {
+                clearSearch();
+            }
+        }, 300));
+        
+        // Handle Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = this.value.trim();
+                if (query) {
+                    performSearch(query);
+                }
+            }
+        });
+    }
+    
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+    
+    function performSearch(query) {
+        // Implement search functionality
+        window.location.href = `{{ url_for('combined') }}?q=${encodeURIComponent(query)}`;
+    }
+    
+    function clearSearch() {
+        window.location.href = `{{ url_for('combined') }}`;
+    }
+});
             
             if (jobId) {
                 exportCsvBtn.addEventListener('click', function() {

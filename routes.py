@@ -41,6 +41,159 @@ logger = logging.getLogger(__name__)
 
 def init_routes(app):
     
+    def handle_unified_prompt(mode, unified_prompt, github_url, default_record_count, 
+                            data_quality, preview_mode, respect_relationships):
+        """Handle unified prompt interface processing for schema creation and bulk data generation"""
+        from bulk_data_utils import BulkDataParser, GitHubConfigParser, validate_data_plan
+        from comprehensive_config_parser import analyze_prompt_for_configuration
+        
+        sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+        results = {'status': 'success', 'actions': [], 'preview': {}, 'errors': []}
+        
+        try:
+            # Handle GitHub configuration
+            if github_url or mode == 'github':
+                logger.info(f"Processing GitHub configuration from URL: {github_url}")
+                github_parser = GitHubConfigParser()
+                config_data = github_parser.parse_github_url(github_url)
+                
+                if config_data.get('objects'):
+                    # Validate against available objects
+                    available_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                    available_names = [obj.get('name') for obj in available_objects]
+                    
+                    validated_plan = validate_data_plan(config_data, available_names)
+                    results['preview'] = validated_plan
+                    
+                    if preview_mode:
+                        results['message'] = "Configuration preview ready. Review and confirm to proceed."
+                        return render_template('preview_confirmation.html', 
+                                            preview=validated_plan, 
+                                            original_config=config_data)
+                    else:
+                        # Execute the plan directly
+                        execution_results = execute_bulk_data_plan(validated_plan, sf_org)
+                        results.update(execution_results)
+                        
+                else:
+                    results['errors'].append("No valid objects found in GitHub configuration")
+            
+            # Handle natural language prompt
+            elif unified_prompt:
+                logger.info(f"Processing natural language prompt: {unified_prompt[:100]}...")
+                
+                # Check if this is schema creation, data generation, or both
+                prompt_lower = unified_prompt.lower()
+                
+                if 'create' in prompt_lower and ('object' in prompt_lower or 'field' in prompt_lower):
+                    # Schema creation
+                    config_actions = analyze_prompt_for_configuration(unified_prompt)
+                    
+                    if config_actions and config_actions.get('actions'):
+                        # Apply schema changes
+                        metadata_client = create_metadata_client(sf_org.instance_url, sf_org.access_token)
+                        schema_results = apply_configuration(config_actions, metadata_client)
+                        results['actions'].extend(schema_results.get('actions', []))
+                        results['errors'].extend(schema_results.get('errors', []))
+                
+                if 'generate' in prompt_lower or 'create' in prompt_lower and 'record' in prompt_lower:
+                    # Data generation
+                    bulk_parser = BulkDataParser()
+                    data_plan = bulk_parser.parse_prompt(unified_prompt)
+                    
+                    if data_plan.get('objects'):
+                        # Validate against available objects
+                        available_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                        available_names = [obj.get('name') for obj in available_objects]
+                        
+                        validated_plan = validate_data_plan(data_plan, available_names)
+                        
+                        # Set default record counts if not specified
+                        for obj_name, obj_config in validated_plan.get('objects', {}).items():
+                            if not obj_config.get('record_count'):
+                                obj_config['record_count'] = default_record_count
+                        
+                        results['preview'] = validated_plan
+                        
+                        if preview_mode:
+                            results['message'] = "Data generation preview ready. Review and confirm to proceed."
+                            return render_template('preview_confirmation.html', 
+                                                preview=validated_plan, 
+                                                original_prompt=unified_prompt)
+                        else:
+                            # Execute the plan directly
+                            execution_results = execute_bulk_data_plan(validated_plan, sf_org)
+                            results.update(execution_results)
+                    else:
+                        results['errors'].append("No valid data generation instructions found in prompt")
+                        
+            else:
+                results['errors'].append("No prompt or GitHub URL provided")
+                
+        except Exception as e:
+            logger.error(f"Error processing unified prompt: {str(e)}")
+            results['errors'].append(f"Processing error: {str(e)}")
+            results['status'] = 'error'
+        
+        # Return results to template
+        flash(f"Processed prompt with {len(results.get('actions', []))} actions and {len(results.get('errors', []))} errors", 
+              'success' if results['status'] == 'success' else 'warning')
+        
+        # Get objects for template
+        objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+        org_info = get_org_info()
+        
+        return render_template('generate_with_schema.html', 
+                             objects=objects,
+                             unified_results=results,
+                             org_info=org_info,
+                             search_query='')
+    
+    def execute_bulk_data_plan(plan, sf_org):
+        """Execute a validated bulk data generation plan"""
+        from intelligent_data_gen import IntelligentDataGenerator
+        
+        results = {'success': 0, 'failure': 0, 'created_ids': [], 'errors': []}
+        
+        try:
+            # Initialize intelligent data generator
+            generator = IntelligentDataGenerator(sf_org)
+            
+            # Process objects in execution order
+            execution_order = plan.get('execution_order', list(plan.get('objects', {}).keys()))
+            
+            for object_name in execution_order:
+                object_config = plan['objects'].get(object_name, {})
+                record_count = object_config.get('record_count', 10)
+                
+                logger.info(f"Generating {record_count} records for {object_name}")
+                
+                # Generate data using intelligent generator
+                generation_result = generator.generate_data(object_name, record_count)
+                
+                if generation_result.get('records'):
+                    # Insert records
+                    try:
+                        insert_result = insert_records(sf_org.instance_url, sf_org.access_token, 
+                                                     object_name, generation_result['records'])
+                        results['success'] += len(insert_result.get('success', []))
+                        results['failure'] += len(insert_result.get('errors', []))
+                        results['created_ids'].extend(insert_result.get('success', []))
+                        
+                    except Exception as insert_error:
+                        logger.error(f"Error inserting {object_name} records: {str(insert_error)}")
+                        results['errors'].append(f"Failed to insert {object_name} records: {str(insert_error)}")
+                        results['failure'] += record_count
+                else:
+                    results['errors'].append(f"No data generated for {object_name}")
+                    results['failure'] += record_count
+                    
+        except Exception as e:
+            logger.error(f"Error executing bulk data plan: {str(e)}")
+            results['errors'].append(f"Execution error: {str(e)}")
+        
+        return results
+    
     # Helper function to get org information for templates
     def get_org_info():
         """Get Salesforce org information for templates"""
@@ -918,12 +1071,30 @@ def init_routes(app):
         object_name = None
         
         if request.method == 'POST':
+            # New unified prompt interface
+            mode = request.form.get('mode', 'auto')
+            unified_prompt = request.form.get('prompt', '').strip()
+            github_url = request.form.get('github_url', '').strip()
+            default_record_count = int(request.form.get('default_record_count', 10))
+            data_quality = request.form.get('data_quality', 'realistic')
+            preview_mode = request.form.get('preview_mode') == 'on'
+            respect_relationships = request.form.get('respect_relationships') == 'on'
+            
+            # Legacy support for old form data
             object_name = request.form.get('object_name')
-            record_count = int(request.form.get('record_count', 5))
+            record_count = int(request.form.get('record_count', default_record_count))
             nlp_requirements = request.form.get('nlp_requirements', '')
             
+            # Process unified prompt interface
+            if unified_prompt or github_url:
+                return handle_unified_prompt(
+                    mode, unified_prompt, github_url, default_record_count,
+                    data_quality, preview_mode, respect_relationships
+                )
+            
+            # Legacy object-specific data generation
             if not object_name:
-                flash('Please select an object', 'warning')
+                flash('Please select an object or enter a prompt', 'warning')
                 return redirect(url_for('combined'))
             
             try:

@@ -95,6 +95,17 @@ Required environment variables:
 
 ## Changelog
 
+- July 10, 2025: **UNIFIED PROMPT INTERFACE IMPLEMENTATION** - Successfully enhanced existing "Schema & Data Generation" page with comprehensive unified interface
+  - **Mobile-responsive design**: Collapsible sidebar with Bootstrap breakpoints and touch-friendly controls
+  - **Unified prompt processing**: Single textarea supporting schema creation, data generation, and GitHub configs
+  - **Intelligent mode detection**: Auto-detects user intent and updates submit button text dynamically
+  - **GitHub integration**: Support for Snowfakery recipes and custom YAML/JSON configuration files
+  - **Preview confirmation**: Modal preview system showing execution plan before running operations
+  - **Advanced options**: Collapsible settings for record counts, data quality, and relationship handling
+  - **Examples modal**: Interactive examples with click-to-insert functionality for user guidance
+  - **Enhanced JavaScript**: Responsive textarea, form validation, and mobile-optimized search
+  - **Backend processing**: New handle_unified_prompt() function with BulkDataParser and GitHubConfigParser integration
+  - **Results display**: Comprehensive unified results section showing schema actions and data generation outcomes
 - July 10, 2025: **SERVER-SIDE SEARCH IMPLEMENTATION** - Completely replaced client-side search with cost-effective server-side filtering
   - **Complete removal**: Eliminated all JavaScript search functionality and external JS files
   - **Pure server-side**: HTML form-based search with Flask backend filtering
