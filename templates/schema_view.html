@@ -203,24 +203,27 @@ function generateSimpleDiagram(data) {
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-  const searchInput = document.getElementById("objectSearch");
-  const objectItems = document.querySelectorAll(".object-item");
-  const noResults = document.getElementById("noResults");
+    const searchInput = document.getElementById("objectSearch");
+    const objectItems = document.querySelectorAll(".object-item");
+    const noResults = document.getElementById("noResults");
 
-  searchInput.addEventListener("input", function () {
-    const query = this.value.trim().toLowerCase();
-    let visibleCount = 0;
+    searchInput.addEventListener("input", function () {
+        const query = this.value.trim().toLowerCase();
+        let visibleCount = 0;
 
-    objectItems.forEach(item => {
-      const label = item.dataset.objectLabel?.toLowerCase() || "";
-      const match = label.includes(query);
-      console.log("Searching:", query, "Matched:", label.includes(query));
-      item.style.display = match ? "flex" : "none";
-      if (match) visibleCount++;
+        objectItems.forEach(item => {
+            const label = (item.dataset.objectLabel || "").toLowerCase();
+            const match = label.includes(query);
+
+            // Debug log to verify matching
+            console.log("Searching for:", query, "| In label:", label, "| Match:", match);
+
+            item.style.display = match ? "block" : "none";  // ❗ changed from "flex" to "block"
+            if (match) visibleCount++;
+        });
+
+        noResults.style.display = visibleCount === 0 ? "block" : "none";
     });
-
-    noResults.style.display = visibleCount === 0 ? "block" : "none";
-  });
 });
 </script>
 
