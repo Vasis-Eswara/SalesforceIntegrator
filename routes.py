@@ -1031,6 +1031,74 @@ def init_routes(app):
         
         return results
     
+    @app.route('/api/object/<object_name>/details')
+    def api_object_details(object_name):
+        """API endpoint to get detailed object schema information"""
+        if 'salesforce_org_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        try:
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            # Get object describe info - try REST API first, then SOAP as fallback
+            try:
+                object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
+                logger.debug(f"Successfully retrieved object details for {object_name} via REST API")
+            except Exception as rest_error:
+                logger.warning(f"REST API failed for object detail, falling back to SOAP: {str(rest_error)}")
+                object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, object_name)
+                logger.debug(f"Successfully retrieved object details for {object_name} via SOAP API")
+            
+            return jsonify(object_info)
+            
+        except Exception as e:
+            logger.error(f"Error getting object details for {object_name}: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+    
+    @app.route('/api/relationship-map/<object_name>')
+    def api_relationship_map(object_name):
+        """API endpoint to get object relationship mapping"""
+        if 'salesforce_org_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        try:
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            # Get object describe info
+            try:
+                object_info = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
+            except Exception as rest_error:
+                object_info = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, object_name)
+            
+            # Extract relationship information
+            relationships = {
+                'parents': [],
+                'children': [],
+                'related': []
+            }
+            
+            if object_info and 'fields' in object_info:
+                fields = object_info['fields']
+                if isinstance(fields, str):
+                    fields = json.loads(fields)
+                
+                for field in fields:
+                    if field.get('type') == 'reference' and field.get('referenceTo'):
+                        # This object references other objects (parents)
+                        for ref_obj in field['referenceTo']:
+                            if ref_obj not in relationships['parents']:
+                                relationships['parents'].append(ref_obj)
+            
+            # For children and related objects, we'd need to query other objects
+            # For now, we'll return the basic parent relationships
+            # This could be enhanced to do more comprehensive relationship mapping
+            
+            return jsonify(relationships)
+            
+        except Exception as e:
+            logger.error(f"Error getting relationship map for {object_name}: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+    
     @app.route('/refresh-schema')
     def refresh_schema():
         """Refresh Salesforce schema on demand"""
