@@ -95,6 +95,16 @@ Required environment variables:
 
 ## Changelog
 
+- July 10, 2025: **SERVER-SIDE SEARCH IMPLEMENTATION** - Completely replaced client-side search with cost-effective server-side filtering
+  - **Complete removal**: Eliminated all JavaScript search functionality and external JS files
+  - **Pure server-side**: HTML form-based search with Flask backend filtering
+  - **Cost optimization**: Zero client-side API calls or processing to reduce credit consumption
+  - **Bootstrap integration**: Clean search form with dark theme styling
+  - **Form persistence**: Search queries retained in input field after submission
+  - **Results handling**: Proper "No results" messages and clear search indicators
+  - **Query parameter**: Uses `?q=search_term` for URL-based search state
+  - **Case-insensitive**: Server-side filtering matches object labels regardless of case
+  - **Performance**: Traditional web form pattern for maximum efficiency and reliability
 - July 10, 2025: **SEARCH FUNCTIONALITY OPTIMIZATION** - Successfully implemented ChatGPT's search improvements
   - **Perfect implementation**: Applied ChatGPT's exact recommendations for object search functionality
   - **Template updates**: Updated both schema_view.html and generate_with_schema.html with proper data-object-label attributes

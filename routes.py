@@ -584,10 +584,13 @@ def init_routes(app):
     
     @app.route('/combined', methods=['GET', 'POST'])
     def combined():
-        """Combined schema viewer and data generation page"""
+        """Combined schema viewer and data generation page with server-side search"""
         if 'salesforce_org_id' not in session:
             flash('Please connect to Salesforce first', 'warning')
             return redirect(url_for('login'))
+        
+        # Handle search query
+        search_query = request.args.get('q', '').strip()
         
         # Handle generation results display
         job = None
@@ -803,9 +806,15 @@ def init_routes(app):
                 # Return to the combined view with results
                 sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
                 objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                
+                # Apply server-side search filter if search query exists
+                if search_query:
+                    objects = [obj for obj in objects if search_query.lower() in obj.get('label', '').lower()]
+                
                 org_info = get_org_info()
                 return render_template('generate_with_schema.html', objects=objects, job=job, 
-                                      results=results, object_name=object_name, org_info=org_info)
+                                      results=results, object_name=object_name, org_info=org_info, 
+                                      search_query=search_query)
                 
             except Exception as e:
                 logger.error(f"Error generating data: {str(e)}")
@@ -816,9 +825,15 @@ def init_routes(app):
         try:
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
             objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            
+            # Apply server-side search filter if search query exists
+            if search_query:
+                objects = [obj for obj in objects if search_query.lower() in obj.get('label', '').lower()]
+            
             org_info = get_org_info()
             return render_template('generate_with_schema.html', objects=objects,
-                                  job=job, results=results, object_name=object_name, org_info=org_info)
+                                  job=job, results=results, object_name=object_name, org_info=org_info, 
+                                  search_query=search_query)
         except Exception as e:
             logger.error(f"Error fetching objects: {str(e)}")
             flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')

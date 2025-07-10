@@ -6,10 +6,26 @@
         <!-- Sidebar with object list -->
         <div class="col-md-3 col-lg-2">
             <div class="sidebar">
-                <!-- Salesforce Objects Title & Search Bar -->
+                <!-- Salesforce Objects Title & Server-Side Search Form -->
                 <div class="mb-3">
                     <h5 class="text-white">Salesforce Objects</h5>
-                    <input type="text" id="objectSearch" class="form-control bg-dark text-light" placeholder="Search objects...">
+                    <form method="GET" action="{{ url_for('combined') }}" class="d-flex">
+                        <input type="text" name="q" class="form-control form-control-sm bg-dark text-light border-secondary" 
+                               placeholder="Search objects..." value="{{ search_query or '' }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm ms-2">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </form>
+                    {% if search_query %}
+                    <div class="mt-2">
+                        <small class="text-muted">
+                            Showing results for "<strong>{{ search_query }}</strong>" 
+                            <a href="{{ url_for('combined') }}" class="text-decoration-none ms-2">
+                                <i class="bi bi-x-circle"></i> Clear
+                            </a>
+                        </small>
+                    </div>
+                    {% endif %}
                 </div>
                 
                 {% if objects %}
@@ -26,8 +42,13 @@
                     {% endfor %}
                 </div>
                 
-                <!-- No Results Message -->
-                <p id="noResults" class="text-muted mt-3" style="display: none;">No objects match your search.</p>
+                {% if search_query and not objects %}
+                <!-- No Search Results Message -->
+                <div class="alert alert-info">
+                    <i class="bi bi-search"></i> No objects match your search for "<strong>{{ search_query }}</strong>".
+                    <br><small>Try a different search term or <a href="{{ url_for('combined') }}">view all objects</a>.</small>
+                </div>
+                {% endif %}
                 {% else %}
                 <div class="alert alert-warning">
                     No objects found or unable to retrieve schema.
@@ -258,9 +279,8 @@
         
         if (!objList) return;
         
-        // Make sure all list items are visible
-        const items = objList.querySelectorAll('li');
-        items.forEach(item => item.style.display = '');
+        // All objects are now server-side filtered - no client-side manipulation needed
+        console.log('Object list loaded with server-side filtering');
     });
 </script>
 
