@@ -10,13 +10,18 @@
                 <form method="GET" action="{{ url_for('schema_viewer') }}">
                     <div class="mb-3">
                         <h5 class="text-white">Salesforce Objects</h5>
-                        <input 
-                            type="text" 
-                            name="q" 
-                            value="{{ search_query or '' }}" 
-                            class="form-control bg-dark text-light" 
-                            placeholder="Search objects..."
-                        />
+                        <div class="input-group">
+                            <input 
+                                type="text" 
+                                name="q" 
+                                value="{{ search_query or '' }}" 
+                                class="form-control bg-dark text-light" 
+                                placeholder="Search objects..."
+                            />
+                            <button class="btn btn-outline-light" type="submit">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
                     </div>
                 </form>
 
