@@ -74,9 +74,76 @@ def init_routes(app):
         org_info = get_org_info()
         return render_template('index.html', sf_connected=sf_connected, org_info=org_info)
     
-    @app.route('/login', methods=['GET', 'POST'])
+    # =============================================================================
+    # CLEAN SALESFORCE OAUTH 2.0 IMPLEMENTATION
+    # =============================================================================
+    
+    @app.route('/login')
     def login():
-        """Salesforce login page with multiple connection options"""
+        """Clean OAuth 2.0 login - redirect to Salesforce authorization"""
+        try:
+            from oauth_utils import get_authorization_url
+            auth_url = get_authorization_url()
+            return redirect(auth_url)
+        except Exception as e:
+            logger.error(f"OAuth login error: {str(e)}")
+            flash(f'OAuth configuration error: {str(e)}', 'danger')
+            return render_template('login_error.html', error=str(e))
+    
+    @app.route('/oauth/callback')
+    def oauth_callback():
+        """Handle OAuth callback from Salesforce"""
+        from oauth_utils import exchange_code_for_tokens, store_tokens_in_session
+        
+        # Check for errors
+        error = request.args.get('error')
+        if error:
+            error_description = request.args.get('error_description', '')
+            logger.error(f"OAuth error: {error} - {error_description}")
+            flash(f'Authentication failed: {error}', 'danger')
+            return redirect(url_for('index'))
+        
+        # Get authorization code
+        code = request.args.get('code')
+        if not code:
+            logger.error("No authorization code received")
+            flash('Authentication failed: No authorization code received', 'danger')
+            return redirect(url_for('index'))
+        
+        try:
+            # Exchange code for tokens
+            token_data = exchange_code_for_tokens(code)
+            
+            # Store tokens in session
+            store_tokens_in_session(token_data)
+            
+            # Store in database for persistence
+            from models import SalesforceOrg
+            sf_org = SalesforceOrg(
+                instance_url=token_data.get('instance_url'),
+                access_token=token_data.get('access_token'),
+                refresh_token=token_data.get('refresh_token'),
+                org_id=session.get('sf_org_id'),
+                user_id=session.get('sf_user_id')
+            )
+            
+            db.session.add(sf_org)
+            db.session.commit()
+            
+            # Update session with database ID
+            session['salesforce_org_id'] = sf_org.id
+            
+            flash('Successfully connected to Salesforce!', 'success')
+            return redirect(url_for('combined'))
+            
+        except Exception as e:
+            logger.error(f"Token exchange error: {str(e)}")
+            flash(f'Authentication failed: {str(e)}', 'danger')
+            return redirect(url_for('index'))
+    
+    @app.route('/legacy-login', methods=['GET', 'POST'])
+    def legacy_login():
+        """Legacy login page with multiple connection options (kept for compatibility)"""
         if request.method == 'POST':
             login_type = request.form.get('login_type')
             
@@ -455,9 +522,8 @@ def init_routes(app):
     @app.route('/logout')
     def logout():
         """Clear Salesforce connection from session"""
-        session.pop('salesforce_org_id', None)
-        session.pop('salesforce_instance_url', None)
-        session.pop('salesforce_access_token', None)
+        from oauth_utils import clear_session
+        clear_session()
         flash('Disconnected from Salesforce', 'info')
         return redirect(url_for('index'))
     
@@ -611,6 +677,230 @@ def init_routes(app):
         except Exception as e:
             logger.error(f"Error in search_objects: {str(e)}")
             return jsonify({'error': str(e)}), 500
+
+    # =============================================================================
+    # BULK DATA INSERTION WITH NATURAL LANGUAGE & GITHUB CONFIG SUPPORT
+    # =============================================================================
+
+    @app.route('/bulk-data', methods=['GET', 'POST'])
+    def bulk_data():
+        """Bulk data creation with natural language and GitHub config support"""
+        if 'salesforce_org_id' not in session:
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+        
+        org_info = get_org_info()
+        
+        if request.method == 'POST':
+            mode = request.form.get('mode')  # 'natural' or 'github'
+            
+            if mode == 'natural':
+                return handle_natural_language_bulk_data(request.form)
+            elif mode == 'github':
+                return handle_github_config_bulk_data(request.form)
+            else:
+                flash('Invalid data creation mode', 'danger')
+                return redirect(url_for('bulk_data'))
+        
+        # GET request - show bulk data interface
+        return render_template('bulk_data.html', org_info=org_info)
+    
+    def handle_natural_language_bulk_data(form_data):
+        """Handle natural language bulk data creation"""
+        from bulk_data_utils import BulkDataParser, validate_data_plan
+        
+        prompt = form_data.get('prompt', '').strip()
+        if not prompt:
+            flash('Please enter a data creation prompt', 'warning')
+            return redirect(url_for('bulk_data'))
+        
+        try:
+            # Parse natural language prompt
+            parser = BulkDataParser()
+            data_plan = parser.parse_prompt(prompt)
+            
+            # Get available objects for validation
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            object_names = [obj['name'] for obj in objects]
+            
+            # Validate plan
+            validation = validate_data_plan(data_plan, object_names)
+            
+            # Store plan in session for confirmation
+            session['bulk_data_plan'] = data_plan
+            session['bulk_data_validation'] = validation
+            
+            # Show confirmation page
+            org_info = get_org_info()
+            return render_template('bulk_data_confirm.html', 
+                                 plan=data_plan, 
+                                 validation=validation,
+                                 prompt=prompt,
+                                 mode='natural',
+                                 org_info=org_info)
+            
+        except Exception as e:
+            logger.error(f"Error parsing natural language prompt: {str(e)}")
+            flash(f'Error parsing prompt: {str(e)}', 'danger')
+            return redirect(url_for('bulk_data'))
+    
+    def handle_github_config_bulk_data(form_data):
+        """Handle GitHub config bulk data creation"""
+        from bulk_data_utils import GitHubConfigParser, validate_data_plan
+        
+        github_url = form_data.get('github_url', '').strip()
+        if not github_url:
+            flash('Please enter a GitHub URL', 'warning')
+            return redirect(url_for('bulk_data'))
+        
+        try:
+            # Parse GitHub config
+            parser = GitHubConfigParser()
+            data_plan = parser.parse_github_url(github_url)
+            
+            # Get available objects for validation
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            object_names = [obj['name'] for obj in objects]
+            
+            # Validate plan
+            validation = validate_data_plan(data_plan, object_names)
+            
+            # Store plan in session for confirmation
+            session['bulk_data_plan'] = data_plan
+            session['bulk_data_validation'] = validation
+            
+            # Show confirmation page
+            org_info = get_org_info()
+            return render_template('bulk_data_confirm.html', 
+                                 plan=data_plan, 
+                                 validation=validation,
+                                 github_url=github_url,
+                                 mode='github',
+                                 org_info=org_info)
+            
+        except Exception as e:
+            logger.error(f"Error parsing GitHub config: {str(e)}")
+            flash(f'Error parsing GitHub config: {str(e)}', 'danger')
+            return redirect(url_for('bulk_data'))
+    
+    @app.route('/bulk-data/execute', methods=['POST'])
+    def execute_bulk_data():
+        """Execute confirmed bulk data creation plan"""
+        if 'salesforce_org_id' not in session:
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+        
+        # Get plan from session
+        data_plan = session.get('bulk_data_plan')
+        validation = session.get('bulk_data_validation')
+        
+        if not data_plan or not validation:
+            flash('No data creation plan found. Please start over.', 'warning')
+            return redirect(url_for('bulk_data'))
+        
+        if not validation['valid']:
+            flash('Cannot execute invalid data plan. Please fix errors first.', 'danger')
+            return redirect(url_for('bulk_data'))
+        
+        try:
+            # Execute bulk data creation
+            results = execute_data_plan(data_plan)
+            
+            # Clear plan from session
+            session.pop('bulk_data_plan', None)
+            session.pop('bulk_data_validation', None)
+            
+            flash(f'Successfully created {results["total_created"]} records across {len(results["objects"])} objects', 'success')
+            
+            # Show results
+            org_info = get_org_info()
+            return render_template('bulk_data_results.html', 
+                                 results=results,
+                                 plan=data_plan,
+                                 org_info=org_info)
+            
+        except Exception as e:
+            logger.error(f"Error executing bulk data creation: {str(e)}")
+            flash(f'Error creating data: {str(e)}', 'danger')
+            return redirect(url_for('bulk_data'))
+    
+    def execute_data_plan(data_plan):
+        """Execute a validated data creation plan"""
+        from faker_utils import generate_test_data_with_faker
+        from intelligent_data_gen import IntelligentDataGenerator
+        
+        sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+        results = {
+            'objects': {},
+            'total_created': 0,
+            'errors': [],
+            'execution_order': data_plan['execution_order']
+        }
+        
+        # Create connection object for intelligent generator
+        sf_connection = type('SFConnection', (), {
+            'access_token': sf_org.access_token,
+            'instance_url': sf_org.instance_url
+        })
+        
+        generator = IntelligentDataGenerator(sf_connection)
+        
+        # Execute in dependency order
+        for object_name in data_plan['execution_order']:
+            obj_config = data_plan['objects'][object_name]
+            record_count = obj_config['count']
+            
+            try:
+                logger.info(f"Creating {record_count} records for {object_name}")
+                
+                # Generate data using intelligent generator
+                result = generator.generate_data(object_name, record_count)
+                
+                if result['success_count'] > 0:
+                    results['objects'][object_name] = {
+                        'created': result['success_count'],
+                        'errors': result['errors'],
+                        'records': result['records']
+                    }
+                    results['total_created'] += result['success_count']
+                    logger.info(f"Successfully created {result['success_count']} {object_name} records")
+                else:
+                    error_msg = f"Failed to create {object_name} records: {'; '.join(result['errors'])}"
+                    results['errors'].append(error_msg)
+                    logger.error(error_msg)
+                
+            except Exception as e:
+                error_msg = f"Error creating {object_name} records: {str(e)}"
+                results['errors'].append(error_msg)
+                logger.error(error_msg)
+        
+        return results
+    
+    @app.route('/refresh-schema')
+    def refresh_schema():
+        """Refresh Salesforce schema on demand"""
+        if 'salesforce_org_id' not in session:
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+        
+        try:
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            # Clear any cached schema data
+            # TODO: Implement schema caching and clearing
+            
+            # Re-fetch objects
+            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            
+            flash(f'Successfully refreshed schema. Found {len(objects)} objects.', 'success')
+            
+        except Exception as e:
+            logger.error(f"Error refreshing schema: {str(e)}")
+            flash(f'Error refreshing schema: {str(e)}', 'danger')
+        
+        return redirect(url_for('combined'))
 
     @app.route('/combined', methods=['GET', 'POST'])
     def combined():

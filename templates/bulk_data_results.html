@@ -1,0 +1,201 @@
+{% extends "layout.html" %}
+
+{% block title %}Data Creation Results{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="bi bi-check-circle me-2"></i>
+                    Data Creation Results
+                </h1>
+                {% if org_info.connected %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Connected to {{ org_info.name or org_info.instance }}
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-bar-chart me-2"></i>
+                        Execution Summary
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-success">{{ results.total_created }}</h4>
+                                <p class="text-muted">Total Records Created</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-info">{{ results.objects|length }}</h4>
+                                <p class="text-muted">Objects Processed</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="{% if results.errors %}text-warning{% else %}text-success{% endif %}">{{ results.errors|length }}</h4>
+                                <p class="text-muted">Errors</p>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ results.execution_order|length }}</h4>
+                                <p class="text-muted">Execution Steps</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Errors (if any) -->
+            {% if results.errors %}
+                <div class="alert alert-warning">
+                    <h5><i class="bi bi-exclamation-triangle me-2"></i>Execution Errors</h5>
+                    <ul class="mb-0">
+                        {% for error in results.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <!-- Execution Order -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ol me-2"></i>
+                        Execution Order
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for object_name in results.execution_order %}
+                            <div class="col-md-2 mb-2">
+                                <div class="text-center">
+                                    {% if object_name in results.objects %}
+                                        <div class="badge bg-success p-2 w-100">
+                                            <i class="bi bi-check-circle"></i><br>
+                                            {{ object_name }}
+                                        </div>
+                                    {% else %}
+                                        <div class="badge bg-secondary p-2 w-100">
+                                            <i class="bi bi-dash-circle"></i><br>
+                                            {{ object_name }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Object Results -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table me-2"></i>
+                        Object Results
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% for object_name, object_result in results.objects.items() %}
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">{{ object_name }}</h6>
+                                    <span class="badge bg-success">{{ object_result.created }} records created</span>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                {% if object_result.errors %}
+                                    <div class="alert alert-warning alert-sm">
+                                        <strong>Errors:</strong>
+                                        <ul class="mb-0">
+                                            {% for error in object_result.errors %}
+                                                <li>{{ error }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    </div>
+                                {% endif %}
+                                
+                                {% if object_result.records %}
+                                    <div class="accordion" id="accordion{{ loop.index }}">
+                                        <div class="accordion-item">
+                                            <h2 class="accordion-header" id="heading{{ loop.index }}">
+                                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+                                                    View Created Records ({{ object_result.records|length }})
+                                                </button>
+                                            </h2>
+                                            <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#accordion{{ loop.index }}">
+                                                <div class="accordion-body">
+                                                    <div class="table-responsive">
+                                                        <table class="table table-sm">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Record ID</th>
+                                                                    <th>Fields</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {% for record in object_result.records[:10] %}
+                                                                    <tr>
+                                                                        <td><code>{{ record.id or 'N/A' }}</code></td>
+                                                                        <td>
+                                                                            {% for field, value in record.items() %}
+                                                                                {% if field != 'id' %}
+                                                                                    <small><strong>{{ field }}:</strong> {{ value|truncate(50) }}</small><br>
+                                                                                {% endif %}
+                                                                            {% endfor %}
+                                                                        </td>
+                                                                    </tr>
+                                                                {% endfor %}
+                                                                {% if object_result.records|length > 10 %}
+                                                                    <tr>
+                                                                        <td colspan="2" class="text-center text-muted">
+                                                                            ... and {{ object_result.records|length - 10 }} more records
+                                                                        </td>
+                                                                    </tr>
+                                                                {% endif %}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    <a href="{{ url_for('bulk_data') }}" class="btn btn-primary btn-lg me-3">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        Create More Data
+                    </a>
+                    
+                    <a href="{{ url_for('combined') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        Back to Schema Viewer
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

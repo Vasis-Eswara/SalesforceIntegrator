@@ -52,6 +52,9 @@
                         <a class="nav-link {% if request.path == url_for('combined') %}active{% endif %}" href="{{ url_for('combined') }}"><i class="bi bi-diagram-3 me-1"></i>Schema & Data Gen</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('bulk_data') %}active{% endif %}" href="{{ url_for('bulk_data') }}"><i class="bi bi-database-add me-1"></i>Bulk Data Creation</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('schema_viewer') %}active{% endif %}" href="{{ url_for('schema_viewer') }}"><i class="bi bi-search me-1"></i>Schema Viewer</a>
                     </li>
                     <li class="nav-item">

@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+
+{% block title %}Confirm Data Creation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="bi bi-check-square me-2"></i>
+                    Confirm Data Creation Plan
+                </h1>
+                {% if org_info.connected %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Connected to {{ org_info.name or org_info.instance }}
+                    </span>
+                {% endif %}
+            </div>
+
+            {% if not validation.valid %}
+                <div class="alert alert-danger">
+                    <h5><i class="bi bi-exclamation-triangle me-2"></i>Validation Errors</h5>
+                    <ul class="mb-0">
+                        {% for error in validation.errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            {% if validation.warnings %}
+                <div class="alert alert-warning">
+                    <h5><i class="bi bi-exclamation-triangle me-2"></i>Warnings</h5>
+                    <ul class="mb-0">
+                        {% for warning in validation.warnings %}
+                            <li>{{ warning }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+            <!-- Source Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        Source Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if mode == 'natural' %}
+                        <p><strong>Mode:</strong> Natural Language</p>
+                        <p><strong>Original Prompt:</strong></p>
+                        <div class="bg-light p-3 rounded">
+                            <code>{{ prompt }}</code>
+                        </div>
+                    {% elif mode == 'github' %}
+                        <p><strong>Mode:</strong> GitHub Configuration</p>
+                        <p><strong>Source URL:</strong> <a href="{{ github_url }}" target="_blank">{{ github_url }}</a></p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Data Plan Summary -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-check me-2"></i>
+                        Data Creation Plan
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Total Objects:</strong> {{ plan.objects|length }}</p>
+                            <p><strong>Total Records:</strong> {{ plan.total_records }}</p>
+                            <p><strong>Relationships:</strong> {{ plan.relationships|length }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Execution Order:</strong></p>
+                            <ol>
+                                {% for obj in plan.execution_order %}
+                                    <li>{{ obj }} ({{ plan.objects[obj].count }} records)</li>
+                                {% endfor %}
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Object Details -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table me-2"></i>
+                        Object Details
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for obj_name, obj_config in plan.objects.items() %}
+                            <div class="col-md-6 mb-3">
+                                <div class="border rounded p-3">
+                                    <h6>{{ obj_config.label or obj_name }}</h6>
+                                    <p class="text-muted mb-1">API Name: <code>{{ obj_config.api_name }}</code></p>
+                                    <p class="mb-1">Records to create: <span class="badge bg-primary">{{ obj_config.count }}</span></p>
+                                    {% if obj_config.fields %}
+                                        <p class="mb-0">Custom fields: {{ obj_config.fields|length }}</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Relationships -->
+            {% if plan.relationships %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-diagram-3 me-2"></i>
+                            Relationships
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Parent Object</th>
+                                        <th>Child Object</th>
+                                        <th>Relationship</th>
+                                        <th>Field Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for rel in plan.relationships %}
+                                        <tr>
+                                            <td>{{ rel.parent }}</td>
+                                            <td>{{ rel.child }}</td>
+                                            <td>{{ rel.count }}:1</td>
+                                            <td><code>{{ rel.field_name }}</code></td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Warnings -->
+            {% if plan.warnings %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>
+                            Plan Warnings
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            {% for warning in plan.warnings %}
+                                <li>{{ warning }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="row">
+                <div class="col-md-12 text-center">
+                    {% if validation.valid %}
+                        <form method="POST" action="{{ url_for('execute_bulk_data') }}" class="d-inline">
+                            <button type="submit" class="btn btn-success btn-lg me-3">
+                                <i class="bi bi-play-circle me-1"></i>
+                                Execute Data Creation
+                            </button>
+                        </form>
+                    {% else %}
+                        <button type="button" class="btn btn-danger btn-lg me-3" disabled>
+                            <i class="bi bi-x-circle me-1"></i>
+                            Cannot Execute (Fix Errors First)
+                        </button>
+                    {% endif %}
+                    
+                    <a href="{{ url_for('bulk_data') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        Back to Bulk Data
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

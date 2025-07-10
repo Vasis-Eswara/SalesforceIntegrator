@@ -46,6 +46,10 @@
                                 <i class="bi bi-diagram-3-fill me-2"></i>
                                 Schema & Data Gen
                             </a>
+                            <a href="{{ url_for('bulk_data') }}" class="btn btn-outline-info me-md-2">
+                                <i class="bi bi-database-add me-2"></i>
+                                Bulk Data Creation
+                            </a>
                             <a href="{{ url_for('configure') }}" class="btn btn-outline-success">
                                 <i class="bi bi-gear-fill me-2"></i>
                                 Configure Salesforce
@@ -97,7 +101,22 @@
                     <i class="bi bi-cloud-upload-fill text-primary" style="font-size: 2rem;"></i>
                     <h5 class="card-title mt-3">Direct Insertion</h5>
                     <p class="card-text">Insert generated test data directly into your Salesforce org with validation and error handling.</p>
-        <div class="col-md-4 mt-3">
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-database-add text-primary" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">Bulk Data Creation</h5>
+                    <p class="card-text">Create large datasets using natural language prompts or GitHub configuration files with relationship awareness.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-gear-wide-connected text-primary" style="font-size: 2rem;"></i>
@@ -106,6 +125,12 @@
                 </div>
             </div>
         </div>
+        <div class="col-md-4">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <i class="bi bi-arrow-clockwise text-primary" style="font-size: 2rem;"></i>
+                    <h5 class="card-title mt-3">Schema Refresh</h5>
+                    <p class="card-text">Automatically refresh your Salesforce schema on demand to keep data generation current with org changes.</p>
                 </div>
             </div>
         </div>

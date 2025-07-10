@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block title %}OAuth Configuration Error{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        OAuth Configuration Error
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h6>Configuration Error:</h6>
+                        <p class="mb-0">{{ error }}</p>
+                    </div>
+                    
+                    <h6>Required Environment Variables:</h6>
+                    <ul>
+                        <li><code>SALESFORCE_CLIENT_ID</code> - Your Salesforce Connected App Client ID</li>
+                        <li><code>SALESFORCE_CLIENT_SECRET</code> - Your Salesforce Connected App Client Secret</li>
+                        <li><code>SALESFORCE_REDIRECT_URI</code> - OAuth callback URL (e.g., https://your-app.com/oauth/callback)</li>
+                    </ul>
+                    
+                    <h6>How to Configure:</h6>
+                    <ol>
+                        <li>Create a Connected App in your Salesforce org</li>
+                        <li>Set the callback URL to match your deployment</li>
+                        <li>Enable OAuth scopes: <code>api</code>, <code>refresh_token</code>, <code>offline_access</code></li>
+                        <li>Set the environment variables in your deployment</li>
+                    </ol>
+                    
+                    <div class="mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="bi bi-house me-1"></i>
+                            Return Home
+                        </a>
+                        <a href="{{ url_for('legacy_login') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-key me-1"></i>
+                            Use Legacy Login
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

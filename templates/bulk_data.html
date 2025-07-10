@@ -1,0 +1,162 @@
+{% extends "layout.html" %}
+
+{% block title %}Bulk Data Creation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">
+                    <i class="bi bi-database-add me-2"></i>
+                    Bulk Data Creation
+                </h1>
+                {% if org_info.connected %}
+                    <span class="badge bg-success">
+                        <i class="bi bi-check-circle me-1"></i>
+                        Connected to {{ org_info.name or org_info.instance }}
+                    </span>
+                {% endif %}
+            </div>
+
+            <!-- Mode Selection -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-chat-text me-2"></i>
+                                Natural Language Mode
+                            </h5>
+                            <p class="card-text">
+                                Describe what data you want to create using natural language. 
+                                For example: "Create 10 Accounts, each with 3 Contacts and 2 Opportunities"
+                            </p>
+                            
+                            <form method="POST" action="{{ url_for('bulk_data') }}">
+                                <input type="hidden" name="mode" value="natural">
+                                
+                                <div class="mb-3">
+                                    <label for="prompt" class="form-label">Data Creation Prompt</label>
+                                    <textarea 
+                                        class="form-control" 
+                                        id="prompt" 
+                                        name="prompt" 
+                                        rows="4" 
+                                        placeholder="e.g., Create 5 Accounts with 3 Contacts each. Each Contact should have 2 Cases."
+                                        required
+                                    ></textarea>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-magic me-1"></i>
+                                    Parse Prompt
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <i class="bi bi-github me-2"></i>
+                                GitHub Config Mode
+                            </h5>
+                            <p class="card-text">
+                                Provide a GitHub URL to a YAML configuration file (like Snowfakery recipes). 
+                                The file will be fetched and parsed automatically.
+                            </p>
+                            
+                            <form method="POST" action="{{ url_for('bulk_data') }}">
+                                <input type="hidden" name="mode" value="github">
+                                
+                                <div class="mb-3">
+                                    <label for="github_url" class="form-label">GitHub File URL</label>
+                                    <input 
+                                        type="url" 
+                                        class="form-control" 
+                                        id="github_url" 
+                                        name="github_url" 
+                                        placeholder="https://github.com/user/repo/blob/main/config.yml"
+                                        required
+                                    >
+                                    <div class="form-text">
+                                        Supports YAML and JSON files. Must be a public GitHub repository.
+                                    </div>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-secondary">
+                                    <i class="bi bi-download me-1"></i>
+                                    Load Config
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Examples Section -->
+            <div class="row mt-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-lightbulb me-2"></i>
+                                Examples
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Natural Language Examples:</h6>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <code>"Create 10 Accounts with 5 Contacts each"</code>
+                                        </li>
+                                        <li class="mb-2">
+                                            <code>"Generate 20 Leads and 15 Opportunities"</code>
+                                        </li>
+                                        <li class="mb-2">
+                                            <code>"Insert 5 Products and 3 Cases for each Account"</code>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Relationship Examples:</h6>
+                                    <ul class="list-unstyled">
+                                        <li class="mb-2">
+                                            <code>"Each Contact should belong to an Account"</code>
+                                        </li>
+                                        <li class="mb-2">
+                                            <code>"Link each Opportunity to a Contact's Account"</code>
+                                        </li>
+                                        <li class="mb-2">
+                                            <code>"3 Cases for each Contact"</code>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="row mt-4">
+                <div class="col-md-12 text-center">
+                    <a href="{{ url_for('refresh_schema') }}" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-arrow-clockwise me-1"></i>
+                        Refresh Schema
+                    </a>
+                    <a href="{{ url_for('combined') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left me-1"></i>
+                        Back to Schema Viewer
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
