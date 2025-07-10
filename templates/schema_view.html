@@ -215,11 +215,12 @@ document.addEventListener("DOMContentLoaded", function () {
             const label = (item.dataset.objectLabel || "").toLowerCase();
             const match = label.includes(query);
 
-            // Debug log to verify matching
-            console.log("Searching for:", query, "| In label:", label, "| Match:", match);
-
-            item.style.display = match ? "block" : "none";  // ❗ changed from "flex" to "block"
+            // Toggle visibility using class instead of style.display
+            item.classList.toggle("hidden", !match);
             if (match) visibleCount++;
+
+            // Optional: log for debugging
+            console.log("Searching for:", query, "| In label:", label, "| Match:", match);
         });
 
         noResults.style.display = visibleCount === 0 ? "block" : "none";
@@ -230,6 +231,9 @@ document.addEventListener("DOMContentLoaded", function () {
 <style>
 .object-item {
     transition: all 0.2s ease-in-out;
+}
+.hidden {
+    display: none !important;
 }
 </style>
 {% endblock %}
