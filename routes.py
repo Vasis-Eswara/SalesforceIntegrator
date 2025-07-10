@@ -584,10 +584,13 @@ def init_routes(app):
     
     @app.route('/combined', methods=['GET', 'POST'])
     def combined():
-        """Combined schema viewer and data generation page"""
+        """Combined schema viewer and data generation page with server-side search"""
         if 'salesforce_org_id' not in session:
             flash('Please connect to Salesforce first', 'warning')
             return redirect(url_for('login'))
+        
+        # Get the search query parameter from the request
+        search_query = request.args.get("q", "").strip()
         
         # Handle generation results display
         job = None
@@ -815,10 +818,31 @@ def init_routes(app):
         # GET request - show combined interface
         try:
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            
+            # Get all Salesforce objects - try REST API first, then SOAP as fallback
+            try:
+                all_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(all_objects)} objects via REST API")
+            except Exception as rest_error:
+                logger.warning(f"REST API failed for objects, falling back to SOAP: {str(rest_error)}")
+                all_objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(all_objects)} objects via SOAP API")
+            
+            # Filter objects based on the search query (case-insensitive label match)
+            if search_query:
+                filtered_objects = [
+                    obj for obj in all_objects
+                    if search_query.lower() in obj["label"].lower()
+                ]
+                logger.debug(f"Filtered {len(all_objects)} objects to {len(filtered_objects)} based on search: '{search_query}'")
+            else:
+                filtered_objects = all_objects
+                logger.debug(f"No search query provided, showing all {len(filtered_objects)} objects")
+            
             org_info = get_org_info()
-            return render_template('generate_with_schema.html', objects=objects,
-                                  job=job, results=results, object_name=object_name, org_info=org_info)
+            return render_template('generate_with_schema.html', objects=filtered_objects,
+                                  job=job, results=results, object_name=object_name, 
+                                  search_query=search_query, org_info=org_info)
         except Exception as e:
             logger.error(f"Error fetching objects: {str(e)}")
             flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
