@@ -202,30 +202,24 @@ function generateSimpleDiagram(data) {
     return diagram;
 }
 
-// Live Search Script
 document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("objectSearch");
-    const objectItems = document.querySelectorAll(".object-item");
-    const noResults = document.getElementById("noResults");
+  const searchInput = document.getElementById("objectSearch");
+  const objectItems = document.querySelectorAll(".object-item");
+  const noResults = document.getElementById("noResults");
 
-    if (!searchInput || objectItems.length === 0) {
-        console.warn("Missing search input or no object items found.");
-        return;
-    }
+  searchInput.addEventListener("input", function () {
+    const query = this.value.trim().toLowerCase();
+    let visibleCount = 0;
 
-    searchInput.addEventListener("input", function () {
-        const query = this.value.trim().toLowerCase();
-        let matchCount = 0;
-
-        objectItems.forEach(item => {
-            const label = item.dataset.objectLabel?.toLowerCase() || "";
-            const isVisible = label.includes(query);
-            item.style.display = isVisible ? "flex" : "none";
-            if (isVisible) matchCount++;
-        });
-
-        noResults.style.display = matchCount === 0 ? "block" : "none";
+    objectItems.forEach(item => {
+      const label = item.dataset.objectLabel?.toLowerCase() || "";
+      const match = label.includes(query);
+      item.style.display = match ? "flex" : "none";
+      if (match) visibleCount++;
     });
+
+    noResults.style.display = visibleCount === 0 ? "block" : "none";
+  });
 });
 </script>
 
