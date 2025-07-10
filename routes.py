@@ -1531,3 +1531,4 @@ def init_routes(app):
     def auth_help():
         """Show authentication troubleshooting guide"""
         return render_template('auth_help.html')
+
