@@ -719,25 +719,29 @@
 
 <!-- Live Search Script -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("objectSearch");
-    const items = document.querySelectorAll(".object-item");
-    const noResults = document.getElementById("noResults");
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("objectSearch");
+        const noResults = document.getElementById("noResults");
 
-    searchInput.addEventListener("input", function () {
-        const query = this.value.toLowerCase();
-        let visibleCount = 0;
+        // Wait for all object items to render
+        setTimeout(() => {
+            const items = document.querySelectorAll(".object-item");
 
-        items.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            const match = text.includes(query);
-            item.style.display = match ? "block" : "none";
-            if (match) visibleCount++;
-        });
+            searchInput.addEventListener("input", function () {
+                const query = this.value.toLowerCase();
+                let visibleCount = 0;
 
-        noResults.style.display = visibleCount === 0 ? "block" : "none";
+                items.forEach(item => {
+                    const text = item.getAttribute("data-object-label").toLowerCase();
+                    const match = text.includes(query);
+                    item.style.display = match ? "block" : "none";
+                    if (match) visibleCount++;
+                });
+
+                noResults.style.display = visibleCount === 0 ? "block" : "none";
+            });
+        }, 50);  // Small delay to ensure items are in DOM
     });
-});
 </script>
 
 <!-- Smooth transitions -->
