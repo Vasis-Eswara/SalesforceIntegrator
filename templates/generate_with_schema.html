@@ -590,48 +590,21 @@
             const diagramContainer = document.getElementById('object-diagram');
             const diagramTitle = document.getElementById('diagram-title');
             
-            // Make sure the diagram section is visible
             schemaContainer.style.display = 'block';
-            diagramTitle.textContent = 'Relationship Diagram: ' + objectName;
+            diagramTitle.textContent = 'Schema: ' + objectName;
             
-            // Show loading indicator
-            diagramContainer.innerHTML = 
-                '<div class="text-center my-5">' +
-                    '<div class="spinner-border text-primary" role="status">' +
-                        '<span class="visually-hidden">Loading...</span>' +
-                    '</div>' +
-                    '<p class="lead mt-3">Generating relationship diagram...</p>' +
-                '</div>';
+            diagramContainer.innerHTML = '<div class="text-center my-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="lead mt-3">Loading schema...</p></div>';
             
-            console.log('Loading diagram for:', objectName);
-            
-            // Fetch object details to generate diagram
             fetch('/schema/' + objectName)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Diagram data received:', Object.keys(data));
-                    
-                    // Generate mermaid diagram syntax
                     const diagramCode = generateMermaidDiagram(data);
-                    console.log('Generated diagram code length:', diagramCode.length);
-                    
-                    // Create the mermaid diagram
                     diagramContainer.innerHTML = '<div class="mermaid">' + diagramCode + '</div>';
                     
-                    // Force diagram to be visible
-                    schemaContainer.style.display = 'block';
-                    
-                    // Render the diagram with a slight delay to ensure DOM is ready
                     setTimeout(() => {
                         try {
-                            console.log('Running mermaid rendering');
                             mermaid.run();
-                            
-                            // Re-initialize controls after diagram is rendered
                             initDiagramControls();
-                            
-                            // Initialize the generate form and how it works controls
-                            initGenerateControls();
                         } catch (e) {
                             console.error('Mermaid error:', e);
                         }
@@ -639,51 +612,41 @@
                 })
                 .catch(error => {
                     console.error('Error loading diagram:', error);
-                    diagramContainer.innerHTML = 
-                        '<div class="alert alert-danger">' +
-                            '<h4 class="alert-heading">Error</h4>' +
-                            '<p>Failed to generate diagram: ' + error.message + '</p>' +
-                        '</div>';
+                    diagramContainer.innerHTML = '<div class="alert alert-danger"><h4>Error</h4><p>Failed to generate diagram: ' + error.message + '</p></div>';
                 });
         }
         
-        // Simple working diagram function
         function generateMermaidDiagram(data) {
-            let diagramSyntax = 'classDiagram\n';
+            let diagram = 'classDiagram\n';
+            diagram += '    class ' + data.name + ' {\n';
             
-            // Main class
-            diagramSyntax += '    class ' + data.name + ' {\n';
-            
-            // Add key fields only
             data.fields.forEach(field => {
-                if (field.nillable === false || field.unique || field.nameField || 
-                    field.type === 'reference' || field.name === 'Id') {
-                    let fieldLine = '        ' + field.name + ' : ' + field.type;
-                    if (field.nillable === false) fieldLine += ' [Required]';
-                    if (field.unique) fieldLine += ' [Unique]';
-                    diagramSyntax += fieldLine + '\n';
+                if (field.nillable === false || field.unique || field.nameField || field.type === 'reference' || field.name === 'Id') {
+                    let line = '        ' + field.name + ' : ' + field.type;
+                    if (field.nillable === false) line += ' [Required]';
+                    if (field.unique) line += ' [Unique]';
+                    diagram += line + '\n';
                 }
             });
             
-            diagramSyntax += '    }\n\n';
+            diagram += '    }\n\n';
             
-            // Simple relationships
-            const relationshipObjects = new Set();
+            const related = new Set();
             data.fields.forEach(field => {
                 if (field.type === 'reference' && field.referenceTo && field.referenceTo.length > 0) {
-                    field.referenceTo.forEach(relatedObject => {
-                        if (relatedObject !== data.name) {
-                            if (!relationshipObjects.has(relatedObject)) {
-                                diagramSyntax += '    class ' + relatedObject + ' {\n        Id : id\n    }\n';
-                                relationshipObjects.add(relatedObject);
-                            }
-                            diagramSyntax += '    ' + data.name + ' --o ' + relatedObject + ' : ' + field.name + '\n';
+                    field.referenceTo.forEach(rel => {
+                        if (rel !== data.name && !related.has(rel)) {
+                            diagram += '    class ' + rel + ' {\n        Id : id\n    }\n';
+                            related.add(rel);
+                        }
+                        if (rel !== data.name) {
+                            diagram += '    ' + data.name + ' --o ' + rel + ' : ' + field.name + '\n';
                         }
                     });
                 }
             });
             
-            return diagramSyntax;
+            return diagram;
         }
         
         // Initialize generate form and how it works controls
