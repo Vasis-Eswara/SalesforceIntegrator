@@ -737,39 +737,6 @@
     });
 </script>
 
-<!-- ChatGPT's Improved Search Script with Smooth Transitions -->
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("objectSearch");
-    const objectItems = document.querySelectorAll(".object-item");
-    const noResults = document.getElementById("noResults");
-
-    if (!searchInput || objectItems.length === 0) {
-        console.warn("Missing search input or no object items found.");
-        return;
-    }
-
-    searchInput.addEventListener("input", function () {
-        const query = this.value.trim().toLowerCase();
-        let matchCount = 0;
-
-        objectItems.forEach(item => {
-            const label = item.dataset.objectLabel?.toLowerCase() || "";
-            const isVisible = label.includes(query);
-            item.style.display = isVisible ? "flex" : "none";
-            if (isVisible) matchCount++;
-        });
-
-        noResults.style.display = matchCount === 0 ? "block" : "none";
-    });
-});
-</script>
-
-<!-- Smooth transitions -->
-<style>
-.object-item {
-    transition: all 0.2s ease-in-out;
-}
-</style>
+<!-- Server-side search is now implemented - no client-side search needed -->
 
 {% endblock %}
