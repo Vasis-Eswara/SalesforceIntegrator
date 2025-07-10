@@ -826,25 +826,41 @@ def init_routes(app):
 
     @app.route('/schema-viewer')
     def schema_viewer():
-        """Dedicated schema viewer page with clean search functionality"""
+        """Dedicated schema viewer page with server-side search functionality"""
         if 'salesforce_org_id' not in session:
             flash('Please connect to Salesforce first', 'warning')
             return redirect(url_for('login'))
+        
+        # Get the search query parameter from the request
+        search_query = request.args.get("q", "").strip()
         
         try:
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
             
             # Get Salesforce objects - try REST API first, then SOAP as fallback
             try:
-                salesforce_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
-                logger.debug(f"Successfully retrieved {len(salesforce_objects)} objects via REST API")
+                all_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(all_objects)} objects via REST API")
             except Exception as rest_error:
                 logger.warning(f"REST API failed for objects, falling back to SOAP: {str(rest_error)}")
-                salesforce_objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
-                logger.debug(f"Successfully retrieved {len(salesforce_objects)} objects via SOAP API")
+                all_objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(all_objects)} objects via SOAP API")
+            
+            # Filter objects based on the search query (case-insensitive label match)
+            if search_query:
+                filtered_objects = [
+                    obj for obj in all_objects
+                    if search_query.lower() in obj["label"].lower()
+                ]
+                logger.debug(f"Filtered {len(all_objects)} objects to {len(filtered_objects)} based on search: '{search_query}'")
+            else:
+                filtered_objects = all_objects
             
             org_info = get_org_info()
-            return render_template('schema_view.html', salesforce_objects=salesforce_objects, org_info=org_info)
+            return render_template('schema_view.html', 
+                                 salesforce_objects=filtered_objects, 
+                                 search_query=search_query,
+                                 org_info=org_info)
             
         except Exception as e:
             logger.error(f"Error fetching objects: {str(e)}")
