@@ -754,45 +754,72 @@
     });
 </script>
 
-<!-- Search functionality inline to ensure it works -->
+<!-- Search functionality - DEBUGGING VERSION -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-  console.log("Search script loading...");
+// Test immediately without waiting for DOMContentLoaded
+setTimeout(function() {
+  console.log("=== SEARCH DEBUG START ===");
   
   const searchInput = document.getElementById("objectSearch");
   const noResults = document.getElementById("noResults");
+  const objectItems = document.querySelectorAll(".object-item");
   
-  console.log("Search input found:", !!searchInput);
-  console.log("No results element found:", !!noResults);
+  console.log("Search input element:", searchInput);
+  console.log("No results element:", noResults);
+  console.log("Object items found:", objectItems.length);
+  console.log("Object items list:", objectItems);
   
-  if (searchInput && noResults) {
+  if (searchInput) {
     console.log("Adding search event listener...");
     
-    searchInput.addEventListener("input", function () {
-      console.log("Search triggered with query:", this.value);
+    // Test the search immediately
+    searchInput.addEventListener("input", function(e) {
+      console.log("=== SEARCH EVENT FIRED ===");
+      console.log("Search query:", e.target.value);
       
-      const query = this.value.toLowerCase();
+      const query = e.target.value.toLowerCase().trim();
       let visibleCount = 0;
       
-      // Get items dynamically to ensure we have the latest elements
+      // Re-query items each time to be sure
       const items = document.querySelectorAll(".object-item");
-      console.log("Found object items:", items.length);
-   
-      items.forEach(item => {
+      console.log("Items found in search:", items.length);
+      
+      items.forEach((item, index) => {
         const text = item.textContent.toLowerCase();
         const match = text.includes(query);
-        item.style.display = match ? "flex" : "none"; // Use flex instead of block
-        if (match) visibleCount++;
+        
+        console.log(`Item ${index}: "${text}" - Match: ${match}`);
+        
+        if (match || query === "") {
+          item.style.display = "flex";
+          visibleCount++;
+        } else {
+          item.style.display = "none";
+        }
       });
-   
-      console.log("Visible items after search:", visibleCount);
-      noResults.style.display = visibleCount === 0 && query.trim() !== "" ? "block" : "none";
+      
+      console.log("Total visible items:", visibleCount);
+      
+      if (noResults) {
+        noResults.style.display = (visibleCount === 0 && query !== "") ? "block" : "none";
+        console.log("No results display:", noResults.style.display);
+      }
+      
+      console.log("=== SEARCH EVENT COMPLETE ===");
     });
     
-    console.log("Search functionality initialized successfully");
+    console.log("Search listener added successfully");
+    
+    // Test search immediately
+    console.log("Testing search with 'test'...");
+    searchInput.value = "test";
+    searchInput.dispatchEvent(new Event('input'));
+    
   } else {
-    console.error("Search elements not found - searchInput:", !!searchInput, "noResults:", !!noResults);
+    console.error("CRITICAL: Search input not found!");
   }
-});
+  
+  console.log("=== SEARCH DEBUG END ===");
+}, 1000);
 </script>
 {% endblock %}
