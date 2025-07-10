@@ -125,7 +125,13 @@ def init_routes(app):
                             execution_results = execute_bulk_data_plan(validated_plan, sf_org)
                             results.update(execution_results)
                     else:
-                        results['errors'].append("No valid data generation instructions found in prompt")
+                        # Fallback: If no objects detected but it's a data generation request,
+                        # show helpful guidance
+                        results['errors'].append("I didn't detect specific Salesforce objects in your prompt. Try using formats like:")
+                        results['errors'].append("• 'Generate 5 records for Account'")
+                        results['errors'].append("• 'Create 10 Contacts'") 
+                        results['errors'].append("• 'Insert 3 Opportunities'")
+                        results['errors'].append("Or select an object from the sidebar and use the individual data generation features.")
                         
             else:
                 results['errors'].append("No prompt or GitHub URL provided")

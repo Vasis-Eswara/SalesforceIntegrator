@@ -95,6 +95,12 @@ Required environment variables:
 
 ## Changelog
 
+- July 10, 2025: **DATA GENERATION FIXES** - Fixed critical issues with bulk data parsing and preview confirmation
+  - **YAML dependency**: Added missing pyyaml package for bulk data utilities
+  - **Parser improvements**: Enhanced bulk data parser to skip generic terms like "record" and "data"
+  - **Better error messages**: Provide helpful guidance when prompts don't specify valid Salesforce objects
+  - **Preview template fixes**: Improved preview confirmation page to handle empty data plans gracefully
+  - **Robust fallback**: Added clear instructions for proper prompt formats when parsing fails
 - July 10, 2025: **PROFESSIONAL TERMINOLOGY STANDARDIZATION** - Systematically replaced all GPT references with "intelligent automation" terminology
   - **Documentation updates**: Updated replit.md throughout with professional terminology
   - **Code consistency**: Fixed import errors and function references across the codebase  

@@ -17,10 +17,13 @@ class BulkDataParser:
     
     def __init__(self):
         self.object_patterns = [
-            r'create\s+(\d+)\s+(\w+)s?',  # "create 10 Accounts"
+            r'create\s+(\d+)\s+(\w+)s?\s+(?:for|in|on)\s+(\w+)',  # "create 10 records for Account"
+            r'generate\s+(\d+)\s+(\w+)s?\s+(?:for|in|on)\s+(\w+)',  # "generate 10 records for Contact"
+            r'insert\s+(\d+)\s+(\w+)s?\s+(?:for|in|on)\s+(\w+)',  # "insert 10 records for Lead"
+            r'create\s+(\d+)\s+(\w+)s?(?:\s+(?:object|record)s?)?(?!\s+(?:for|in|on))',  # "create 10 Accounts"
             r'(\d+)\s+(\w+)s?\s+(?:should|must|need)',  # "10 Accounts should"
-            r'insert\s+(\d+)\s+(\w+)s?',  # "insert 5 Products"
-            r'generate\s+(\d+)\s+(\w+)s?',  # "generate 3 Cases"
+            r'insert\s+(\d+)\s+(\w+)s?(?!\s+(?:for|in|on))',  # "insert 5 Products"
+            r'generate\s+(\d+)\s+(\w+)s?(?!\s+(?:for|in|on))',  # "generate 3 Cases"
         ]
         
         self.relationship_patterns = [
@@ -60,11 +63,31 @@ class BulkDataParser:
     
     def _extract_objects(self, prompt: str, result: Dict[str, Any]):
         """Extract object creation instructions from prompt"""
+        # Skip generic terms that aren't real Salesforce objects
+        skip_terms = {'record', 'records', 'data', 'item', 'items', 'entry', 'entries'}
+        
         for pattern in self.object_patterns:
             matches = re.finditer(pattern, prompt, re.IGNORECASE)
             for match in matches:
-                count = int(match.group(1))
-                object_name = self._normalize_object_name(match.group(2))
+                groups = match.groups()
+                
+                # Handle different pattern formats
+                if len(groups) >= 3:
+                    # Pattern like "create 10 records for Account"
+                    count = int(groups[0])
+                    object_name = self._normalize_object_name(groups[2])
+                elif len(groups) >= 2:
+                    # Pattern like "create 10 Accounts"
+                    count = int(groups[0])
+                    potential_object = groups[1].lower()
+                    
+                    # Skip if it's a generic term
+                    if potential_object in skip_terms:
+                        continue
+                        
+                    object_name = self._normalize_object_name(groups[1])
+                else:
+                    continue
                 
                 if object_name in result['objects']:
                     # If object already exists, update count

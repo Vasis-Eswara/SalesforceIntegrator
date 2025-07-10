@@ -19,7 +19,7 @@
                         </h5>
                     </div>
                     <div class="card-body">
-                        {% if preview.objects %}
+                        {% if preview and preview.objects %}
                         <div class="row">
                             <div class="col-md-4">
                                 <div class="text-center">
@@ -30,17 +30,27 @@
                             <div class="col-md-4">
                                 <div class="text-center">
                                     <h3 class="text-success">
-                                        {{ preview.objects.values() | map(attribute='record_count', default=0) | sum }}
+                                        {% set total_records = 0 %}
+                                        {% for obj_config in preview.objects.values() %}
+                                            {% set total_records = total_records + (obj_config.record_count or obj_config.count or 0) %}
+                                        {% endfor %}
+                                        {{ total_records }}
                                     </h3>
                                     <p class="mb-0">Total Records</p>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="text-center">
-                                    <h3 class="text-warning">{{ preview.execution_order|length if preview.execution_order else 0 }}</h3>
+                                    <h3 class="text-warning">{{ preview.execution_order|length if preview.execution_order else preview.objects|length }}</h3>
                                     <p class="mb-0">Execution Steps</p>
                                 </div>
                             </div>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>No execution plan available.</strong> 
+                            Please check your prompt and try again.
                         </div>
                         {% endif %}
                         
