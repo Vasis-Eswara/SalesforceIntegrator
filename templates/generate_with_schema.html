@@ -763,7 +763,7 @@ function loadObjectDiagram(objectName) {
                 throw new Error(data.error);
             }
             
-            // Display object details
+            // Display object details with the restored comprehensive function
             displayObjectDetails(objectName, data);
             
             // Load relationship diagram
@@ -787,206 +787,13 @@ function loadObjectDiagram(objectName) {
         });
 }
 
-function displayObjectDetails(objectName, objectInfo) {
-    const objectDetails = document.getElementById('object-details');
-    
-    // Parse fields data
-    let fields = [];
-    if (objectInfo.fields) {
-        fields = Array.isArray(objectInfo.fields) ? objectInfo.fields : 
-                 typeof objectInfo.fields === 'string' ? JSON.parse(objectInfo.fields) : [];
-    }
-    
-    // Categorize fields
-    const fieldCategories = categorizeFields(fields);
-    
-    // Generate field tables HTML
-    const fieldTablesHtml = generateFieldTables(fieldCategories);
-    
-    objectDetails.innerHTML = `
-        <div class="object-schema-details">
-            <!-- Object Header -->
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">
-                            <i class="bi bi-database me-2"></i>
-                            ${objectInfo.label || objectName}
-                        </h4>
-                        <span class="badge bg-light text-dark">${objectName}</span>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <p class="mb-2"><strong>API Name:</strong> ${objectName}</p>
-                            <p class="mb-2"><strong>Label:</strong> ${objectInfo.label || 'N/A'}</p>
-                            <p class="mb-2"><strong>Type:</strong> ${objectInfo.custom ? 'Custom Object' : 'Standard Object'}</p>
-                            ${objectInfo.description ? `<p class="mb-0"><strong>Description:</strong> ${objectInfo.description}</p>` : ''}
-                        </div>
-                        <div class="col-md-4">
-                            <div class="text-center">
-                                <h5 class="text-primary">${fields.length}</h5>
-                                <p class="mb-0 text-muted">Total Fields</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Field Categories -->
-            ${fieldTablesHtml}
-        </div>
-    `;
-}
+// Note: displayObjectDetails function is now defined in the restored schema functionality section below
 
-function categorizeFields(fields) {
-    const categories = {
-        identity: [],
-        required: [],
-        lookup: [],
-        formula: [],
-        system: [],
-        custom: []
-    };
-    
-    fields.forEach(field => {
-        if (field.type === 'id' || field.name === 'Id') {
-            categories.identity.push(field);
-        } else if (field.nillable === false && !field.defaultValue) {
-            categories.required.push(field);
-        } else if (field.type === 'reference') {
-            categories.lookup.push(field);
-        } else if (field.calculated) {
-            categories.formula.push(field);
-        } else if (field.custom) {
-            categories.custom.push(field);
-        } else {
-            categories.system.push(field);
-        }
-    });
-    
-    return categories;
-}
+// All schema functions are defined in the comprehensive section below this script block
+</script>
 
-function generateFieldTables(categories) {
-    let html = '';
-    
-    const categoryConfig = {
-        identity: { title: 'Identity Fields', icon: 'bi-key', color: 'danger' },
-        required: { title: 'Required Fields', icon: 'bi-exclamation-circle', color: 'warning' },
-        lookup: { title: 'Lookup/Reference Fields', icon: 'bi-arrow-right-circle', color: 'info' },
-        formula: { title: 'Formula/Calculated Fields', icon: 'bi-calculator', color: 'secondary' },
-        custom: { title: 'Custom Fields', icon: 'bi-gear', color: 'success' },
-        system: { title: 'Standard Fields', icon: 'bi-collection', color: 'primary' }
-    };
-    
-    Object.entries(categories).forEach(([category, fields]) => {
-        if (fields.length > 0) {
-            const config = categoryConfig[category];
-            html += `
-                <div class="card mb-3">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h6 class="mb-0">
-                            <i class="${config.icon} me-2"></i>
-                            ${config.title}
-                        </h6>
-                        <span class="badge bg-${config.color}">${fields.length}</span>
-                    </div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Field Name</th>
-                                        <th>Label</th>
-                                        <th>Type</th>
-                                        <th>Length</th>
-                                        <th>Required</th>
-                                        <th>Description</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${fields.map(field => `
-                                        <tr>
-                                            <td>
-                                                <code>${field.name}</code>
-                                                ${field.custom ? '<span class="badge bg-success badge-sm ms-1">Custom</span>' : ''}
-                                            </td>
-                                            <td>${field.label || 'N/A'}</td>
-                                            <td>
-                                                <span class="badge bg-secondary">${field.type}</span>
-                                                ${field.referenceTo && field.referenceTo.length > 0 ? 
-                                                  `<br><small class="text-muted">→ ${field.referenceTo.join(', ')}</small>` : ''}
-                                            </td>
-                                            <td>${field.length || 'N/A'}</td>
-                                            <td>
-                                                ${field.nillable === false ? 
-                                                  '<i class="bi bi-check-circle text-danger"></i>' : 
-                                                  '<i class="bi bi-dash-circle text-muted"></i>'}
-                                            </td>
-                                            <td><small>${field.inlineHelpText || field.helpText || ''}</small></td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-    });
-    
-    return html;
-}
-
-function loadObjectRelationshipDiagram(objectName) {
-    const schemaDiagram = document.getElementById('schema-diagram');
-    const diagramContainer = document.getElementById('object-diagram');
-    const diagramTitle = document.getElementById('diagram-title');
-    
-    // Show diagram section
-    schemaDiagram.style.display = 'block';
-    diagramTitle.textContent = `${objectName} Relationship Diagram`;
-    
-    // Show loading in diagram
-    diagramContainer.innerHTML = `
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading diagram...</span>
-            </div>
-            <p class="mt-2 text-muted">Generating relationship diagram...</p>
-        </div>
-    `;
-    
-    // Fetch relationship data
-    fetch(`/api/relationship-map/${objectName}`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            // Generate Mermaid diagram
-            const mermaidCode = generateMermaidDiagram(objectName, data);
-            diagramContainer.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
-            
-            // Render with Mermaid
-            if (window.mermaid) {
-                mermaid.init(undefined, diagramContainer.querySelector('.mermaid'));
-            }
-        })
-        .catch(error => {
-            console.error('Error loading relationship diagram:', error);
-            diagramContainer.innerHTML = `
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    Could not load relationship diagram: ${error.message}
-                </div>
-            `;
-        });
-}
-
+<!-- Additional schema functionality that was cleaned up -->
+<script>
 function generateMermaidDiagram(objectName, relationshipData) {
     let diagram = 'graph TD\n';
     diagram += `    ${objectName}[${objectName}]\n`;
@@ -1128,7 +935,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Make sure the generate sections are properly initialized
                     initGenerateControls();
                     
-                    // Load object details and relationship diagram
+                    // Load object details and relationship diagram using the original function
                     loadObjectDiagram(objectName);
                 }
             });
@@ -1140,6 +947,292 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Generate controls initialized');
         }
     });
+    
+    // Complete schema viewing functionality restoration
+    function displayObjectDetails(objectName, objectInfo) {
+        const objectDetails = document.getElementById('object-details');
+        
+        // Parse fields data
+        let fields = [];
+        if (objectInfo.fields) {
+            fields = Array.isArray(objectInfo.fields) ? objectInfo.fields : 
+                     typeof objectInfo.fields === 'string' ? JSON.parse(objectInfo.fields) : [];
+        }
+        
+        // Categorize fields
+        const fieldCategories = categorizeFields(fields);
+        
+        // Generate field tables HTML
+        const fieldTablesHtml = generateFieldTables(fieldCategories);
+        
+        objectDetails.innerHTML = `
+            <div class="object-schema-details">
+                <!-- Object Header -->
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h4 class="mb-0">
+                                <i class="bi bi-database me-2"></i>
+                                ${objectInfo.label || objectName}
+                            </h4>
+                            <span class="badge bg-light text-dark">${objectName}</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <p class="mb-2"><strong>API Name:</strong> ${objectName}</p>
+                                <p class="mb-2"><strong>Label:</strong> ${objectInfo.label || 'N/A'}</p>
+                                <p class="mb-2"><strong>Type:</strong> ${objectInfo.custom ? 'Custom Object' : 'Standard Object'}</p>
+                                ${objectInfo.description ? `<p class="mb-0"><strong>Description:</strong> ${objectInfo.description}</p>` : ''}
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <h5 class="text-primary">${fields.length}</h5>
+                                    <p class="mb-0 text-muted">Total Fields</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Field Categories -->
+                ${fieldTablesHtml}
+            </div>
+        `;
+    }
+
+    function categorizeFields(fields) {
+        const categories = {
+            identity: [],
+            required: [],
+            lookup: [],
+            formula: [],
+            system: [],
+            custom: []
+        };
+        
+        fields.forEach(field => {
+            if (field.type === 'id' || field.name === 'Id') {
+                categories.identity.push(field);
+            } else if (field.nillable === false && !field.defaultValue) {
+                categories.required.push(field);
+            } else if (field.type === 'reference') {
+                categories.lookup.push(field);
+            } else if (field.calculated) {
+                categories.formula.push(field);
+            } else if (field.custom) {
+                categories.custom.push(field);
+            } else {
+                categories.system.push(field);
+            }
+        });
+        
+        return categories;
+    }
+
+    function generateFieldTables(categories) {
+        let html = '';
+        
+        const categoryConfig = {
+            identity: { title: 'Identity Fields', icon: 'bi-key', color: 'danger' },
+            required: { title: 'Required Fields', icon: 'bi-exclamation-circle', color: 'warning' },
+            lookup: { title: 'Lookup/Reference Fields', icon: 'bi-arrow-right-circle', color: 'info' },
+            formula: { title: 'Formula/Calculated Fields', icon: 'bi-calculator', color: 'secondary' },
+            custom: { title: 'Custom Fields', icon: 'bi-gear', color: 'success' },
+            system: { title: 'Standard Fields', icon: 'bi-collection', color: 'primary' }
+        };
+        
+        Object.entries(categories).forEach(([category, fields]) => {
+            if (fields.length > 0) {
+                const config = categoryConfig[category];
+                html += `
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="${config.icon} me-2"></i>
+                                ${config.title}
+                            </h6>
+                            <span class="badge bg-${config.color}">${fields.length}</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Field Name</th>
+                                            <th>Label</th>
+                                            <th>Type</th>
+                                            <th>Length</th>
+                                            <th>Required</th>
+                                            <th>Description</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${fields.map(field => `
+                                            <tr>
+                                                <td>
+                                                    <code>${field.name}</code>
+                                                    ${field.custom ? '<span class="badge bg-success badge-sm ms-1">Custom</span>' : ''}
+                                                </td>
+                                                <td>${field.label || 'N/A'}</td>
+                                                <td>
+                                                    <span class="badge bg-secondary">${field.type}</span>
+                                                    ${field.referenceTo && field.referenceTo.length > 0 ? 
+                                                      `<br><small class="text-muted">→ ${field.referenceTo.join(', ')}</small>` : ''}
+                                                </td>
+                                                <td>${field.length || 'N/A'}</td>
+                                                <td>
+                                                    ${field.nillable === false ? 
+                                                      '<i class="bi bi-check-circle text-danger"></i>' : 
+                                                      '<i class="bi bi-dash-circle text-muted"></i>'}
+                                                </td>
+                                                <td><small>${field.inlineHelpText || field.helpText || ''}</small></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        return html;
+    }
+
+    function loadObjectRelationshipDiagram(objectName) {
+        const schemaDiagram = document.getElementById('schema-diagram');
+        const diagramContainer = document.getElementById('object-diagram');
+        const diagramTitle = document.getElementById('diagram-title');
+        
+        // Show diagram section
+        schemaDiagram.style.display = 'block';
+        diagramTitle.textContent = `${objectName} Relationship Diagram`;
+        
+        // Show loading indicator
+        diagramContainer.innerHTML = `
+            <div class="text-center my-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="lead mt-3">Loading relationship diagram...</p>
+            </div>
+        `;
+        
+        // Fetch relationship mapping
+        fetch(`/api/relationship-map/${objectName}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Generate Mermaid diagram
+                const mermaidCode = generateMermaidDiagram(objectName, data);
+                
+                // Render the diagram
+                diagramContainer.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
+                
+                // Initialize Mermaid for this specific diagram
+                mermaid.init(undefined, diagramContainer.querySelector('.mermaid'));
+                
+                // Initialize diagram controls
+                initDiagramControls();
+                
+            })
+            .catch(error => {
+                console.error('Error loading relationship diagram:', error);
+                diagramContainer.innerHTML = `
+                    <div class="alert alert-warning">
+                        <h6><i class="bi bi-exclamation-triangle me-2"></i>Diagram Loading Issue</h6>
+                        <p>Could not load relationship diagram: ${error.message}</p>
+                        <button class="btn btn-outline-warning btn-sm" onclick="loadObjectRelationshipDiagram('${objectName}')">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Retry
+                        </button>
+                    </div>
+                `;
+            });
+    }
+
+    function generateMermaidDiagram(objectName, relationshipData) {
+        let diagram = 'graph TB\n';
+        
+        // Main object
+        diagram += `    ${objectName}[${objectName}]\n`;
+        
+        // Add parent relationships
+        if (relationshipData.parents && relationshipData.parents.length > 0) {
+            relationshipData.parents.forEach(parent => {
+                diagram += `    ${parent.object}[${parent.object}] --> ${objectName}\n`;
+            });
+        }
+        
+        // Add child relationships
+        if (relationshipData.children && relationshipData.children.length > 0) {
+            relationshipData.children.forEach(child => {
+                diagram += `    ${objectName} --> ${child.object}[${child.object}]\n`;
+            });
+        }
+        
+        // Style the main object
+        diagram += `    classDef mainObject fill:#0d6efd,stroke:#0a58ca,stroke-width:3px,color:#fff\n`;
+        diagram += `    class ${objectName} mainObject\n`;
+        
+        return diagram;
+    }
+
+    function initDiagramControls() {
+        const toggleButton = document.getElementById('toggle-diagram');
+        const resizeSmallerButton = document.getElementById('resize-smaller');
+        const resizeLargerButton = document.getElementById('resize-larger');
+        const diagramBody = document.getElementById('diagram-body');
+        const diagramContainer = document.getElementById('object-diagram');
+        
+        // Make sure the diagram body is visible initially
+        if (diagramBody) {
+            diagramBody.style.display = 'block';
+        }
+        
+        // Toggle diagram visibility
+        if (toggleButton && diagramBody) {
+            toggleButton.onclick = function() {
+                if (diagramBody.style.display === 'none') {
+                    diagramBody.style.display = 'block';
+                    toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
+                } else {
+                    diagramBody.style.display = 'none';
+                    toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                }
+            };
+        }
+        
+        // Resize diagram controls
+        if (resizeSmallerButton && diagramContainer) {
+            resizeSmallerButton.addEventListener('click', function() {
+                const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+                if (currentHeight > 200) {
+                    diagramContainer.style.height = (currentHeight - 100) + 'px';
+                }
+            });
+        }
+        
+        if (resizeLargerButton && diagramContainer) {
+            resizeLargerButton.addEventListener('click', function() {
+                const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+                diagramContainer.style.height = (currentHeight + 100) + 'px';
+            });
+        }
+    }
+
+    function updatePromptContext(objectName) {
+        // Update the unified prompt interface context with selected object
+        const promptTextarea = document.getElementById('prompt');
+        if (promptTextarea && !promptTextarea.value.trim()) {
+            promptTextarea.placeholder = `Example: "Generate 10 ${objectName} records with realistic data" or "Create custom fields for ${objectName}: Name (Text), Priority (Picklist)"`;
+        }
+    }
 </script>
 
 {% endblock %}
