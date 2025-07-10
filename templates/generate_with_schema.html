@@ -753,29 +753,31 @@
 
 <!-- ChatGPT's Improved Search Script -->
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("objectSearch");
-    const noResults = document.getElementById("noResults");
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("objectSearch");
+        const objectItems = document.querySelectorAll(".object-item");
+        const noResults = document.getElementById("noResults");
 
-    // Wait for all object items to render
-    setTimeout(() => {
-        const items = document.querySelectorAll(".object-item");
+        if (!searchInput || !objectItems.length) {
+            console.warn("Search input or object items not found.");
+            return;
+        }
 
         searchInput.addEventListener("input", function () {
-            const query = this.value.toLowerCase();
+            const query = this.value.trim().toLowerCase();
             let visibleCount = 0;
 
-            items.forEach(item => {
-                const text = item.getAttribute("data-object-label").toLowerCase();
-                const match = text.includes(query);
-                item.style.display = match ? "block" : "none";
+            objectItems.forEach(item => {
+                const label = item.getAttribute("data-object-label")?.toLowerCase() || "";
+                const match = label.includes(query);
+
+                item.style.display = match ? "flex" : "none";
                 if (match) visibleCount++;
             });
 
             noResults.style.display = visibleCount === 0 ? "block" : "none";
         });
-    }, 50);  // Small delay to ensure items are in DOM
-});
+    });
 </script>
 
 {% endblock %}
