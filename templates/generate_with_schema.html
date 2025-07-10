@@ -78,23 +78,23 @@
                         
                         <!-- Object Relationship Diagram Section -->
                         <div id="schema-diagram" style="display:none;" class="mt-4">
-                            <div class="card">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h4 id="diagram-title">Object Relationship Diagram</h4>
-                                    <div class="diagram-controls">
-                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-smaller" title="Decrease height">
-                                            <i class="bi bi-dash-circle"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary me-2" id="resize-larger" title="Increase height">
-                                            <i class="bi bi-plus-circle"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-primary" id="toggle-diagram" title="Toggle diagram">
-                                            <i class="bi bi-chevron-up"></i>
-                                        </button>
+                            <div class="card border-info">
+                                <div class="card-header bg-info text-white" style="cursor: pointer;" onclick="toggleDiagramVisibility()">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h4 id="diagram-title" class="mb-0">Object Relationship Diagram</h4>
+                                        <div class="d-flex align-items-center">
+                                            <button class="btn btn-sm btn-light me-2" id="resize-smaller" title="Decrease height" onclick="event.stopPropagation(); resizeDiagram('smaller')">
+                                                <i class="bi bi-dash-circle"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-light me-2" id="resize-larger" title="Increase height" onclick="event.stopPropagation(); resizeDiagram('larger')">
+                                                <i class="bi bi-plus-circle"></i>
+                                            </button>
+                                            <i class="bi bi-chevron-up" id="diagram-toggle-icon"></i>
+                                        </div>
                                     </div>
                                 </div>
-                                <div class="card-body" id="diagram-body">
-                                    <div id="object-diagram" class="mermaid-diagram" style="height: 400px; overflow: auto; resize: vertical;"></div>
+                                <div class="card-body" id="diagram-body" style="display: block;">
+                                    <div id="object-diagram" class="mermaid-diagram bg-light" style="height: 400px; overflow: auto; resize: vertical; border-radius: 8px; padding: 15px;"></div>
                                 </div>
                             </div>
                         </div>
@@ -136,10 +136,15 @@
                                     
                                     <!-- Main Prompt Area -->
                                     <div class="mb-4">
-                                        <label for="unified-prompt" class="form-label d-flex align-items-center">
-                                            <i class="bi bi-chat-text me-2"></i>
-                                            <span>Natural Language Prompt</span>
-                                        </label>
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <label for="unified-prompt" class="form-label d-flex align-items-center mb-0">
+                                                <i class="bi bi-chat-text me-2"></i>
+                                                <span>Natural Language Prompt</span>
+                                            </label>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="togglePromptExpand()">
+                                                <i class="bi bi-arrows-expand" id="prompt-expand-icon"></i>
+                                            </button>
+                                        </div>
                                         <textarea 
                                             class="form-control" 
                                             id="unified-prompt" 
@@ -200,12 +205,10 @@ Combined Examples:
                                     
                                     <!-- Advanced Options (Collapsible) -->
                                     <div class="card border-info mb-4">
-                                        <div class="card-header">
+                                        <div class="card-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#advanced-options" onclick="toggleAdvancedOptions()">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span><i class="bi bi-gear me-1"></i> Advanced Options</span>
-                                                <button class="btn btn-sm btn-outline-info" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-options">
-                                                    <i class="bi bi-chevron-down"></i>
-                                                </button>
+                                                <i class="bi bi-chevron-down" id="advanced-options-icon"></i>
                                             </div>
                                         </div>
                                         <div class="collapse" id="advanced-options">
@@ -220,7 +223,12 @@ Combined Examples:
                                                     </div>
                                                     <div class="col-md-6">
                                                         <div class="mb-3">
-                                                            <label for="data-quality" class="form-label">Data Quality</label>
+                                                            <label for="data-quality" class="form-label d-flex align-items-center">
+                                                                Data Quality
+                                                                <button type="button" class="btn btn-link p-0 ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Data Quality Options Explained" onclick="showDataQualityInfo()">
+                                                                    <i class="bi bi-info-circle text-info"></i>
+                                                                </button>
+                                                            </label>
                                                             <select class="form-select" id="data-quality" name="data_quality">
                                                                 <option value="realistic">Realistic (Recommended)</option>
                                                                 <option value="diverse">Maximum Diversity</option>
@@ -819,9 +827,22 @@ function generateMermaidDiagram(objectName, relationshipData) {
         });
     }
     
-    // Style the main object
-    diagram += `    classDef mainObject fill:#e1f5fe,stroke:#01579b,stroke-width:3px\n`;
+    // Style the main object with dark theme friendly colors
+    diagram += `    classDef mainObject fill:#0d6efd,stroke:#0a58ca,stroke-width:3px,color:#fff\n`;
+    diagram += `    classDef relatedObject fill:#6c757d,stroke:#495057,stroke-width:2px,color:#fff\n`;
     diagram += `    class ${objectName} mainObject\n`;
+    
+    // Apply styling to related objects
+    if (relationshipData.parents && relationshipData.parents.length > 0) {
+        relationshipData.parents.forEach(parent => {
+            diagram += `    class ${parent} relatedObject\n`;
+        });
+    }
+    if (relationshipData.children && relationshipData.children.length > 0) {
+        relationshipData.children.forEach(child => {
+            diagram += `    class ${child} relatedObject\n`;
+        });
+    }
     
     return diagram;
 }
@@ -835,6 +856,126 @@ Examples for ${objectName}:
 • Generate 10 ${objectName} records with realistic data
 • Add custom fields to ${objectName} object
 • Create relationships between ${objectName} and other objects`;
+    }
+}
+
+// Field category toggle function
+function toggleFieldCategory(collapseId) {
+    const collapseElement = document.getElementById(collapseId);
+    const icon = document.getElementById(`icon-${collapseId}`);
+    
+    if (collapseElement.classList.contains('show')) {
+        collapseElement.classList.remove('show');
+        icon.classList.remove('bi-chevron-up');
+        icon.classList.add('bi-chevron-down');
+    } else {
+        collapseElement.classList.add('show');
+        icon.classList.remove('bi-chevron-down');
+        icon.classList.add('bi-chevron-up');
+    }
+}
+
+// Advanced options toggle function
+function toggleAdvancedOptions() {
+    const icon = document.getElementById('advanced-options-icon');
+    const advancedOptions = document.getElementById('advanced-options');
+    
+    if (advancedOptions.classList.contains('show')) {
+        icon.classList.remove('bi-chevron-up');
+        icon.classList.add('bi-chevron-down');
+    } else {
+        icon.classList.remove('bi-chevron-down');
+        icon.classList.add('bi-chevron-up');
+    }
+}
+
+// Prompt expand/retract function
+function togglePromptExpand() {
+    const prompt = document.getElementById('unified-prompt');
+    const icon = document.getElementById('prompt-expand-icon');
+    
+    if (prompt.rows <= 5) {
+        prompt.rows = 15;
+        icon.classList.remove('bi-arrows-expand');
+        icon.classList.add('bi-arrows-collapse');
+    } else {
+        prompt.rows = 5;
+        icon.classList.remove('bi-arrows-collapse');
+        icon.classList.add('bi-arrows-expand');
+    }
+}
+
+// Data Quality info modal
+function showDataQualityInfo() {
+    const modalHtml = `
+        <div class="modal fade" id="dataQualityModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content bg-dark text-light">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title">Data Quality Options</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <h6 class="text-success">Realistic (Recommended)</h6>
+                            <p class="small text-muted">Generates business-appropriate data that follows common patterns and industry standards. Best for demos and testing.</p>
+                        </div>
+                        <div class="mb-3">
+                            <h6 class="text-info">Maximum Diversity</h6>
+                            <p class="small text-muted">Creates highly varied data to test edge cases and system limits. Includes diverse names, locations, and value ranges.</p>
+                        </div>
+                        <div>
+                            <h6 class="text-warning">Minimal Valid Data</h6>
+                            <p class="small text-muted">Generates only the minimum required fields with simple values. Fastest option for basic functionality testing.</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if it exists
+    const existingModal = document.getElementById('dataQualityModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('dataQualityModal'));
+    modal.show();
+}
+
+// Diagram visibility toggle
+function toggleDiagramVisibility() {
+    const diagramBody = document.getElementById('diagram-body');
+    const icon = document.getElementById('diagram-toggle-icon');
+    
+    if (diagramBody.style.display === 'none') {
+        diagramBody.style.display = 'block';
+        icon.classList.remove('bi-chevron-down');
+        icon.classList.add('bi-chevron-up');
+    } else {
+        diagramBody.style.display = 'none';
+        icon.classList.remove('bi-chevron-up');
+        icon.classList.add('bi-chevron-down');
+    }
+}
+
+// Diagram resize function
+function resizeDiagram(direction) {
+    const diagramContainer = document.getElementById('object-diagram');
+    const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+    
+    if (direction === 'smaller' && currentHeight > 200) {
+        diagramContainer.style.height = (currentHeight - 100) + 'px';
+    } else if (direction === 'larger') {
+        diagramContainer.style.height = (currentHeight + 100) + 'px';
     }
 }
 
@@ -1046,52 +1187,56 @@ document.addEventListener('DOMContentLoaded', function() {
         Object.entries(categories).forEach(([category, fields]) => {
             if (fields.length > 0) {
                 const config = categoryConfig[category];
+                const collapseId = `collapse-${category}-${Date.now()}`;
                 html += `
                     <div class="card mb-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h6 class="mb-0">
+                        <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" onclick="toggleFieldCategory('${collapseId}')">
+                            <div class="d-flex align-items-center">
                                 <i class="${config.icon} me-2"></i>
-                                ${config.title}
-                            </h6>
+                                <h6 class="mb-0">${config.title}</h6>
+                                <i class="bi bi-chevron-down ms-2" id="icon-${collapseId}"></i>
+                            </div>
                             <span class="badge bg-${config.color}">${fields.length}</span>
                         </div>
-                        <div class="card-body p-0">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Field Name</th>
-                                            <th>Label</th>
-                                            <th>Type</th>
-                                            <th>Length</th>
-                                            <th>Required</th>
-                                            <th>Description</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${fields.map(field => `
+                        <div class="collapse" id="${collapseId}">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-dark">
                                             <tr>
-                                                <td>
-                                                    <code>${field.name}</code>
-                                                    ${field.custom ? '<span class="badge bg-success badge-sm ms-1">Custom</span>' : ''}
-                                                </td>
-                                                <td>${field.label || 'N/A'}</td>
-                                                <td>
-                                                    <span class="badge bg-secondary">${field.type}</span>
-                                                    ${field.referenceTo && field.referenceTo.length > 0 ? 
-                                                      `<br><small class="text-muted">→ ${field.referenceTo.join(', ')}</small>` : ''}
-                                                </td>
-                                                <td>${field.length || 'N/A'}</td>
-                                                <td>
-                                                    ${field.nillable === false ? 
-                                                      '<i class="bi bi-check-circle text-danger"></i>' : 
-                                                      '<i class="bi bi-dash-circle text-muted"></i>'}
-                                                </td>
-                                                <td><small>${field.inlineHelpText || field.helpText || ''}</small></td>
+                                                <th class="text-white">Field Name</th>
+                                                <th class="text-white">Label</th>
+                                                <th class="text-white">Type</th>
+                                                <th class="text-white">Length</th>
+                                                <th class="text-white">Required</th>
+                                                <th class="text-white">Description</th>
                                             </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            ${fields.map(field => `
+                                                <tr>
+                                                    <td>
+                                                        <code class="text-info">${field.name}</code>
+                                                        ${field.custom ? '<span class="badge bg-success badge-sm ms-1">Custom</span>' : ''}
+                                                    </td>
+                                                    <td class="text-light">${field.label || 'N/A'}</td>
+                                                    <td>
+                                                        <span class="badge bg-secondary">${field.type}</span>
+                                                        ${field.referenceTo && field.referenceTo.length > 0 ? 
+                                                          `<br><small class="text-muted">→ ${field.referenceTo.join(', ')}</small>` : ''}
+                                                    </td>
+                                                    <td class="text-light">${field.length || 'N/A'}</td>
+                                                    <td>
+                                                        ${field.nillable === false ? 
+                                                          '<i class="bi bi-check-circle text-danger"></i>' : 
+                                                          '<i class="bi bi-dash-circle text-muted"></i>'}
+                                                    </td>
+                                                    <td><small class="text-muted">${field.inlineHelpText || field.helpText || ''}</small></td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1107,9 +1252,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const diagramContainer = document.getElementById('object-diagram');
         const diagramTitle = document.getElementById('diagram-title');
         
-        // Show diagram section
+        // Show diagram section and make it visible by default
         schemaDiagram.style.display = 'block';
         diagramTitle.textContent = `${objectName} Relationship Diagram`;
+        
+        // Ensure diagram body is visible
+        const diagramBody = document.getElementById('diagram-body');
+        if (diagramBody) {
+            diagramBody.style.display = 'block';
+        }
         
         // Show loading indicator
         diagramContainer.innerHTML = `
@@ -1132,11 +1283,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Generate Mermaid diagram
                 const mermaidCode = generateMermaidDiagram(objectName, data);
                 
-                // Render the diagram
-                diagramContainer.innerHTML = `<div class="mermaid">${mermaidCode}</div>`;
+                // Render the diagram with proper styling
+                diagramContainer.innerHTML = `<div class="mermaid" style="text-align: center;">${mermaidCode}</div>`;
                 
                 // Initialize Mermaid for this specific diagram
-                mermaid.init(undefined, diagramContainer.querySelector('.mermaid'));
+                if (window.mermaid) {
+                    mermaid.init(undefined, diagramContainer.querySelector('.mermaid'));
+                }
                 
                 // Initialize diagram controls
                 initDiagramControls();
