@@ -95,14 +95,6 @@ Required environment variables:
 
 ## Changelog
 
-- July 10, 2025: **SERVER-SIDE SEARCH IMPLEMENTATION** - Complete overhaul to robust backend search
-  - **Removed all client-side search**: Eliminated JavaScript-based filtering that was causing reliability issues
-  - **Server-side filtering**: Flask route now handles `?q=` parameter for case-insensitive object search
-  - **HTML form approach**: Traditional form submission with GET method, no JavaScript dependencies
-  - **Query retention**: Search input retains user's query value across page loads
-  - **Cost optimization**: Eliminated multiple failed client-side iterations that consumed credits
-  - **Robust architecture**: Backend filtering scales better for large object lists
-  - **Independent functionality**: Search feature completely separate from schema viewing/data generation
 - July 10, 2025: **SEARCH FUNCTIONALITY OPTIMIZATION** - Successfully implemented ChatGPT's search improvements
   - **Perfect implementation**: Applied ChatGPT's exact recommendations for object search functionality
   - **Template updates**: Updated both schema_view.html and generate_with_schema.html with proper data-object-label attributes

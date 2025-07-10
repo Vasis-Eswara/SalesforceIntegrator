@@ -6,31 +6,11 @@
         <!-- Sidebar with object list -->
         <div class="col-md-3 col-lg-2">
             <div class="sidebar">
-                <!-- Salesforce Objects Title & Search Form -->
-                <form method="GET" action="{{ url_for('combined') }}">
-                    <div class="mb-3">
-                        <h5 class="text-white">Salesforce Objects</h5>
-                        <div class="input-group">
-                            <input 
-                                type="text" 
-                                name="q" 
-                                value="{{ search_query or '' }}" 
-                                class="form-control bg-dark text-light" 
-                                placeholder="Search objects..."
-                            />
-                            <button class="btn btn-outline-light" type="submit">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                </form>
-                
-                <!-- Debug Info -->
-                {% if search_query %}
-                <div class="alert alert-info mb-2">
-                    <small>Search query: "{{ search_query }}" | Found: {{ objects|length }} objects</small>
+                <!-- Salesforce Objects Title & Search Bar -->
+                <div class="mb-3">
+                    <h5 class="text-white">Salesforce Objects</h5>
+                    <input type="text" id="objectSearch" class="form-control bg-dark text-light" placeholder="Search objects...">
                 </div>
-                {% endif %}
                 
                 {% if objects %}
                 <!-- Object List -->
@@ -46,14 +26,12 @@
                     {% endfor %}
                 </div>
                 
-                {% else %}
-                {% if search_query %}
-                <p class="text-muted mt-3">No objects match your search for "{{ search_query }}".</p>
+                <!-- No Results Message -->
+                <p id="noResults" class="text-muted mt-3" style="display: none;">No objects match your search.</p>
                 {% else %}
                 <div class="alert alert-warning">
                     No objects found or unable to retrieve schema.
                 </div>
-                {% endif %}
                 {% endif %}
             </div>
         </div>
