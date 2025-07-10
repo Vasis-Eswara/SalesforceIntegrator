@@ -22,8 +22,9 @@
                 <div class="object-list" id="object-list" style="max-height: 500px; overflow-y: auto;">
                     {% for obj in salesforce_objects %}
                         <div class="object-item btn btn-outline-light w-100 text-start mb-1 d-flex justify-content-between align-items-center" 
-                             data-object="{{ obj.name }}" data-object-label="{{ obj.label }}"
-                             onclick="loadObjectSchema('{{ obj.name }}')">
+                             data-object="{{ obj.name }}" 
+                             data-object-label="{{ obj.label }}"
+                             onclick="loadObjectDiagram('{{ obj.name }}')">
                             {{ obj.label }}
                             <span class="badge {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
                                 {% if obj.custom %}Custom{% else %}Standard{% endif %}
@@ -80,8 +81,8 @@
 <script>
 mermaid.initialize({ startOnLoad: false, theme: 'dark' });
 
-// Function to load object schema
-function loadObjectSchema(objectName) {
+// Function to load object diagram
+function loadObjectDiagram(objectName) {
     const schemaDisplay = document.getElementById('schema-display');
     const schemaTitle = document.getElementById('schema-title');
     const schemaDetails = document.getElementById('schema-details');
