@@ -24,6 +24,12 @@ class BulkDataParser:
             r'(\d+)\s+(\w+)s?\s+(?:should|must|need)',  # "10 Accounts should"
             r'insert\s+(\d+)\s+(\w+)s?(?!\s+(?:for|in|on))',  # "insert 5 Products"
             r'generate\s+(\d+)\s+(\w+)s?(?!\s+(?:for|in|on))',  # "generate 3 Cases"
+            # New patterns for complex prompts
+            r'create\s+a\s+new\s+(\w+)',  # "create a new Account"
+            r'create\s+an?\s+(\w+)',  # "create an Opportunity" 
+            r'a\s+(\w+)\s+(?:as|record|linked|under|associated)',  # "a User as the" or "a Contact under"
+            r'an?\s+(\w+)\s+(?:as|record|linked|under|associated)',  # "an Opportunity linked"
+            r'(\w+)\s+associated',  # "OperatingHours associated"
         ]
         
         self.relationship_patterns = [
@@ -64,7 +70,7 @@ class BulkDataParser:
     def _extract_objects(self, prompt: str, result: Dict[str, Any]):
         """Extract object creation instructions from prompt"""
         # Skip generic terms that aren't real Salesforce objects
-        skip_terms = {'record', 'records', 'data', 'item', 'items', 'entry', 'entries'}
+        skip_terms = {'record', 'records', 'data', 'item', 'items', 'entry', 'entries', 'owner', 'relationship', 'hierarchical', 'new', 'parent', 'following', 'related'}
         
         for pattern in self.object_patterns:
             matches = re.finditer(pattern, prompt, re.IGNORECASE)
@@ -74,24 +80,44 @@ class BulkDataParser:
                 # Handle different pattern formats
                 if len(groups) >= 3:
                     # Pattern like "create 10 records for Account"
-                    count = int(groups[0])
-                    object_name = self._normalize_object_name(groups[2])
+                    if groups[0].isdigit():
+                        count = int(groups[0])
+                        object_name = self._normalize_object_name(groups[2])
+                    else:
+                        # Different 3-group pattern
+                        continue
                 elif len(groups) >= 2:
                     # Pattern like "create 10 Accounts"
-                    count = int(groups[0])
-                    potential_object = groups[1].lower()
+                    if groups[0].isdigit():
+                        count = int(groups[0])
+                        potential_object = groups[1].lower()
+                        
+                        # Skip if it's a generic term
+                        if potential_object in skip_terms:
+                            continue
+                            
+                        object_name = self._normalize_object_name(groups[1])
+                    else:
+                        # Pattern like "create a Account" - skip non-numeric first group in 2-group patterns
+                        continue
+                elif len(groups) == 1:
+                    # Pattern like "create a new Account" or "a User as"
+                    potential_object = groups[0].lower()
                     
                     # Skip if it's a generic term
                     if potential_object in skip_terms:
                         continue
                         
-                    object_name = self._normalize_object_name(groups[1])
+                    object_name = self._normalize_object_name(groups[0])
+                    count = 1  # Default count for single object creation
                 else:
                     continue
                 
                 if object_name in result['objects']:
-                    # If object already exists, update count
-                    result['objects'][object_name]['count'] += count
+                    # If object already exists, don't increase count for single object mentions
+                    # Only increase for explicit count patterns like "create 5 more Accounts"
+                    if count > 1:
+                        result['objects'][object_name]['count'] += count
                 else:
                     result['objects'][object_name] = {
                         'count': count,
@@ -195,7 +221,9 @@ class BulkDataParser:
             'lead': 'Lead',
             'product': 'Product2',
             'user': 'User',
-            'campaign': 'Campaign'
+            'campaign': 'Campaign',
+            'dandbcompany': 'DandBCompany',
+            'operatinghours': 'OperatingHours'
         }
         
         if name.lower() in standard_objects:

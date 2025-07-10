@@ -95,6 +95,13 @@ Required environment variables:
 
 ## Changelog
 
+- July 10, 2025: **COMPLEX PROMPT PARSING ENHANCEMENT** - Dramatically improved bulk data parser for sophisticated natural language prompts
+  - **Complex pattern support**: Enhanced parser to handle "Create Account and establish following related records" format
+  - **Object deduplication**: Fixed duplicate object counting for single mentions in complex prompts
+  - **Extended object mapping**: Added DandBCompany and OperatingHours to standard object mapping
+  - **Generic term filtering**: Expanded skip terms to include "new", "parent", "following", "related"
+  - **Pattern matching improvements**: Added "associated" and single-word object patterns for better recognition
+  - **Real-world prompt handling**: Successfully parses complex enterprise prompts with multiple related objects
 - July 10, 2025: **DATA GENERATION FIXES** - Fixed critical issues with bulk data parsing and preview confirmation
   - **YAML dependency**: Added missing pyyaml package for bulk data utilities
   - **Parser improvements**: Enhanced bulk data parser to skip generic terms like "record" and "data"
