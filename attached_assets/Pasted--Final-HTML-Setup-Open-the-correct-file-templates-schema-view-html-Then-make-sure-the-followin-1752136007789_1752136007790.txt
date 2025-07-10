@@ -1,0 +1,68 @@
+✅ Final HTML Setup
+
+Open the correct file:
+
+templates/schema_view.html
+
+Then, make sure the following is present (you can paste this in your file, or merge it if some content already exists):
+🔹 The HTML for the Search Bar and Object List
+
+<div class="mb-3">
+    <h5 class="text-white">Salesforce Objects</h5>
+    <input type="text" id="objectSearch" class="form-control bg-dark text-light" placeholder="Search objects...">
+</div>
+
+{% if objects %}
+<div class="object-list" id="object-list" style="max-height: 500px; overflow-y: auto;">
+    {% for obj in objects %}
+    <div class="object-item btn btn-outline-light w-100 text-start mb-1 d-flex justify-content-between align-items-center" 
+         data-object="{{ obj.name }}" data-object-label="{{ obj.label }}"
+         onclick="loadObjectDiagram('{{ obj.name }}')">
+        {{ obj.label }}
+        <span class="badge {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
+            {% if obj.custom %}Custom{% else %}Standard{% endif %}
+        </span>
+    </div>
+    {% endfor %}
+</div>
+<p id="noResults" class="text-muted mt-3" style="display: none;">No objects match your search.</p>
+{% endif %}
+
+🔹 JavaScript for Filtering (place before </body>)
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const searchInput = document.getElementById("objectSearch");
+  const objectItems = document.querySelectorAll(".object-item");
+  const noResults = document.getElementById("noResults");
+
+  if (!searchInput || objectItems.length === 0) {
+    console.warn("Missing search input or no object items found.");
+    return;
+  }
+
+  searchInput.addEventListener("input", function () {
+    const query = this.value.trim().toLowerCase();
+    let matchCount = 0;
+
+    objectItems.forEach(item => {
+      const label = item.dataset.objectLabel?.toLowerCase() || "";
+      const isVisible = label.includes(query);
+      item.style.display = isVisible ? "flex" : "none";
+      if (isVisible) matchCount++;
+    });
+
+    noResults.style.display = matchCount === 0 ? "block" : "none";
+  });
+});
+</script>
+
+✅ Restart and Test
+
+After fixing the location and updating the HTML:
+
+    Restart your Flask/Replit server
+
+    Visit your /test-search or schema page
+
+    Try typing in the input — filtering should now work
