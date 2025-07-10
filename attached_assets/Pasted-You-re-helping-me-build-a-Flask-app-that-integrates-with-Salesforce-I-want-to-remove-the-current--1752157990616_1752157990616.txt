@@ -1,0 +1,59 @@
+You're helping me build a Flask app that integrates with Salesforce. I want to **remove the current non-working OAuth** implementation and **redo it cleanly** using the **Authorization Code Grant** flow with a Salesforce connected app.
+
+Here's the complete list of features I want implemented or enhanced in the app:
+
+1. 🔐 REDO SALESFORCE OAUTH 2.0 IMPLEMENTATION
+   - Remove any old OAuth routes or token handling code.
+   - Implement `/login` and `/callback` routes.
+   - Use the Authorization Code flow to get `access_token` and `refresh_token`.
+   - Store tokens in Flask session.
+   - Use the access token in authenticated API requests.
+   - Add logout and session clearing.
+   - Use environment variables for client ID and secret.
+
+2. 🆕 BULK DATA INSERTION USING NATURAL LANGUAGE
+   - Accept a prompt like: "Create 10 Accounts, each with 5 Contacts and 2 Opportunities."
+   - Parse prompt to extract object names, relationships, and counts.
+   - Generate data structures accordingly.
+   - Respect parent-child relationship insert order (e.g., Accounts before Contacts).
+   - Use Salesforce REST or Bulk API to insert records.
+
+3. 🔗 RELATIONSHIP AWARE PROMPTS
+   - Parse and honor relationships like:
+     - "Each Contact should belong to an Account"
+     - "Each Opportunity should be linked to the Contact's Account"
+   - Allow chaining multiple levels (e.g., Account → Contact → Case).
+
+4. 📁 GITHUB CONFIG SUPPORT
+   - Allow user to paste a GitHub link to a YAML config (e.g., Snowfakery recipe).
+   - Fetch the YAML file and parse it.
+   - Render a preview of what data will be created.
+   - Let user choose to execute the GitHub-based config or use natural language.
+
+5. 🔄 REFRESH SALESFORCE SCHEMA ON DEMAND
+   - Add a button or trigger in the UI to "Refresh Schema".
+   - On click, re-fetch objects and fields from Salesforce Metadata API.
+   - Update the schema viewer accordingly.
+
+6. ✅ PROMPT VALIDATION & CONFIRMATION
+   - After parsing any input (natural language or GitHub YAML), show a confirmation preview:
+     - Objects to be created
+     - Number of records
+     - Relationships
+     - Any assumptions or warnings
+
+7. 🧪 SUPPORT FAKE DATA GENERATION
+   - Use Snowfakery or custom logic to populate dummy values for required fields.
+
+8. 🌐 TECH STACK
+   - Flask (backend)
+   - Jinja2 (templates)
+   - Bootstrap 5 (dark mode)
+   - Vanilla JS (optional interactivity)
+   - Organized project with:
+     - `routes.py`
+     - `templates/`
+     - `static/`
+     - `utils/` or `services/` for logic
+
+Make sure all routes and logic are modular, clean, and commented. Provide guidance if a feature is too complex to fully build in one shot. Start with OAuth fix, then proceed to data insertion features
