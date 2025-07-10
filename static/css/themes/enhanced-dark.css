@@ -1,5 +1,5 @@
 /*
- * Enhanced Dark Theme for Salesforce GPT Data Generator
+ * Enhanced Dark Theme for Salesforce Data Generator
  * Built on Bootstrap dark theme with additional customizations
  */
 
@@ -20,21 +20,28 @@
   --sf-shadow: rgba(0, 0, 0, 0.25);
 }
 
-/* Apply theme to body */
+/* Apply theme to body - Force dark mode */
 body {
-  background-color: var(--sf-bg-dark);
-  color: var(--sf-text-primary);
+  background-color: var(--sf-bg-dark) !important;
+  color: var(--sf-text-primary) !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
 }
 
-/* Card styling */
+/* Force dark background on all containers */
+.container, .container-fluid, .bg-body-tertiary {
+  background-color: var(--sf-bg-dark) !important;
+  color: var(--sf-text-primary) !important;
+}
+
+/* Card styling - Force dark mode */
 .card {
-  background-color: var(--sf-bg-dark-secondary);
-  border: 1px solid var(--sf-border);
+  background-color: var(--sf-bg-dark-secondary) !important;
+  border: 1px solid var(--sf-border) !important;
   border-radius: 0.5rem;
   box-shadow: 0 0.25rem 0.75rem var(--sf-shadow);
   transition: transform 0.2s, box-shadow 0.2s;
+  color: var(--sf-text-primary) !important;
 }
 
 .card:hover {
@@ -43,9 +50,10 @@ body {
 }
 
 .card-header {
-  background-color: var(--sf-bg-dark-tertiary);
-  border-bottom: 1px solid var(--sf-border);
+  background-color: var(--sf-bg-dark-tertiary) !important;
+  border-bottom: 1px solid var(--sf-border) !important;
   font-weight: 600;
+  color: var(--sf-text-primary) !important;
 }
 
 .card-footer {
@@ -120,18 +128,18 @@ body {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-/* Form elements */
+/* Form elements - Force dark mode */
 .form-control, .form-select {
-  background-color: var(--sf-bg-dark-tertiary);
-  border: 1px solid var(--sf-border);
-  color: var(--sf-text-primary);
+  background-color: var(--sf-bg-dark-tertiary) !important;
+  border: 1px solid var(--sf-border) !important;
+  color: var(--sf-text-primary) !important;
 }
 
 .form-control:focus, .form-select:focus {
-  background-color: var(--sf-bg-dark-tertiary);
-  border-color: var(--sf-blue-light);
-  box-shadow: 0 0 0 0.2rem rgba(21, 137, 238, 0.25);
-  color: var(--sf-text-primary);
+  background-color: var(--sf-bg-dark-tertiary) !important;
+  border-color: var(--sf-blue-light) !important;
+  box-shadow: 0 0 0 0.2rem rgba(21, 137, 238, 0.25) !important;
+  color: var(--sf-text-primary) !important;
 }
 
 .form-control::placeholder {

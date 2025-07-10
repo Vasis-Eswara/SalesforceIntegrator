@@ -61,9 +61,14 @@
                 <!-- Mobile-friendly header with sidebar toggle -->
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h2 class="header-title mb-0 fs-3 fs-md-2">Schema & Data Generation</h2>
-                    <button class="btn btn-outline-primary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false" aria-controls="sidebar-collapse">
-                        <i class="bi bi-list"></i> Objects
-                    </button>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-outline-secondary me-2" onclick="refreshSchema()" title="Refresh Schema">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh Schema
+                        </button>
+                        <button class="btn btn-outline-primary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false" aria-controls="sidebar-collapse">
+                            <i class="bi bi-list"></i> Objects
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="p-3 border rounded bg-body-tertiary">
@@ -83,18 +88,12 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <h4 id="diagram-title" class="mb-0">Object Relationship Diagram</h4>
                                         <div class="d-flex align-items-center">
-                                            <button class="btn btn-sm btn-light me-2" id="resize-smaller" title="Decrease height" onclick="event.stopPropagation(); resizeDiagram('smaller')">
-                                                <i class="bi bi-dash-circle"></i>
-                                            </button>
-                                            <button class="btn btn-sm btn-light me-2" id="resize-larger" title="Increase height" onclick="event.stopPropagation(); resizeDiagram('larger')">
-                                                <i class="bi bi-plus-circle"></i>
-                                            </button>
                                             <i class="bi bi-chevron-up" id="diagram-toggle-icon"></i>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="card-body" id="diagram-body" style="display: block;">
-                                    <div id="object-diagram" class="mermaid-diagram bg-light" style="height: 400px; overflow: auto; resize: vertical; border-radius: 8px; padding: 15px;"></div>
+                                    <div id="object-diagram" class="mermaid-diagram bg-light" style="height: 400px; overflow: auto; resize: both; border-radius: 8px; padding: 15px;"></div>
                                 </div>
                             </div>
                         </div>
@@ -116,19 +115,14 @@
                             </div>
                             <div class="card-body" id="generate-body" style="display: block;">
                                 {% if not config.OPENAI_API_KEY %}
-                                <div class="alert alert-danger mb-4">
+                                <div class="alert alert-warning mb-4">
                                     <h4 class="alert-heading">
                                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                                        OpenAI API Key Missing
+                                        Enhanced Features Limited
                                     </h4>
-                                    <p>The OpenAI API key is required to generate test data using AI. Please set the OPENAI_API_KEY environment variable to continue.</p>
+                                    <p>Advanced intelligent data generation features require additional configuration. The system will use standard data generation patterns.</p>
                                 </div>
-                                <div class="text-center py-4">
-                                    <i class="bi bi-robot text-danger" style="font-size: 3rem;"></i>
-                                    <h4 class="mt-3">AI Generation Not Available</h4>
-                                    <p class="text-muted">OpenAI API key is required for AI-powered data generation.</p>
-                                </div>
-                                {% else %}
+                                {% endif %}
                                 <!-- Unified Prompt Interface -->
                                 <form id="unified-prompt-form" method="POST" action="{{ url_for('combined') }}">
                                     <!-- Mode Selection (Hidden by default, auto-detected) -->
@@ -163,11 +157,15 @@ Data Examples:
 Combined Examples:
 • Create a Task object with fields, then generate 50 Tasks linked to existing Accounts
 • Build a Product object with custom fields, then create 15 Products and 30 related Orders"
+                                            style="resize: both;"
                                             required
                                         ></textarea>
-                                        <div class="form-text">
+                                        <div class="form-text d-flex align-items-center">
                                             <i class="bi bi-lightbulb me-1"></i>
-                                            Describe schema changes, data generation, or both. The AI will automatically detect what you need.
+                                            <span>Describe schema changes, data generation, or both. The system will automatically detect what you need.</span>
+                                            <button type="button" class="btn btn-link p-0 ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Learn about bulk data creation capabilities" onclick="showBulkDataInfo()">
+                                                <i class="bi bi-info-circle text-info"></i>
+                                            </button>
                                         </div>
                                     </div>
                                     
@@ -205,7 +203,7 @@ Combined Examples:
                                     
                                     <!-- Advanced Options (Collapsible) -->
                                     <div class="card border-info mb-4">
-                                        <div class="card-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#advanced-options" onclick="toggleAdvancedOptions()">
+                                        <div class="card-header" style="cursor: pointer;" onclick="toggleAdvancedOptionsManual()">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <span><i class="bi bi-gear me-1"></i> Advanced Options</span>
                                                 <i class="bi bi-chevron-down" id="advanced-options-icon"></i>
@@ -875,15 +873,17 @@ function toggleFieldCategory(collapseId) {
     }
 }
 
-// Advanced options toggle function
-function toggleAdvancedOptions() {
+// Advanced options toggle function - manual version
+function toggleAdvancedOptionsManual() {
     const icon = document.getElementById('advanced-options-icon');
     const advancedOptions = document.getElementById('advanced-options');
     
     if (advancedOptions.classList.contains('show')) {
+        advancedOptions.classList.remove('show');
         icon.classList.remove('bi-chevron-up');
         icon.classList.add('bi-chevron-down');
     } else {
+        advancedOptions.classList.add('show');
         icon.classList.remove('bi-chevron-down');
         icon.classList.add('bi-chevron-up');
     }
@@ -949,6 +949,82 @@ function showDataQualityInfo() {
     // Show modal
     const modal = new bootstrap.Modal(document.getElementById('dataQualityModal'));
     modal.show();
+}
+
+// Bulk data info modal
+function showBulkDataInfo() {
+    const modalHtml = `
+        <div class="modal fade" id="bulkDataModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content bg-dark text-light">
+                    <div class="modal-header border-secondary">
+                        <h5 class="modal-title">Bulk Data Creation Capabilities</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-primary"><i class="bi bi-chat-dots me-2"></i>Natural Language Mode</h6>
+                                <ul class="small text-muted">
+                                    <li>Create thousands of records using simple descriptions</li>
+                                    <li>Intelligent field mapping and data relationships</li>
+                                    <li>Automatic schema detection and validation</li>
+                                    <li>Support for complex object hierarchies</li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-success"><i class="bi bi-github me-2"></i>GitHub Config Mode</h6>
+                                <ul class="small text-muted">
+                                    <li>Load configurations from GitHub repositories</li>
+                                    <li>Support for Snowfakery YAML recipes</li>
+                                    <li>Custom JSON/YAML configuration files</li>
+                                    <li>Team collaboration through version control</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <hr class="border-secondary">
+                        <div class="mb-3">
+                            <h6 class="text-warning">Scale Capabilities</h6>
+                            <p class="small text-muted">
+                                The system can handle bulk creation of thousands of records efficiently. 
+                                For very large datasets (10,000+ records), the process is batched automatically 
+                                to ensure optimal performance and avoid API limits.
+                            </p>
+                        </div>
+                        <div>
+                            <h6 class="text-info">Examples</h6>
+                            <div class="small text-muted">
+                                <code>"Generate 5000 Contact records with realistic data"</code><br>
+                                <code>"Create 1000 Accounts with 3-5 Contacts each"</code><br>
+                                <code>"Build 2000 Opportunities linked to existing Accounts"</code>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if it exists
+    const existingModal = document.getElementById('bulkDataModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to body
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('bulkDataModal'));
+    modal.show();
+}
+
+// Refresh schema function
+function refreshSchema() {
+    window.location.reload();
 }
 
 // Diagram visibility toggle

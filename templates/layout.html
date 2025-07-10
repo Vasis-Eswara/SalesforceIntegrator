@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Salesforce GPT Data Generator</title>
+    <title>Salesforce Data Generator</title>
     
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
@@ -22,8 +22,8 @@
     <link rel="alternate icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
     
     <!-- Meta tags for better SEO -->
-    <meta name="description" content="Generate realistic test data for Salesforce using AI technology">
-    <meta name="keywords" content="Salesforce, GPT, test data, data generation, REST API, SOAP API">
+    <meta name="description" content="Generate realistic test data for Salesforce using intelligent automation">
+    <meta name="keywords" content="Salesforce, test data, data generation, REST API, SOAP API, bulk data">
 </head>
 <body>
     <!-- Navbar -->
@@ -31,7 +31,7 @@
         <div class="container-fluid">
             <a class="navbar-brand text-enhanced" href="{{ url_for('index') }}">
                 <i class="bi bi-cloud-lightning-fill me-2"></i>
-                Salesforce GPT Data Generator
+                Salesforce Data Generator
             </a>
             {% if org_info and org_info.connected %}
             <div class="ms-2 me-4 badge badge-pill bg-primary">
@@ -54,9 +54,7 @@
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('bulk_data') %}active{% endif %}" href="{{ url_for('bulk_data') }}"><i class="bi bi-database-add me-1"></i>Bulk Data Creation</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.path == url_for('schema_viewer') %}active{% endif %}" href="{{ url_for('schema_viewer') }}"><i class="bi bi-search me-1"></i>Schema Viewer</a>
-                    </li>
+
                     <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('configure') %}active{% endif %}" href="{{ url_for('configure') }}">Configure Salesforce</a>
                     </li>
