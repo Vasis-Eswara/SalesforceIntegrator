@@ -202,30 +202,7 @@ function generateSimpleDiagram(data) {
     return diagram;
 }
 
-document.addEventListener("DOMContentLoaded", function () {
-    const searchInput = document.getElementById("objectSearch");
-    const objectItems = document.querySelectorAll(".object-item");
-    const noResults = document.getElementById("noResults");
 
-    searchInput.addEventListener("input", function () {
-        const query = this.value.trim().toLowerCase();
-        let visibleCount = 0;
-
-        objectItems.forEach(item => {
-            const label = (item.dataset.objectLabel || "").toLowerCase();
-            const match = label.includes(query);
-
-            // Toggle visibility using class instead of style.display
-            item.classList.toggle("hidden", !match);
-            if (match) visibleCount++;
-
-            // Optional: log for debugging
-            console.log("Searching for:", query, "| In label:", label, "| Match:", match);
-        });
-
-        noResults.style.display = visibleCount === 0 ? "block" : "none";
-    });
-});
 </script>
 
 <style>
@@ -236,4 +213,6 @@ document.addEventListener("DOMContentLoaded", function () {
     display: none !important;
 }
 </style>
+
+<script src="{{ url_for('static', filename='js/schema_search.js') }}"></script>
 {% endblock %}
