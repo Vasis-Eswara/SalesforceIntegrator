@@ -25,6 +25,13 @@
                     </div>
                 </form>
 
+                <!-- Debug Info -->
+                {% if search_query %}
+                <div class="alert alert-info mb-2">
+                    <small>Search query: "{{ search_query }}" | Found: {{ salesforce_objects|length }} objects</small>
+                </div>
+                {% endif %}
+                
                 {% if salesforce_objects %}
                 <!-- Object List -->
                 <div class="object-list" id="object-list" style="max-height: 500px; overflow-y: auto;">

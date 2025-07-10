@@ -846,6 +846,11 @@ def init_routes(app):
                 all_objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
                 logger.debug(f"Successfully retrieved {len(all_objects)} objects via SOAP API")
             
+            # Debug: Log object structure and count
+            logger.debug(f"Retrieved {len(all_objects)} total objects")
+            if all_objects:
+                logger.debug(f"Sample object structure: {all_objects[0]}")
+            
             # Filter objects based on the search query (case-insensitive label match)
             if search_query:
                 filtered_objects = [
@@ -853,8 +858,13 @@ def init_routes(app):
                     if search_query.lower() in obj["label"].lower()
                 ]
                 logger.debug(f"Filtered {len(all_objects)} objects to {len(filtered_objects)} based on search: '{search_query}'")
+                if filtered_objects:
+                    logger.debug(f"Sample filtered object: {filtered_objects[0]}")
+                else:
+                    logger.debug("No objects matched the search query")
             else:
                 filtered_objects = all_objects
+                logger.debug(f"No search query provided, showing all {len(filtered_objects)} objects")
             
             org_info = get_org_info()
             return render_template('schema_view.html', 
