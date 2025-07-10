@@ -1,0 +1,72 @@
+📂 Folder Structure Assumption:
+
+templates/
+  schema_view.html
+static/
+  css/
+    styles.css
+  js/
+    schema_search.js
+
+✅ 1. Update your schema_view.html (Jinja2 Template)
+
+Insert the following where you render the “Salesforce Objects” section:
+
+<div class="mb-3">
+  <h5 class="text-white">Salesforce Objects</h5>
+  <input type="text" id="objectSearch" class="form-control bg-dark text-light" placeholder="Search objects...">
+</div>
+
+<div class="object-list" style="max-height: 500px; overflow-y: auto;">
+  {% for obj in salesforce_objects %}
+    <div class="object-item btn btn-outline-light w-100 text-start mb-1">
+      {{ obj.label }} <span class="badge bg-secondary">{{ obj.type }}</span>
+    </div>
+  {% endfor %}
+</div>
+
+<p id="noResults" class="text-muted mt-3" style="display: none;">No objects match your search.</p>
+
+    Assumes your view passes salesforce_objects as a list of dicts like:
+    [{ "label": "Account", "type": "STANDARD" }, ...]
+
+✅ 2. Add JavaScript: static/js/schema_search.js
+
+document.addEventListener("DOMContentLoaded", function () {
+  const searchInput = document.getElementById("objectSearch");
+  const items = document.querySelectorAll(".object-item");
+  const noResults = document.getElementById("noResults");
+
+  searchInput.addEventListener("input", function () {
+    const query = this.value.toLowerCase();
+    let visibleCount = 0;
+
+    items.forEach(item => {
+      const text = item.textContent.toLowerCase();
+      const match = text.includes(query);
+      item.style.display = match ? "block" : "none";
+      if (match) visibleCount++;
+    });
+
+    noResults.style.display = visibleCount === 0 ? "block" : "none";
+  });
+});
+
+✅ 3. Load the JS in your template
+
+Add this at the bottom of your schema_view.html file:
+
+<script src="{{ url_for('static', filename='js/schema_search.js') }}"></script>
+
+🎨 Styling (Optional)
+
+You’re using Bootstrap 5 dark theme — your current layout looks good. But if you want smoother filtering animations or placeholder styling, you can extend with CSS later.
+✅ Result
+
+    Search input styled for dark mode using Bootstrap
+
+    Filters the .object-item elements in real-time
+
+    Shows “No results” message when no matches found
+
+    Works entirely client-side (no Flask route needed)
