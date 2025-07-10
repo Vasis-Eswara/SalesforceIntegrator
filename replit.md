@@ -95,6 +95,19 @@ Required environment variables:
 
 ## Changelog
 
+- July 10, 2025: **ADVANCED RELATIONSHIP MAPPING** - Implemented sophisticated object hierarchy visualization
+  - **Enhanced diagram system**: Advanced relationship mapping for complex object hierarchies
+  - **Multi-level analysis**: Parent-child relationships, dependency chains, and hierarchy levels
+  - **Smart categorization**: Fields organized by type (identity, required, lookup, formula, system, custom)
+  - **Visual enhancements**: Color-coded object types, relationship indicators, and summary metrics
+  - **API endpoint**: New `/api/relationship-map/<object>` for comprehensive relationship data
+  - **Fallback system**: Graceful degradation to basic diagrams if advanced mapping fails
+  - **Interactive features**: Foundation for future click-to-explore functionality
+- July 10, 2025: **SEARCH FUNCTIONALITY COMPLETED** - Successfully implemented real-time object search
+  - **Working search box**: Real-time filtering of Salesforce objects with clean UI
+  - **Fixed template routing**: Corrected implementation to use proper template file
+  - **Improved object styling**: Button-based object list with smooth transitions
+  - **Visual feedback**: Selected objects highlighted with primary color
 - July 09, 2025: **UI STREAMLINING** - Removed unnecessary navigation options per user request
   - **Removed navigation items**: Simple Selector, Basic Selector, and Object Selector from main menu
   - **Streamlined homepage**: Removed Basic Object Selector button from homepage

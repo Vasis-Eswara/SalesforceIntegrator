@@ -489,6 +489,99 @@ def init_routes(app):
             logger.error(f"Error fetching object detail: {str(e)}")
             return jsonify({'error': str(e)}), 500
     
+    @app.route('/api/relationship-map/<object_name>')
+    def advanced_relationship_map(object_name):
+        """Generate advanced relationship mapping for complex object hierarchies"""
+        if 'salesforce_org_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        try:
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            # Get all objects to understand the complete hierarchy
+            try:
+                all_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Retrieved {len(all_objects)} objects for relationship mapping")
+            except Exception as rest_error:
+                logger.warning(f"REST API failed for objects, falling back to SOAP: {str(rest_error)}")
+                all_objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Retrieved {len(all_objects)} objects via SOAP for relationship mapping")
+            
+            # Get primary object details
+            try:
+                primary_object = get_object_describe(sf_org.instance_url, sf_org.access_token, object_name)
+            except Exception as rest_error:
+                logger.warning(f"REST API failed for primary object, falling back to SOAP: {str(rest_error)}")
+                primary_object = get_object_describe_soap(sf_org.instance_url, sf_org.access_token, object_name)
+            
+            # Build comprehensive relationship map
+            relationship_map = {
+                'object_name': object_name,
+                'parent_relationships': [],
+                'child_relationships': [],
+                'sibling_relationships': [],
+                'dependency_chain': [],
+                'hierarchy_level': 0
+            }
+            
+            # Analyze parent relationships (objects this one references)
+            for field in primary_object.get('fields', []):
+                if field.get('type') == 'reference' and field.get('referenceTo'):
+                    for ref_obj in field['referenceTo']:
+                        relationship_map['parent_relationships'].append({
+                            'field_name': field['name'],
+                            'field_label': field['label'],
+                            'target_object': ref_obj,
+                            'required': not field.get('nillable', True),
+                            'relationship_type': 'lookup' if field.get('nillable', True) else 'master_detail'
+                        })
+            
+            # Find child relationships (objects that reference this one)
+            for obj in all_objects:
+                try:
+                    # Only check custom objects and key standard objects to avoid overwhelming the system
+                    if obj.get('custom') or obj.get('name') in ['Account', 'Contact', 'Opportunity', 'Case', 'Lead']:
+                        obj_details = get_object_describe(sf_org.instance_url, sf_org.access_token, obj['name'])
+                        
+                        for field in obj_details.get('fields', []):
+                            if (field.get('type') == 'reference' and 
+                                field.get('referenceTo') and 
+                                object_name in field['referenceTo']):
+                                
+                                relationship_map['child_relationships'].append({
+                                    'source_object': obj['name'],
+                                    'source_object_label': obj['label'],
+                                    'field_name': field['name'],
+                                    'field_label': field['label'],
+                                    'required': not field.get('nillable', True),
+                                    'relationship_type': 'lookup' if field.get('nillable', True) else 'master_detail'
+                                })
+                except Exception as e:
+                    # Skip objects that can't be described (insufficient permissions, etc.)
+                    logger.debug(f"Skipping object {obj.get('name')} in relationship mapping: {str(e)}")
+                    continue
+            
+            # Calculate hierarchy level and dependency chain
+            relationship_map['hierarchy_level'] = len(relationship_map['parent_relationships'])
+            
+            # Build dependency chain (simplified)
+            dependency_chain = []
+            for parent_rel in relationship_map['parent_relationships']:
+                if parent_rel['relationship_type'] == 'master_detail':
+                    dependency_chain.append(parent_rel['target_object'])
+            relationship_map['dependency_chain'] = dependency_chain
+            
+            logger.info(f"Generated relationship map for {object_name}: "
+                       f"{len(relationship_map['parent_relationships'])} parents, "
+                       f"{len(relationship_map['child_relationships'])} children")
+            
+            return jsonify(relationship_map)
+            
+        except Exception as e:
+            logger.error(f"Error generating relationship map for {object_name}: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+            return jsonify({'error': str(e)}), 500
+    
     @app.route('/combined', methods=['GET', 'POST'])
     def combined():
         """Combined schema viewer and data generation page"""

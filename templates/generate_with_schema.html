@@ -51,12 +51,18 @@
                             </div>
                         </div>
                         
-                        <!-- Object Relationship Diagram Section -->
+                        <!-- Advanced Object Relationship Mapping Section -->
                         <div id="schema-diagram" style="display:none;" class="mt-4">
                             <div class="card">
                                 <div class="card-header d-flex justify-content-between align-items-center">
-                                    <h4 id="diagram-title">Object Relationship Diagram</h4>
+                                    <div>
+                                        <h4 id="diagram-title">Advanced Relationship Mapping</h4>
+                                        <small class="text-muted">Complex object hierarchies and data dependencies</small>
+                                    </div>
                                     <div class="diagram-controls">
+                                        <button class="btn btn-sm btn-outline-info me-2" id="hierarchy-view" title="Switch to hierarchy view">
+                                            <i class="bi bi-diagram-3"></i> Hierarchy
+                                        </button>
                                         <button class="btn btn-sm btn-outline-secondary me-2" id="resize-smaller" title="Decrease height">
                                             <i class="bi bi-dash-circle"></i>
                                         </button>
@@ -69,7 +75,33 @@
                                     </div>
                                 </div>
                                 <div class="card-body" id="diagram-body">
-                                    <div id="object-diagram" class="mermaid-diagram" style="height: 400px; overflow: auto; resize: vertical;"></div>
+                                    <div class="row mb-3" id="relationship-summary" style="display:none;">
+                                        <div class="col-md-4">
+                                            <div class="card border-primary">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title text-primary" id="parent-count">0</h5>
+                                                    <p class="card-text">Parent Objects</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card border-success">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title text-success" id="child-count">0</h5>
+                                                    <p class="card-text">Child Objects</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card border-info">
+                                                <div class="card-body text-center">
+                                                    <h5 class="card-title text-info" id="hierarchy-level">0</h5>
+                                                    <p class="card-text">Hierarchy Level</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="object-diagram" class="mermaid-diagram" style="height: 500px; overflow: auto; resize: vertical;"></div>
                                 </div>
                             </div>
                         </div>
@@ -584,7 +616,7 @@
             }
         }
         
-        // Function to generate and display object relationship diagram
+        // Function to generate and display advanced object relationship diagram
         function loadObjectDiagram(objectName) {
             const schemaContainer = document.getElementById('schema-diagram');
             const diagramContainer = document.getElementById('object-diagram');
@@ -592,73 +624,246 @@
             
             // Make sure the diagram section is visible
             schemaContainer.style.display = 'block';
-            diagramTitle.textContent = `Relationship Diagram: ${objectName}`;
+            diagramTitle.textContent = `Advanced Relationship Mapping: ${objectName}`;
             
-            // Show loading indicator
+            // Show loading indicator with enhanced message
             diagramContainer.innerHTML = `
                 <div class="text-center my-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="lead mt-3">Generating relationship diagram...</p>
+                    <p class="lead mt-3">Analyzing complex object hierarchies...</p>
+                    <p class="text-muted">Mapping relationships, dependencies, and data flows</p>
                 </div>
             `;
             
-            console.log('Loading diagram for:', objectName); // Debug log
+            console.log('Loading advanced relationship mapping for:', objectName);
             
-            // Fetch object details to generate diagram
-            fetch('/schema/' + objectName)
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Diagram data received:', Object.keys(data)); // Debug log
+            // Fetch object details and build comprehensive relationship map
+            Promise.all([
+                fetch('/schema/' + objectName).then(r => r.json()),
+                fetch('/api/relationship-map/' + objectName).then(r => r.json()).catch(() => null)
+            ])
+                .then(([primaryData, relationshipData]) => {
+                    console.log('Primary object data received:', Object.keys(primaryData));
                     
-                    // Generate mermaid diagram syntax
-                    const diagramCode = generateMermaidDiagram(data);
-                    console.log('Generated diagram code length:', diagramCode.length); // Debug log
+                    // Generate advanced mermaid diagram with hierarchies
+                    const diagramCode = generateAdvancedRelationshipDiagram(primaryData, relationshipData);
+                    console.log('Generated advanced diagram code length:', diagramCode.length);
                     
-                    // Create the mermaid diagram
+                    // Create the enhanced mermaid diagram
                     diagramContainer.innerHTML = `<div class="mermaid">${diagramCode}</div>`;
                     
                     // Force diagram to be visible
                     schemaContainer.style.display = 'block';
                     
-                    // Render the diagram with a slight delay to ensure DOM is ready
+                    // Render the diagram with enhanced styling
                     setTimeout(() => {
                         try {
-                            console.log('Running mermaid rendering');
+                            console.log('Running mermaid rendering for advanced relationships');
                             mermaid.run();
                             
                             // Re-initialize controls after diagram is rendered
                             initDiagramControls();
-                            
-                            // Initialize the generate form and how it works controls
                             initGenerateControls();
+                            
+                            // Add relationship interaction handlers
+                            addRelationshipInteractivity(primaryData);
                         } catch (e) {
                             console.error('Mermaid error:', e);
                         }
                     }, 100);
                 })
                 .catch(error => {
-                    console.error('Error loading diagram:', error); // Debug log
+                    console.error('Error loading relationship map:', error);
                     diagramContainer.innerHTML = `
                         <div class="alert alert-danger">
                             <h4 class="alert-heading">Error</h4>
-                            <p>Failed to generate diagram: ${error.message}</p>
+                            <p>Failed to generate advanced relationship mapping: ${error.message}</p>
+                            <small class="text-muted">Falling back to basic relationship view...</small>
                         </div>
                     `;
+                    
+                    // Fallback to basic diagram
+                    setTimeout(() => loadBasicDiagram(objectName), 1000);
                 });
         }
         
-        // Function to generate mermaid syntax for object relationships
+        // Fallback to basic diagram if advanced mapping fails
+        function loadBasicDiagram(objectName) {
+            fetch('/schema/' + objectName)
+                .then(response => response.json())
+                .then(data => {
+                    const diagramContainer = document.getElementById('object-diagram');
+                    const diagramCode = generateMermaidDiagram(data);
+                    diagramContainer.innerHTML = `<div class="mermaid">${diagramCode}</div>`;
+                    
+                    setTimeout(() => {
+                        try {
+                            mermaid.run();
+                            initDiagramControls();
+                        } catch (e) {
+                            console.error('Basic diagram error:', e);
+                        }
+                    }, 100);
+                });
+        }
+        
+        // Generate advanced relationship diagram with complex hierarchies
+        function generateAdvancedRelationshipDiagram(data, relationshipData) {
+            let diagramSyntax = 'classDiagram\n';
+            
+            // Advanced styling and relationship categorization
+            const relationshipTypes = {
+                parent: [],      // Objects this object references (parents)
+                children: [],    // Objects that reference this object (children)
+                siblings: [],    // Objects with shared references
+                system: []       // System/platform objects
+            };
+            
+            // Enhanced main object definition
+            diagramSyntax += `    class ${data.name} {\n`;
+            diagramSyntax += `        <<${data.custom ? 'Custom Object' : 'Standard Object'}>>\n`;
+            
+            // Categorize all fields with enhanced logic
+            const fieldCategories = {
+                identity: [],     // Id, Name, unique identifiers
+                required: [],     // Required business fields
+                lookup: [],       // Reference fields (relationships)
+                formula: [],      // Calculated/formula fields
+                system: [],       // System fields (CreatedBy, LastModified, etc.)
+                custom: []        // Custom fields
+            };
+            
+            data.fields.forEach(field => {
+                // Categorize field by type and characteristics
+                if (field.name === 'Id' || field.nameField || field.name.toLowerCase().includes('name')) {
+                    fieldCategories.identity.push(field);
+                } else if (field.type === 'reference') {
+                    fieldCategories.lookup.push(field);
+                    
+                    // Track relationship types
+                    if (field.referenceTo && field.referenceTo.length > 0) {
+                        field.referenceTo.forEach(refObject => {
+                            if (isSystemObject(refObject)) {
+                                relationshipTypes.system.push({field: field.name, target: refObject, type: 'reference'});
+                            } else {
+                                relationshipTypes.parent.push({field: field.name, target: refObject, type: 'reference'});
+                            }
+                        });
+                    }
+                } else if (field.calculated || field.type === 'formula') {
+                    fieldCategories.formula.push(field);
+                } else if (field.nillable === false && !field.calculated && field.name !== 'Id') {
+                    fieldCategories.required.push(field);
+                } else if (isSystemField(field.name)) {
+                    fieldCategories.system.push(field);
+                } else if (field.custom) {
+                    fieldCategories.custom.push(field);
+                }
+            });
+            
+            // Build enhanced class definition with categorized fields
+            addFieldSection(diagramSyntax, 'Identity & Keys', fieldCategories.identity);
+            addFieldSection(diagramSyntax, 'Required Business', fieldCategories.required);
+            addFieldSection(diagramSyntax, 'Relationships', fieldCategories.lookup);
+            addFieldSection(diagramSyntax, 'Calculated Fields', fieldCategories.formula);
+            addFieldSection(diagramSyntax, 'Custom Fields', fieldCategories.custom);
+            
+            diagramSyntax += '    }\n\n';
+            
+            // Generate relationship classes and connections
+            const processedObjects = new Set([data.name]);
+            
+            // Add parent objects (objects this one references)
+            relationshipTypes.parent.forEach(rel => {
+                if (!processedObjects.has(rel.target)) {
+                    diagramSyntax += generateRelatedObjectClass(rel.target, 'Parent');
+                    processedObjects.add(rel.target);
+                }
+                diagramSyntax += `    ${data.name} --> ${rel.target} : ${rel.field}\n`;
+            });
+            
+            // Add system objects with different styling
+            relationshipTypes.system.forEach(rel => {
+                if (!processedObjects.has(rel.target)) {
+                    diagramSyntax += generateRelatedObjectClass(rel.target, 'System');
+                    processedObjects.add(rel.target);
+                }
+                diagramSyntax += `    ${data.name} ..> ${rel.target} : ${rel.field}\n`;
+            });
+            
+            // Add styling for different object types
+            diagramSyntax += `\n    %% Styling for enhanced visualization\n`;
+            diagramSyntax += `    class ${data.name} fill:#e1f5fe,stroke:#01579b,stroke-width:3px\n`;
+            
+            relationshipTypes.parent.forEach(rel => {
+                diagramSyntax += `    class ${rel.target} fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n`;
+            });
+            
+            relationshipTypes.system.forEach(rel => {
+                diagramSyntax += `    class ${rel.target} fill:#fff3e0,stroke:#e65100,stroke-width:1px\n`;
+            });
+            
+            return diagramSyntax;
+        }
+        
+        // Helper function to add field sections to diagram
+        function addFieldSection(diagramSyntax, sectionTitle, fields) {
+            if (fields.length > 0) {
+                diagramSyntax += `        -- ${sectionTitle} --\n`;
+                fields.forEach(field => {
+                    let fieldDef = `        ${field.name} : ${field.type}`;
+                    if (field.nillable === false) fieldDef += ' [Required]';
+                    if (field.unique) fieldDef += ' [Unique]';
+                    if (field.calculated) fieldDef += ' [Calculated]';
+                    diagramSyntax += fieldDef + '\n';
+                });
+            }
+        }
+        
+        // Helper function to generate related object classes
+        function generateRelatedObjectClass(objectName, objectType) {
+            return `    class ${objectName} {\n        <<${objectType} Object>>\n        Id : id\n        Name : string\n    }\n`;
+        }
+        
+        // Helper function to identify system objects
+        function isSystemObject(objectName) {
+            const systemObjects = [
+                'User', 'Profile', 'UserRole', 'Organization', 'RecordType',
+                'Territory', 'Group', 'Queue', 'BusinessProcess', 'PicklistValue'
+            ];
+            return systemObjects.includes(objectName);
+        }
+        
+        // Helper function to identify system fields
+        function isSystemField(fieldName) {
+            const systemFields = [
+                'CreatedBy', 'CreatedDate', 'LastModifiedBy', 'LastModifiedDate',
+                'SystemModstamp', 'IsDeleted', 'OwnerId', 'RecordTypeId'
+            ];
+            return systemFields.some(sysField => fieldName.includes(sysField));
+        }
+        
+        // Add interactivity to relationship diagrams
+        function addRelationshipInteractivity(data) {
+            // Add click handlers for diagram elements (future enhancement)
+            console.log('Adding relationship interactivity for:', data.name);
+            
+            // Future: Add click handlers to explore related objects
+            // Future: Add hover tooltips with field details
+            // Future: Add expandable relationship trees
+        }
+        
+        // Original simple diagram function (kept for fallback)
         function generateMermaidDiagram(data) {
             let diagramSyntax = 'classDiagram\n';
             
-            // Create main class
+            // Simple main class
             diagramSyntax += `    class ${data.name} {\n`;
             
-            // Add fields to main class
+            // Add key fields only
             data.fields.forEach(field => {
-                // Only include important fields to avoid clutter
                 if (field.nillable === false || field.unique || field.nameField || 
                     field.type === 'reference' || field.name === 'Id') {
                     let fieldLine = `        ${field.name} : ${field.type}`;
@@ -670,25 +875,129 @@
             
             diagramSyntax += '    }\n\n';
             
-            // Track relationship objects to avoid duplicates
+            // Simple relationships
             const relationshipObjects = new Set();
-            
-            // Add relationship arrows
             data.fields.forEach(field => {
                 if (field.type === 'reference' && field.referenceTo && field.referenceTo.length > 0) {
                     field.referenceTo.forEach(relatedObject => {
-                        // Avoid self-references in diagram
                         if (relatedObject !== data.name) {
-                            // Add related object class if not already added
                             if (!relationshipObjects.has(relatedObject)) {
                                 diagramSyntax += `    class ${relatedObject} {\n        Id : id\n    }\n`;
                                 relationshipObjects.add(relatedObject);
                             }
-                            
-                            // Add relationship arrow
                             diagramSyntax += `    ${data.name} --o ${relatedObject} : ${field.name}\n`;
                         }
                     });
+                }
+            });
+            
+            return diagramSyntax;
+        }
+            
+            // Enhanced relationship mapping
+            const relationshipObjects = new Map();
+            const hierarchyLevels = new Map();
+            const parentChildRelations = [];
+            const lookupRelations = [];
+            
+            // Analyze relationships for hierarchy detection
+            lookupFields.forEach(field => {
+                if (field.referenceTo && field.referenceTo.length > 0) {
+                    field.referenceTo.forEach(relatedObject => {
+                        if (relatedObject !== data.name) {
+                            // Detect parent-child relationships
+                            const isParentChild = field.name.toLowerCase().includes('parent') || 
+                                                field.name.toLowerCase().includes(relatedObject.toLowerCase()) ||
+                                                relatedObject === data.name.replace('__c', '') + '__c';
+                            
+                            // Detect master-detail vs lookup relationships
+                            const isMasterDetail = field.relationshipName && 
+                                                 (field.cascadeDelete === true || field.restrictedDelete === true);
+                            
+                            const relationshipInfo = {
+                                field: field,
+                                relatedObject: relatedObject,
+                                isParentChild: isParentChild,
+                                isMasterDetail: isMasterDetail,
+                                relationshipType: isMasterDetail ? 'Master-Detail' : 'Lookup'
+                            };
+                            
+                            if (isParentChild) {
+                                parentChildRelations.push(relationshipInfo);
+                            } else {
+                                lookupRelations.push(relationshipInfo);
+                            }
+                            
+                            // Store related object info
+                            if (!relationshipObjects.has(relatedObject)) {
+                                relationshipObjects.set(relatedObject, {
+                                    name: relatedObject,
+                                    isStandard: !relatedObject.includes('__c'),
+                                    relationships: []
+                                });
+                            }
+                            relationshipObjects.get(relatedObject).relationships.push(relationshipInfo);
+                        }
+                    });
+                }
+            });
+            
+            // Create related object classes with enhanced information
+            relationshipObjects.forEach((objInfo, objName) => {
+                diagramSyntax += `    class ${objName} {\n`;
+                
+                if (objInfo.isStandard) {
+                    diagramSyntax += `        <<Standard Object>>\n`;
+                } else {
+                    diagramSyntax += `        <<Custom Object>>\n`;
+                }
+                
+                diagramSyntax += `        Id : id\n`;
+                diagramSyntax += `        Name : string\n`;
+                
+                // Add relationship count info
+                const relationshipCount = objInfo.relationships.length;
+                if (relationshipCount > 1) {
+                    diagramSyntax += `        -- ${relationshipCount} relationships --\n`;
+                }
+                
+                diagramSyntax += '    }\n\n';
+            });
+            
+            // Add hierarchical relationships with different arrow types
+            parentChildRelations.forEach(rel => {
+                if (rel.isMasterDetail) {
+                    // Strong composition relationship
+                    diagramSyntax += `    ${rel.relatedObject} ||--|| ${data.name} : ${rel.field.name} [Master-Detail]\n`;
+                } else {
+                    // Hierarchical relationship
+                    diagramSyntax += `    ${rel.relatedObject} ||--o{ ${data.name} : ${rel.field.name} [Hierarchy]\n`;
+                }
+            });
+            
+            // Add lookup relationships
+            lookupRelations.forEach(rel => {
+                if (rel.isMasterDetail) {
+                    // Master-detail relationship
+                    diagramSyntax += `    ${data.name} }o--|| ${rel.relatedObject} : ${rel.field.name} [Master-Detail]\n`;
+                } else {
+                    // Standard lookup relationship
+                    diagramSyntax += `    ${data.name} }o--o{ ${rel.relatedObject} : ${rel.field.name} [Lookup]\n`;
+                }
+            });
+            
+            // Add styling for different object types
+            diagramSyntax += `\n    classDef mainObject fill:#e1f5fe,stroke:#01579b,stroke-width:3px\n`;
+            diagramSyntax += `    classDef standardObject fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n`;
+            diagramSyntax += `    classDef customObject fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px\n`;
+            
+            diagramSyntax += `    class ${data.name} mainObject\n`;
+            
+            relationshipObjects.forEach((objInfo, objName) => {
+                if (objInfo.isStandard) {
+                    diagramSyntax += `    class ${objName} standardObject\n`;
+                } else {
+                    diagramSyntax += `    class ${objName} customObject\n`;
                 }
             });
             
