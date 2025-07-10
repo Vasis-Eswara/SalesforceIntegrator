@@ -824,6 +824,33 @@ def init_routes(app):
             flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
             return redirect(url_for('index'))
 
+    @app.route('/schema-viewer')
+    def schema_viewer():
+        """Dedicated schema viewer page with clean search functionality"""
+        if 'salesforce_org_id' not in session:
+            flash('Please connect to Salesforce first', 'warning')
+            return redirect(url_for('login'))
+        
+        try:
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            # Get Salesforce objects - try REST API first, then SOAP as fallback
+            try:
+                salesforce_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(salesforce_objects)} objects via REST API")
+            except Exception as rest_error:
+                logger.warning(f"REST API failed for objects, falling back to SOAP: {str(rest_error)}")
+                salesforce_objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(salesforce_objects)} objects via SOAP API")
+            
+            org_info = get_org_info()
+            return render_template('schema_view.html', salesforce_objects=salesforce_objects, org_info=org_info)
+            
+        except Exception as e:
+            logger.error(f"Error fetching objects: {str(e)}")
+            flash(f'Error retrieving Salesforce objects: {str(e)}', 'danger')
+            return redirect(url_for('index'))
+
     @app.route('/generate', methods=['GET', 'POST'])
     def generate():
         """Redirect to combined page - generate functionality now only in combined view"""

@@ -1,0 +1,227 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <!-- Sidebar with object list -->
+        <div class="col-md-3 col-lg-2">
+            <div class="sidebar">
+                <!-- Salesforce Objects Title & Search Bar -->
+                <div class="mb-3">
+                    <h5 class="text-white">Salesforce Objects</h5>
+                    <input 
+                        type="text" 
+                        id="objectSearch" 
+                        class="form-control bg-dark text-light" 
+                        placeholder="Search objects..." 
+                    />
+                </div>
+
+                {% if salesforce_objects %}
+                <!-- Object List -->
+                <div class="object-list" style="max-height: 500px; overflow-y: auto;">
+                    {% for obj in salesforce_objects %}
+                        <div class="object-item btn btn-outline-light w-100 text-start mb-1" onclick="loadObjectSchema('{{ obj.name }}')">
+                            {{ obj.label }} 
+                            <span class="badge bg-secondary">{{ obj.type }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <!-- No Results Message -->
+                <p id="noResults" class="text-muted mt-3" style="display: none;">No objects match your search.</p>
+                {% else %}
+                <div class="alert alert-warning">
+                    No objects found or unable to retrieve schema.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Main content area -->
+        <div class="col-md-9 col-lg-10">
+            <div class="p-3">
+                <h2 class="mb-4 header-title">Schema Viewer</h2>
+                
+                <div class="p-3 border rounded bg-body-tertiary">
+                    <!-- Schema Details Content -->
+                    <div id="schema-content">
+                        <div id="object-details">
+                            <div class="text-center my-5">
+                                <i class="bi bi-diagram-3-fill text-primary" style="font-size: 3rem;"></i>
+                                <p class="lead mt-3">Select an object from the list to view its schema details</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Object Schema Display Section -->
+                        <div id="schema-display" style="display:none;" class="mt-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h4 id="schema-title">Object Schema</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="schema-details"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Mermaid for diagrams -->
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+// Function to load object schema
+function loadObjectSchema(objectName) {
+    const schemaDisplay = document.getElementById('schema-display');
+    const schemaTitle = document.getElementById('schema-title');
+    const schemaDetails = document.getElementById('schema-details');
+    
+    // Show the schema section
+    schemaDisplay.style.display = 'block';
+    schemaTitle.textContent = 'Schema: ' + objectName;
+    
+    // Show loading
+    schemaDetails.innerHTML = '<div class="text-center my-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="lead mt-3">Loading schema...</p></div>';
+    
+    // Fetch schema data
+    fetch('/schema/' + objectName)
+        .then(response => response.json())
+        .then(data => {
+            // Generate schema display
+            let html = '<div class="row">';
+            
+            // Basic object info
+            html += '<div class="col-md-6">';
+            html += '<h5>Object Information</h5>';
+            html += '<ul class="list-group list-group-flush">';
+            html += '<li class="list-group-item d-flex justify-content-between"><span>API Name:</span><code>' + data.name + '</code></li>';
+            html += '<li class="list-group-item d-flex justify-content-between"><span>Label:</span><span>' + data.label + '</span></li>';
+            html += '<li class="list-group-item d-flex justify-content-between"><span>Type:</span><span class="badge bg-' + (data.custom ? 'success' : 'secondary') + '">' + (data.custom ? 'Custom' : 'Standard') + '</span></li>';
+            html += '<li class="list-group-item d-flex justify-content-between"><span>Fields:</span><span>' + data.fields.length + '</span></li>';
+            html += '</ul>';
+            html += '</div>';
+            
+            // Field list
+            html += '<div class="col-md-6">';
+            html += '<h5>Key Fields</h5>';
+            html += '<div style="max-height: 300px; overflow-y: auto;">';
+            html += '<ul class="list-group list-group-flush">';
+            
+            // Show important fields
+            data.fields.forEach(field => {
+                if (field.name === 'Id' || field.nameField || field.nillable === false || field.unique || field.type === 'reference') {
+                    let badges = '';
+                    if (field.nillable === false) badges += '<span class="badge bg-danger me-1">Required</span>';
+                    if (field.unique) badges += '<span class="badge bg-warning me-1">Unique</span>';
+                    if (field.nameField) badges += '<span class="badge bg-info me-1">Name Field</span>';
+                    if (field.type === 'reference') badges += '<span class="badge bg-primary me-1">Lookup</span>';
+                    
+                    html += '<li class="list-group-item">';
+                    html += '<div><strong>' + field.name + '</strong> <small class="text-muted">(' + field.type + ')</small></div>';
+                    if (badges) html += '<div class="mt-1">' + badges + '</div>';
+                    html += '</li>';
+                }
+            });
+            
+            html += '</ul>';
+            html += '</div>';
+            html += '</div>';
+            html += '</div>';
+            
+            // Simple diagram
+            html += '<div class="mt-4">';
+            html += '<h5>Object Diagram</h5>';
+            html += '<div id="object-diagram" class="border rounded p-3" style="height: 300px; overflow: auto;"></div>';
+            html += '</div>';
+            
+            schemaDetails.innerHTML = html;
+            
+            // Generate simple diagram
+            const diagramCode = generateSimpleDiagram(data);
+            document.getElementById('object-diagram').innerHTML = '<div class="mermaid">' + diagramCode + '</div>';
+            
+            // Render diagram
+            setTimeout(() => {
+                try {
+                    mermaid.run();
+                } catch (e) {
+                    console.error('Mermaid error:', e);
+                }
+            }, 100);
+        })
+        .catch(error => {
+            console.error('Error loading schema:', error);
+            schemaDetails.innerHTML = '<div class="alert alert-danger"><h4>Error</h4><p>Failed to load schema: ' + error.message + '</p></div>';
+        });
+}
+
+// Generate simple mermaid diagram
+function generateSimpleDiagram(data) {
+    let diagram = 'classDiagram\n';
+    diagram += '    class ' + data.name + ' {\n';
+    
+    // Add key fields
+    data.fields.forEach(field => {
+        if (field.name === 'Id' || field.nameField || field.nillable === false || field.unique || field.type === 'reference') {
+            let line = '        ' + field.name + ' : ' + field.type;
+            if (field.nillable === false) line += ' [Required]';
+            if (field.unique) line += ' [Unique]';
+            diagram += line + '\n';
+        }
+    });
+    
+    diagram += '    }\n';
+    
+    // Add relationships
+    const related = new Set();
+    data.fields.forEach(field => {
+        if (field.type === 'reference' && field.referenceTo && field.referenceTo.length > 0) {
+            field.referenceTo.forEach(rel => {
+                if (rel !== data.name && !related.has(rel)) {
+                    diagram += '    class ' + rel + ' {\n        Id : id\n    }\n';
+                    related.add(rel);
+                }
+                if (rel !== data.name) {
+                    diagram += '    ' + data.name + ' --o ' + rel + ' : ' + field.name + '\n';
+                }
+            });
+        }
+    });
+    
+    return diagram;
+}
+
+// Live Search Script
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("objectSearch");
+    const items = document.querySelectorAll(".object-item");
+    const noResults = document.getElementById("noResults");
+
+    searchInput.addEventListener("input", function () {
+        const query = this.value.toLowerCase();
+        let visibleCount = 0;
+
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            const match = text.includes(query);
+            item.style.display = match ? "block" : "none";
+            if (match) visibleCount++;
+        });
+
+        noResults.style.display = visibleCount === 0 ? "block" : "none";
+    });
+});
+</script>
+
+<style>
+.object-item {
+    transition: all 0.2s ease-in-out;
+}
+</style>
+{% endblock %}
