@@ -646,6 +646,12 @@
             ])
                 .then(([primaryData, relationshipData]) => {
                     console.log('Primary object data received:', Object.keys(primaryData));
+                    console.log('Relationship data received:', relationshipData);
+                    
+                    // Update relationship summary if data is available
+                    if (relationshipData) {
+                        updateRelationshipSummary(relationshipData);
+                    }
                     
                     // Generate advanced mermaid diagram with hierarchies
                     const diagramCode = generateAdvancedRelationshipDiagram(primaryData, relationshipData);
@@ -713,7 +719,7 @@
         function generateAdvancedRelationshipDiagram(data, relationshipData) {
             let diagramSyntax = 'classDiagram\n';
             
-            // Advanced styling and relationship categorization
+            // Use relationship data if available, otherwise fall back to analyzing primary data
             const relationshipTypes = {
                 parent: [],      // Objects this object references (parents)
                 children: [],    // Objects that reference this object (children)
@@ -764,11 +770,11 @@
             });
             
             // Build enhanced class definition with categorized fields
-            addFieldSection(diagramSyntax, 'Identity & Keys', fieldCategories.identity);
-            addFieldSection(diagramSyntax, 'Required Business', fieldCategories.required);
-            addFieldSection(diagramSyntax, 'Relationships', fieldCategories.lookup);
-            addFieldSection(diagramSyntax, 'Calculated Fields', fieldCategories.formula);
-            addFieldSection(diagramSyntax, 'Custom Fields', fieldCategories.custom);
+            diagramSyntax += addFieldSection('Identity & Keys', fieldCategories.identity);
+            diagramSyntax += addFieldSection('Required Business', fieldCategories.required);
+            diagramSyntax += addFieldSection('Relationships', fieldCategories.lookup);
+            diagramSyntax += addFieldSection('Calculated Fields', fieldCategories.formula);
+            diagramSyntax += addFieldSection('Custom Fields', fieldCategories.custom);
             
             diagramSyntax += '    }\n\n';
             
@@ -783,6 +789,18 @@
                 }
                 diagramSyntax += `    ${data.name} --> ${rel.target} : ${rel.field}\n`;
             });
+            
+            // Add child relationships if available from advanced API
+            if (relationshipData && relationshipData.child_relationships) {
+                relationshipData.child_relationships.forEach(rel => {
+                    if (!processedObjects.has(rel.source_object)) {
+                        diagramSyntax += generateRelatedObjectClass(rel.source_object, 'Child');
+                        processedObjects.add(rel.source_object);
+                    }
+                    const lineType = rel.relationship_type === 'master_detail' ? '||--||' : '||--o|';
+                    diagramSyntax += `    ${rel.source_object} ${lineType} ${data.name} : ${rel.field_name}\n`;
+                });
+            }
             
             // Add system objects with different styling
             relationshipTypes.system.forEach(rel => {
@@ -801,6 +819,13 @@
                 diagramSyntax += `    class ${rel.target} fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n`;
             });
             
+            // Add child object styling if available
+            if (relationshipData && relationshipData.child_relationships) {
+                relationshipData.child_relationships.forEach(rel => {
+                    diagramSyntax += `    class ${rel.source_object} fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px\n`;
+                });
+            }
+            
             relationshipTypes.system.forEach(rel => {
                 diagramSyntax += `    class ${rel.target} fill:#fff3e0,stroke:#e65100,stroke-width:1px\n`;
             });
@@ -809,17 +834,19 @@
         }
         
         // Helper function to add field sections to diagram
-        function addFieldSection(diagramSyntax, sectionTitle, fields) {
+        function addFieldSection(sectionTitle, fields) {
+            let sectionSyntax = '';
             if (fields.length > 0) {
-                diagramSyntax += `        -- ${sectionTitle} --\n`;
+                sectionSyntax += `        -- ${sectionTitle} --\n`;
                 fields.forEach(field => {
                     let fieldDef = `        ${field.name} : ${field.type}`;
                     if (field.nillable === false) fieldDef += ' [Required]';
                     if (field.unique) fieldDef += ' [Unique]';
                     if (field.calculated) fieldDef += ' [Calculated]';
-                    diagramSyntax += fieldDef + '\n';
+                    sectionSyntax += fieldDef + '\n';
                 });
             }
+            return sectionSyntax;
         }
         
         // Helper function to generate related object classes
@@ -843,6 +870,30 @@
                 'SystemModstamp', 'IsDeleted', 'OwnerId', 'RecordTypeId'
             ];
             return systemFields.some(sysField => fieldName.includes(sysField));
+        }
+        
+        // Update relationship summary metrics
+        function updateRelationshipSummary(relationshipData) {
+            if (!relationshipData) return;
+            
+            const summarySection = document.getElementById('relationship-summary');
+            const parentCount = document.getElementById('parent-count');
+            const childCount = document.getElementById('child-count');
+            const hierarchyLevel = document.getElementById('hierarchy-level');
+            
+            // Show summary section
+            summarySection.style.display = 'block';
+            
+            // Update counts
+            parentCount.textContent = relationshipData.parent_relationships ? relationshipData.parent_relationships.length : 0;
+            childCount.textContent = relationshipData.child_relationships ? relationshipData.child_relationships.length : 0;
+            hierarchyLevel.textContent = relationshipData.hierarchy_level || 0;
+            
+            console.log('Updated relationship summary:', {
+                parents: relationshipData.parent_relationships?.length || 0,
+                children: relationshipData.child_relationships?.length || 0,
+                level: relationshipData.hierarchy_level || 0
+            });
         }
         
         // Add interactivity to relationship diagrams
