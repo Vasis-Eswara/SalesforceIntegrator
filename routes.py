@@ -582,6 +582,41 @@ def init_routes(app):
             return jsonify({'error': str(e)}), 500
             return jsonify({'error': str(e)}), 500
     
+    @app.route('/api/search-objects')
+    def search_objects():
+        """AJAX endpoint for real-time object search"""
+        if 'salesforce_org_id' not in session:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        search_query = request.args.get('q', '').strip()
+        
+        try:
+            sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
+            
+            # Get objects - try REST API first, then SOAP as fallback
+            try:
+                objects = get_all_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
+            except Exception as rest_error:
+                logger.warning(f"REST API failed, falling back to SOAP: {str(rest_error)}")
+                objects = get_all_objects_soap(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(objects)} objects via SOAP API")
+            
+            # Filter objects based on search query
+            if search_query:
+                objects = [obj for obj in objects if search_query.lower() in obj.get('label', '').lower()]
+            
+            # Return JSON response with filtered objects
+            return jsonify({
+                'objects': objects,
+                'search_query': search_query,
+                'total_count': len(objects)
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in search_objects: {str(e)}")
+            return jsonify({'error': str(e)}), 500
+
     @app.route('/combined', methods=['GET', 'POST'])
     def combined():
         """Combined schema viewer and data generation page with server-side search"""

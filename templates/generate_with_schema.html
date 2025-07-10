@@ -6,26 +6,26 @@
         <!-- Sidebar with object list -->
         <div class="col-md-3 col-lg-2">
             <div class="sidebar">
-                <!-- Salesforce Objects Title & Server-Side Search Form -->
+                <!-- Salesforce Objects Title & Real-time Search -->
                 <div class="mb-3">
                     <h5 class="text-white">Salesforce Objects</h5>
-                    <form method="GET" action="{{ url_for('combined') }}" class="d-flex">
-                        <input type="text" name="q" class="form-control form-control-sm bg-dark text-light border-secondary" 
+                    <div class="position-relative">
+                        <input type="text" id="search-objects" class="form-control form-control-sm bg-dark text-light border-secondary" 
                                placeholder="Search objects..." value="{{ search_query or '' }}">
-                        <button type="submit" class="btn btn-outline-secondary btn-sm ms-2">
-                            <i class="bi bi-search"></i>
-                        </button>
-                    </form>
-                    {% if search_query %}
-                    <div class="mt-2">
+                        <div id="search-status" class="position-absolute top-50 end-0 translate-middle-y me-2" style="display: none;">
+                            <div class="spinner-border spinner-border-sm text-light" role="status">
+                                <span class="visually-hidden">Searching...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="search-info" class="mt-2" style="display: none;">
                         <small class="text-muted">
-                            Showing results for "<strong>{{ search_query }}</strong>" 
-                            <a href="{{ url_for('combined') }}" class="text-decoration-none ms-2">
+                            <span id="search-results-text"></span>
+                            <button id="clear-search" class="btn btn-link btn-sm text-decoration-none p-0 ms-2">
                                 <i class="bi bi-x-circle"></i> Clear
-                            </a>
+                            </button>
                         </small>
                     </div>
-                    {% endif %}
                 </div>
                 
                 {% if objects %}
@@ -42,13 +42,11 @@
                     {% endfor %}
                 </div>
                 
-                {% if search_query and not objects %}
                 <!-- No Search Results Message -->
-                <div class="alert alert-info">
-                    <i class="bi bi-search"></i> No objects match your search for "<strong>{{ search_query }}</strong>".
-                    <br><small>Try a different search term or <a href="{{ url_for('combined') }}">view all objects</a>.</small>
+                <div id="no-results" class="alert alert-info" style="display: none;">
+                    <i class="bi bi-search"></i> <span id="no-results-text">No objects match your search.</span>
+                    <br><small>Try a different search term.</small>
                 </div>
-                {% endif %}
                 {% else %}
                 <div class="alert alert-warning">
                     No objects found or unable to retrieve schema.
@@ -737,6 +735,125 @@
     });
 </script>
 
-<!-- Server-side search is now implemented - no client-side search needed -->
+<!-- Real-time search functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('search-objects');
+    const objectList = document.getElementById('object-list');
+    const searchStatus = document.getElementById('search-status');
+    const searchInfo = document.getElementById('search-info');
+    const searchResultsText = document.getElementById('search-results-text');
+    const clearSearchBtn = document.getElementById('clear-search');
+    const noResults = document.getElementById('no-results');
+    const noResultsText = document.getElementById('no-results-text');
+    
+    let searchTimeout;
+    
+    // Function to perform search
+    function performSearch(query) {
+        // Show loading spinner
+        searchStatus.style.display = 'block';
+        
+        // Make AJAX request
+        fetch('/api/search-objects?q=' + encodeURIComponent(query))
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading spinner
+                searchStatus.style.display = 'none';
+                
+                if (data.error) {
+                    console.error('Search error:', data.error);
+                    return;
+                }
+                
+                // Update object list
+                updateObjectList(data.objects);
+                
+                // Update search info
+                if (query) {
+                    searchResultsText.textContent = `Found ${data.total_count} objects for "${query}"`;
+                    searchInfo.style.display = 'block';
+                } else {
+                    searchInfo.style.display = 'none';
+                }
+                
+                // Show/hide no results message
+                if (data.total_count === 0 && query) {
+                    noResultsText.textContent = `No objects match your search for "${query}".`;
+                    noResults.style.display = 'block';
+                } else {
+                    noResults.style.display = 'none';
+                }
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                searchStatus.style.display = 'none';
+            });
+    }
+    
+    // Function to update object list
+    function updateObjectList(objects) {
+        objectList.innerHTML = '';
+        
+        objects.forEach(obj => {
+            const div = document.createElement('div');
+            div.className = 'object-item btn btn-outline-light w-100 text-start mb-1 d-flex justify-content-between align-items-center';
+            div.setAttribute('data-object', obj.name);
+            div.setAttribute('data-object-label', obj.label);
+            div.onclick = function() { loadObjectDiagram(obj.name); };
+            
+            div.innerHTML = `
+                ${obj.label}
+                <span class="badge ${obj.custom ? 'bg-success' : 'bg-secondary'}">
+                    ${obj.custom ? 'Custom' : 'Standard'}
+                </span>
+            `;
+            
+            objectList.appendChild(div);
+        });
+    }
+    
+    // Search input event listener with debouncing
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // Clear previous timeout
+        if (searchTimeout) {
+            clearTimeout(searchTimeout);
+        }
+        
+        // Set new timeout for debouncing (300ms delay)
+        searchTimeout = setTimeout(() => {
+            performSearch(query);
+        }, 300);
+    });
+    
+    // Clear search button
+    clearSearchBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        searchInput.focus();
+        performSearch('');
+    });
+    
+    // Focus on search input when page loads
+    searchInput.focus();
+});
+</script>
+
+<!-- Smooth transitions for object items -->
+<style>
+.object-item {
+    transition: all 0.2s ease-in-out;
+}
+
+#search-status {
+    z-index: 10;
+}
+
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+}
+</style>
 
 {% endblock %}
