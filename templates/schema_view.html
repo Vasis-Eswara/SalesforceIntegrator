@@ -214,6 +214,7 @@ document.addEventListener("DOMContentLoaded", function () {
     objectItems.forEach(item => {
       const label = item.dataset.objectLabel?.toLowerCase() || "";
       const match = label.includes(query);
+      console.log("Searching:", query, "Matched:", label.includes(query));
       item.style.display = match ? "flex" : "none";
       if (match) visibleCount++;
     });
