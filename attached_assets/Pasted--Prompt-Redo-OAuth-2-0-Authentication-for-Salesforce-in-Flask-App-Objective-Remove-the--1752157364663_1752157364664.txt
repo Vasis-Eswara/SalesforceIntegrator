@@ -1,0 +1,83 @@
+🔧 Prompt: Redo OAuth 2.0 Authentication for Salesforce in Flask App
+
+    Objective:
+    Remove the existing (non-working) OAuth implementation and implement a clean, secure, and working OAuth 2.0 flow for Salesforce using Flask.
+    🧹 Step 1: Remove Existing OAuth Code
+
+        Delete or comment out any old OAuth-related code, including:
+
+            Routes like /login, /callback, or /authorize (if already defined)
+
+            Any existing token storage logic
+
+            Old Salesforce client ID/secret if stored
+
+    🛠 Step 2: Reimplement Salesforce OAuth 2.0 Flow (Authorization Code Grant)
+    🔐 Prerequisites:
+
+        A Salesforce connected app with:
+
+            OAuth scopes like api, refresh_token, offline_access
+
+            A valid callback URL (e.g., https://yourapp.com/callback)
+
+            Client ID and Client Secret
+
+    👇 Implementation Steps:
+
+        Add /login route:
+
+            Redirect user to Salesforce authorization URL:
+
+    https://login.salesforce.com/services/oauth2/authorize?response_type=code&client_id=YOUR_CLIENT_ID&redirect_uri=YOUR_CALLBACK_URI&scope=api refresh_token
+
+Add /callback route:
+
+    Salesforce redirects here with a code query param.
+
+    Exchange the code for an access token using POST to:
+
+        https://login.salesforce.com/services/oauth2/token
+
+        With:
+
+            grant_type=authorization_code
+
+            code=...
+
+            client_id, client_secret
+
+            redirect_uri
+
+    Store tokens securely:
+
+        Save the access token (and optionally the refresh token) in the session or database.
+
+    Use the access token for authenticated Salesforce API requests.
+
+        Add header:
+        Authorization: Bearer <access_token>
+
+🔁 Optional: Refresh Token Handling
+
+    If the access token expires, use the refresh token to request a new one using the same /token endpoint with:
+
+        grant_type=refresh_token
+
+        refresh_token=...
+
+✅ Final Checklist:
+
+Add login_required decorators to protect routes.
+
+Gracefully handle auth failures and token expiration.
+
+Allow user logout by clearing session.
+
+    Update .env or config file to hold credentials (never hard-code).
+
+🔐 Example Libraries:
+
+    Use requests for HTTP
+
+    Use Flask-Session or flask_login for managing user session
