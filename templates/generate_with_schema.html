@@ -717,67 +717,39 @@
     });
 </script>
 
-<!-- Live Search Script -->
+<!-- ChatGPT's Improved Search Script with Smooth Transitions -->
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const searchInput = document.getElementById("objectSearch");
-        const noResults = document.getElementById("noResults");
+document.addEventListener("DOMContentLoaded", function () {
+    const searchInput = document.getElementById("objectSearch");
+    const objectItems = document.querySelectorAll(".object-item");
+    const noResults = document.getElementById("noResults");
 
-        // Wait for all object items to render
-        setTimeout(() => {
-            const items = document.querySelectorAll(".object-item");
+    if (!searchInput || objectItems.length === 0) {
+        console.warn("Missing search input or no object items found.");
+        return;
+    }
 
-            searchInput.addEventListener("input", function () {
-                const query = this.value.toLowerCase();
-                let visibleCount = 0;
+    searchInput.addEventListener("input", function () {
+        const query = this.value.trim().toLowerCase();
+        let matchCount = 0;
 
-                items.forEach(item => {
-                    const text = item.getAttribute("data-object-label").toLowerCase();
-                    const match = text.includes(query);
-                    item.style.display = match ? "block" : "none";
-                    if (match) visibleCount++;
-                });
+        objectItems.forEach(item => {
+            const label = item.dataset.objectLabel?.toLowerCase() || "";
+            const isVisible = label.includes(query);
+            item.style.display = isVisible ? "flex" : "none";
+            if (isVisible) matchCount++;
+        });
 
-                noResults.style.display = visibleCount === 0 ? "block" : "none";
-            });
-        }, 50);  // Small delay to ensure items are in DOM
+        noResults.style.display = matchCount === 0 ? "block" : "none";
     });
+});
 </script>
 
 <!-- Smooth transitions -->
 <style>
 .object-item {
-  transition: all 0.2s ease-in-out;
+    transition: all 0.2s ease-in-out;
 }
 </style>
-
-<!-- ChatGPT's Improved Search Script -->
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const searchInput = document.getElementById("objectSearch");
-        const objectItems = document.querySelectorAll(".object-item");
-        const noResults = document.getElementById("noResults");
-
-        if (!searchInput || !objectItems.length) {
-            console.warn("Search input or object items not found.");
-            return;
-        }
-
-        searchInput.addEventListener("input", function () {
-            const query = this.value.trim().toLowerCase();
-            let visibleCount = 0;
-
-            objectItems.forEach(item => {
-                const label = item.getAttribute("data-object-label")?.toLowerCase() || "";
-                const match = label.includes(query);
-
-                item.style.display = match ? "flex" : "none";
-                if (match) visibleCount++;
-            });
-
-            noResults.style.display = visibleCount === 0 ? "block" : "none";
-        });
-    });
-</script>
 
 {% endblock %}
