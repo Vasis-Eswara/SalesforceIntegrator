@@ -624,18 +624,17 @@
             
             // Make sure the diagram section is visible
             schemaContainer.style.display = 'block';
-            diagramTitle.textContent = `Advanced Relationship Mapping: ${objectName}`;
+            diagramTitle.textContent = 'Advanced Relationship Mapping: ' + objectName;
             
             // Show loading indicator with enhanced message
-            diagramContainer.innerHTML = `
-                <div class="text-center my-5">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <p class="lead mt-3">Analyzing complex object hierarchies...</p>
-                    <p class="text-muted">Mapping relationships, dependencies, and data flows</p>
-                </div>
-            `;
+            diagramContainer.innerHTML = 
+                '<div class="text-center my-5">' +
+                    '<div class="spinner-border text-primary" role="status">' +
+                        '<span class="visually-hidden">Loading...</span>' +
+                    '</div>' +
+                    '<p class="lead mt-3">Analyzing complex object hierarchies...</p>' +
+                    '<p class="text-muted">Mapping relationships, dependencies, and data flows</p>' +
+                '</div>';
             
             console.log('Loading advanced relationship mapping for:', objectName);
             
@@ -658,7 +657,7 @@
                     console.log('Generated advanced diagram code length:', diagramCode.length);
                     
                     // Create the enhanced mermaid diagram
-                    diagramContainer.innerHTML = `<div class="mermaid">${diagramCode}</div>`;
+                    diagramContainer.innerHTML = '<div class="mermaid">' + diagramCode + '</div>';
                     
                     // Force diagram to be visible
                     schemaContainer.style.display = 'block';
@@ -682,13 +681,12 @@
                 })
                 .catch(error => {
                     console.error('Error loading relationship map:', error);
-                    diagramContainer.innerHTML = `
-                        <div class="alert alert-danger">
-                            <h4 class="alert-heading">Error</h4>
-                            <p>Failed to generate advanced relationship mapping: ${error.message}</p>
-                            <small class="text-muted">Falling back to basic relationship view...</small>
-                        </div>
-                    `;
+                    diagramContainer.innerHTML = 
+                        '<div class="alert alert-danger">' +
+                            '<h4 class="alert-heading">Error</h4>' +
+                            '<p>Failed to generate advanced relationship mapping: ' + error.message + '</p>' +
+                            '<small class="text-muted">Falling back to basic relationship view...</small>' +
+                        '</div>';
                     
                     // Fallback to basic diagram
                     setTimeout(() => loadBasicDiagram(objectName), 1000);
@@ -702,7 +700,7 @@
                 .then(data => {
                     const diagramContainer = document.getElementById('object-diagram');
                     const diagramCode = generateMermaidDiagram(data);
-                    diagramContainer.innerHTML = `<div class="mermaid">${diagramCode}</div>`;
+                    diagramContainer.innerHTML = '<div class="mermaid">' + diagramCode + '</div>';
                     
                     setTimeout(() => {
                         try {
@@ -728,8 +726,8 @@
             };
             
             // Enhanced main object definition
-            diagramSyntax += `    class ${data.name} {\n`;
-            diagramSyntax += `        <<${data.custom ? 'Custom Object' : 'Standard Object'}>>\n`;
+            diagramSyntax += '    class ' + data.name + ' {\n';
+            diagramSyntax += '        <<' + (data.custom ? 'Custom Object' : 'Standard Object') + '>>\n';
             
             // Categorize all fields with enhanced logic
             const fieldCategories = {
@@ -787,7 +785,7 @@
                     diagramSyntax += generateRelatedObjectClass(rel.target, 'Parent');
                     processedObjects.add(rel.target);
                 }
-                diagramSyntax += `    ${data.name} --> ${rel.target} : ${rel.field}\n`;
+                diagramSyntax += '    ' + data.name + ' --> ' + rel.target + ' : ' + rel.field + '\n';
             });
             
             // Add child relationships if available from advanced API
@@ -798,7 +796,7 @@
                         processedObjects.add(rel.source_object);
                     }
                     const lineType = rel.relationship_type === 'master_detail' ? '||--||' : '||--o|';
-                    diagramSyntax += `    ${rel.source_object} ${lineType} ${data.name} : ${rel.field_name}\n`;
+                    diagramSyntax += '    ' + rel.source_object + ' ' + lineType + ' ' + data.name + ' : ' + rel.field_name + '\n';
                 });
             }
             
@@ -808,26 +806,26 @@
                     diagramSyntax += generateRelatedObjectClass(rel.target, 'System');
                     processedObjects.add(rel.target);
                 }
-                diagramSyntax += `    ${data.name} ..> ${rel.target} : ${rel.field}\n`;
+                diagramSyntax += '    ' + data.name + ' ..> ' + rel.target + ' : ' + rel.field + '\n';
             });
             
             // Add styling for different object types
-            diagramSyntax += `\n    %% Styling for enhanced visualization\n`;
-            diagramSyntax += `    class ${data.name} fill:#e1f5fe,stroke:#01579b,stroke-width:3px\n`;
+            diagramSyntax += '\n    %% Styling for enhanced visualization\n';
+            diagramSyntax += '    class ' + data.name + ' fill:#e1f5fe,stroke:#01579b,stroke-width:3px\n';
             
             relationshipTypes.parent.forEach(rel => {
-                diagramSyntax += `    class ${rel.target} fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n`;
+                diagramSyntax += '    class ' + rel.target + ' fill:#f3e5f5,stroke:#4a148c,stroke-width:2px\n';
             });
             
             // Add child object styling if available
             if (relationshipData && relationshipData.child_relationships) {
                 relationshipData.child_relationships.forEach(rel => {
-                    diagramSyntax += `    class ${rel.source_object} fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px\n`;
+                    diagramSyntax += '    class ' + rel.source_object + ' fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px\n';
                 });
             }
             
             relationshipTypes.system.forEach(rel => {
-                diagramSyntax += `    class ${rel.target} fill:#fff3e0,stroke:#e65100,stroke-width:1px\n`;
+                diagramSyntax += '    class ' + rel.target + ' fill:#fff3e0,stroke:#e65100,stroke-width:1px\n';
             });
             
             return diagramSyntax;
@@ -837,9 +835,9 @@
         function addFieldSection(sectionTitle, fields) {
             let sectionSyntax = '';
             if (fields.length > 0) {
-                sectionSyntax += `        -- ${sectionTitle} --\n`;
+                sectionSyntax += '        -- ' + sectionTitle + ' --\n';
                 fields.forEach(field => {
-                    let fieldDef = `        ${field.name} : ${field.type}`;
+                    let fieldDef = '        ' + field.name + ' : ' + field.type;
                     if (field.nillable === false) fieldDef += ' [Required]';
                     if (field.unique) fieldDef += ' [Unique]';
                     if (field.calculated) fieldDef += ' [Calculated]';
@@ -851,7 +849,7 @@
         
         // Helper function to generate related object classes
         function generateRelatedObjectClass(objectName, objectType) {
-            return `    class ${objectName} {\n        <<${objectType} Object>>\n        Id : id\n        Name : string\n    }\n`;
+            return '    class ' + objectName + ' {\n        <<' + objectType + ' Object>>\n        Id : id\n        Name : string\n    }\n';
         }
         
         // Helper function to identify system objects
