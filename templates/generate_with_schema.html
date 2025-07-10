@@ -17,7 +17,7 @@
                 <div class="object-list" id="object-list" style="max-height: 500px; overflow-y: auto;">
                     {% for obj in objects %}
                     <div class="object-item btn btn-outline-light w-100 text-start mb-1 d-flex justify-content-between align-items-center" 
-                         data-object="{{ obj.name }}" data-object-label="{{ obj.label }}">
+                         data-object="{{ obj.name }}" data-object-label="{{ obj.label }}" onclick="loadObjectDiagram('{{ obj.name }}')">
                         {{ obj.label }}
                         <span class="badge {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
                             {% if obj.custom %}Custom{% else %}Standard{% endif %}
@@ -732,7 +732,7 @@ document.addEventListener("DOMContentLoaded", function () {
       items.forEach(item => {
         const text = item.textContent.toLowerCase();
         const match = text.includes(query);
-        item.style.display = match ? "flex" : "none";
+        item.style.display = match ? "block" : "none";
         if (match) visibleCount++;
       });
 
