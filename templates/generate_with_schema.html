@@ -801,46 +801,56 @@ function loadObjectDiagram(objectName) {
 <script>
 function generateMermaidDiagram(objectName, relationshipData) {
     let diagram = 'graph TD\n';
-    diagram += `    ${objectName}[${objectName}]\n`;
     
-    // Add parent relationships
-    if (relationshipData.parents && relationshipData.parents.length > 0) {
-        relationshipData.parents.forEach(parent => {
-            diagram += `    ${parent}[${parent}] --> ${objectName}\n`;
+    // Sanitize object names for Mermaid (replace special characters)
+    function sanitizeName(name) {
+        return name.replace(/[^a-zA-Z0-9]/g, '_');
+    }
+    
+    const mainObjectId = sanitizeName(objectName);
+    diagram += `    ${mainObjectId}["${objectName}"]\n`;
+    
+    // Add parent relationships from parent_relationships array
+    if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
+        relationshipData.parent_relationships.forEach(parent => {
+            const parentId = sanitizeName(parent.target_object);
+            const relationshipType = parent.relationship_type === 'master_detail' ? '==>' : '-->';
+            diagram += `    ${parentId}["${parent.target_object}"] ${relationshipType} ${mainObjectId}\n`;
         });
     }
     
-    // Add child relationships  
-    if (relationshipData.children && relationshipData.children.length > 0) {
-        relationshipData.children.forEach(child => {
-            diagram += `    ${objectName} --> ${child}[${child}]\n`;
-        });
-    }
-    
-    // Add related objects
-    if (relationshipData.related && relationshipData.related.length > 0) {
-        relationshipData.related.forEach(related => {
-            diagram += `    ${objectName} -.-> ${related}[${related}]\n`;
+    // Add child relationships from child_relationships array
+    if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
+        relationshipData.child_relationships.forEach(child => {
+            const childId = sanitizeName(child.source_object);
+            const relationshipType = child.relationship_type === 'master_detail' ? '==>' : '-->';
+            diagram += `    ${mainObjectId} ${relationshipType} ${childId}["${child.source_object}"]\n`;
         });
     }
     
     // Style the main object with dark theme friendly colors
     diagram += `    classDef mainObject fill:#0d6efd,stroke:#0a58ca,stroke-width:3px,color:#fff\n`;
-    diagram += `    classDef relatedObject fill:#6c757d,stroke:#495057,stroke-width:2px,color:#fff\n`;
-    diagram += `    class ${objectName} mainObject\n`;
+    diagram += `    classDef parentObject fill:#28a745,stroke:#1e7e34,stroke-width:2px,color:#fff\n`;
+    diagram += `    classDef childObject fill:#ffc107,stroke:#e0a800,stroke-width:2px,color:#000\n`;
+    diagram += `    class ${mainObjectId} mainObject\n`;
     
-    // Apply styling to related objects
-    if (relationshipData.parents && relationshipData.parents.length > 0) {
-        relationshipData.parents.forEach(parent => {
-            diagram += `    class ${parent} relatedObject\n`;
-        });
-    }
-    if (relationshipData.children && relationshipData.children.length > 0) {
-        relationshipData.children.forEach(child => {
-            diagram += `    class ${child} relatedObject\n`;
+    // Apply styling to parent objects
+    if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
+        relationshipData.parent_relationships.forEach(parent => {
+            const parentId = sanitizeName(parent.target_object);
+            diagram += `    class ${parentId} parentObject\n`;
         });
     }
     
+    // Apply styling to child objects
+    if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
+        relationshipData.child_relationships.forEach(child => {
+            const childId = sanitizeName(child.source_object);
+            diagram += `    class ${childId} childObject\n`;
+        });
+    }
+    
+    console.log('Generated Mermaid diagram:', diagram);
     return diagram;
 }
 
@@ -1387,27 +1397,55 @@ document.addEventListener('DOMContentLoaded', function() {
     function generateMermaidDiagram(objectName, relationshipData) {
         let diagram = 'graph TB\n';
         
-        // Main object
-        diagram += `    ${objectName}[${objectName}]\n`;
+        // Sanitize object names for Mermaid (replace special characters)
+        function sanitizeName(name) {
+            return name.replace(/[^a-zA-Z0-9]/g, '_');
+        }
         
-        // Add parent relationships
-        if (relationshipData.parents && relationshipData.parents.length > 0) {
-            relationshipData.parents.forEach(parent => {
-                diagram += `    ${parent.object}[${parent.object}] --> ${objectName}\n`;
+        const mainObjectId = sanitizeName(objectName);
+        diagram += `    ${mainObjectId}["${objectName}"]\n`;
+        
+        // Add parent relationships from parent_relationships array
+        if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
+            relationshipData.parent_relationships.forEach(parent => {
+                const parentId = sanitizeName(parent.target_object);
+                const relationshipType = parent.relationship_type === 'master_detail' ? '==>' : '-->';
+                diagram += `    ${parentId}["${parent.target_object}"] ${relationshipType} ${mainObjectId}\n`;
             });
         }
         
-        // Add child relationships
-        if (relationshipData.children && relationshipData.children.length > 0) {
-            relationshipData.children.forEach(child => {
-                diagram += `    ${objectName} --> ${child.object}[${child.object}]\n`;
+        // Add child relationships from child_relationships array
+        if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
+            relationshipData.child_relationships.forEach(child => {
+                const childId = sanitizeName(child.source_object);
+                const relationshipType = child.relationship_type === 'master_detail' ? '==>' : '-->';
+                diagram += `    ${mainObjectId} ${relationshipType} ${childId}["${child.source_object}"]\n`;
             });
         }
         
-        // Style the main object
+        // Style the main object with dark theme friendly colors
         diagram += `    classDef mainObject fill:#0d6efd,stroke:#0a58ca,stroke-width:3px,color:#fff\n`;
-        diagram += `    class ${objectName} mainObject\n`;
+        diagram += `    classDef parentObject fill:#28a745,stroke:#1e7e34,stroke-width:2px,color:#fff\n`;
+        diagram += `    classDef childObject fill:#ffc107,stroke:#e0a800,stroke-width:2px,color:#000\n`;
+        diagram += `    class ${mainObjectId} mainObject\n`;
         
+        // Apply styling to parent objects
+        if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
+            relationshipData.parent_relationships.forEach(parent => {
+                const parentId = sanitizeName(parent.target_object);
+                diagram += `    class ${parentId} parentObject\n`;
+            });
+        }
+        
+        // Apply styling to child objects
+        if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
+            relationshipData.child_relationships.forEach(child => {
+                const childId = sanitizeName(child.source_object);
+                diagram += `    class ${childId} childObject\n`;
+            });
+        }
+        
+        console.log('Generated Mermaid diagram for relationship loading:', diagram);
         return diagram;
     }
 

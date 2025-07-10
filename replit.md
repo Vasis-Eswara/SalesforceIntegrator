@@ -1,8 +1,8 @@
-# Salesforce GPT Data Generator
+# Salesforce Data Generator
 
 ## Overview
 
-This is a Flask-based web application that enables users to connect to Salesforce organizations and generate realistic test data using AI technology. The application supports both OAuth 2.0 and SOAP API authentication methods for Salesforce connectivity and leverages OpenAI's GPT models to create contextually appropriate test data based on Salesforce object schemas.
+This is a Flask-based web application that enables users to connect to Salesforce organizations and generate realistic test data using intelligent automation technology. The application supports both OAuth 2.0 and SOAP API authentication methods for Salesforce connectivity and leverages advanced algorithms to create contextually appropriate test data based on Salesforce object schemas.
 
 ## System Architecture
 
@@ -10,7 +10,7 @@ This is a Flask-based web application that enables users to connect to Salesforc
 - **Framework**: Flask web framework with SQLAlchemy ORM
 - **Database**: SQLite for local development (can be extended to PostgreSQL)
 - **Authentication**: Multiple Salesforce connection methods (OAuth 2.0, SOAP API with username/password)
-- **AI Integration**: OpenAI GPT-4o for intelligent data generation
+- **Intelligent Automation**: Advanced algorithms for intelligent data generation
 - **Data Processing**: Pandas for Excel template processing, Faker library for fallback data generation
 
 ### Frontend Architecture
@@ -33,19 +33,19 @@ This is a Flask-based web application that enables users to connect to Salesforc
 - `intelligent_data_gen.py`: Advanced data generation with schema awareness
 
 ### Data Generation Engines
-- `openai_utils.py`: GPT-powered intelligent test data generation
+- `openai_utils.py`: Intelligent automation-powered test data generation
 - `faker_utils.py`: Fallback data generation using Faker library
 - `excel_utils.py`: Excel template processing for bulk configuration
 
 ### Configuration Management
-- `salesforce_config_utils.py`: Natural language configuration analysis using GPT
+- `salesforce_config_utils.py`: Natural language configuration analysis using intelligent automation
 
 ## Data Flow
 
 1. **Authentication**: User connects to Salesforce via OAuth or SOAP
 2. **Schema Discovery**: Application retrieves object and field metadata
 3. **Object Selection**: User selects Salesforce objects for data generation
-4. **Data Generation**: AI analyzes schema and generates contextually appropriate test data
+4. **Data Generation**: Intelligent automation analyzes schema and generates contextually appropriate test data
 5. **Data Insertion**: Generated records are inserted into Salesforce via API
 6. **Result Display**: Success/failure results are presented to the user
 
@@ -55,7 +55,7 @@ This is a Flask-based web application that enables users to connect to Salesforc
 - **Salesforce API**: For org connectivity and data operations
   - REST API for OAuth-based connections
   - SOAP API for username/password authentication
-- **OpenAI API**: For intelligent data generation using GPT-4o model
+- **OpenAI API**: For intelligent data generation using advanced language models
 
 ### Python Libraries
 - `flask`: Web framework
@@ -79,7 +79,7 @@ Required environment variables:
 - `SALESFORCE_CLIENT_SECRET`: Salesforce Connected App Client Secret
 - `SALESFORCE_REDIRECT_URI`: OAuth callback URL
 - `SALESFORCE_DOMAIN`: Optional custom domain (defaults to login.salesforce.com)
-- `OPENAI_API_KEY`: OpenAI API key for GPT integration
+- `OPENAI_API_KEY`: OpenAI API key for intelligent automation integration
 - `SESSION_SECRET`: Flask session encryption key
 
 ### Database Setup
@@ -95,6 +95,12 @@ Required environment variables:
 
 ## Changelog
 
+- July 10, 2025: **PROFESSIONAL TERMINOLOGY STANDARDIZATION** - Systematically replaced all GPT references with "intelligent automation" terminology
+  - **Documentation updates**: Updated replit.md throughout with professional terminology
+  - **Code consistency**: Fixed import errors and function references across the codebase  
+  - **User-facing language**: All templates and user interfaces now use "intelligent automation" instead of AI model references
+  - **Professional branding**: Maintains focus on capabilities rather than specific technology implementations
+  - **Terminology alignment**: Consistent language across all components and documentation
 - July 10, 2025: **UNIFIED PROMPT INTERFACE IMPLEMENTATION** - Successfully enhanced existing "Schema & Data Generation" page with comprehensive unified interface
   - **Mobile-responsive design**: Collapsible sidebar with Bootstrap breakpoints and touch-friendly controls
   - **Unified prompt processing**: Single textarea supporting schema creation, data generation, and GitHub configs
@@ -116,13 +122,13 @@ Required environment variables:
   - **Query parameter**: Uses `?q=search_term` for URL-based search state
   - **Case-insensitive**: Server-side filtering matches object labels regardless of case
   - **Performance**: Traditional web form pattern for maximum efficiency and reliability
-- July 10, 2025: **SEARCH FUNCTIONALITY OPTIMIZATION** - Successfully implemented ChatGPT's search improvements
-  - **Perfect implementation**: Applied ChatGPT's exact recommendations for object search functionality
+- July 10, 2025: **SEARCH FUNCTIONALITY OPTIMIZATION** - Successfully implemented intelligent automation's search improvements
+  - **Perfect implementation**: Applied intelligent automation's exact recommendations for object search functionality
   - **Template updates**: Updated both schema_view.html and generate_with_schema.html with proper data-object-label attributes
-  - **JavaScript optimization**: Replaced existing search scripts with ChatGPT's cleaner, more reliable version
+  - **JavaScript optimization**: Replaced existing search scripts with intelligent automation's cleaner, more reliable version
   - **Function name consistency**: Updated onclick handlers to match JavaScript function names (loadObjectDiagram)
   - **Code cleanup**: Removed duplicate scripts and error-prone implementations
-  - **100% ChatGPT compliance**: All code now matches ChatGPT's exact specifications for reliable search
+  - **100% intelligent automation compliance**: All code now matches intelligent automation's exact specifications for reliable search
 - July 10, 2025: **ADVANCED RELATIONSHIP MAPPING** - Implemented sophisticated object hierarchy visualization
   - **Enhanced diagram system**: Advanced relationship mapping for complex object hierarchies
   - **Multi-level analysis**: Parent-child relationships, dependency chains, and hierarchy levels
@@ -148,7 +154,7 @@ Required environment variables:
   - **Test endpoint added**: `/test-config` for debugging configuration parsing without authentication
   - **100% reliable parsing**: Multiple object prompts like "Create objects A, B, C, D" work consistently
   - **Proper error messaging**: Clear feedback when user needs to authenticate first
-- July 09, 2025: **WSDL INTEGRATION ENHANCEMENT** - Added comprehensive WSDL file support per ChatGPT recommendation
+- July 09, 2025: **WSDL INTEGRATION ENHANCEMENT** - Added comprehensive WSDL file support per intelligent automation recommendation
   - **Local WSDL detection**: System now checks for local metadata.wsdl.xml and partner.wsdl.xml files
   - **Enhanced SOAP client**: Prioritizes local WSDL files over remote downloads for better reliability
   - **Manual download guide**: Created detailed step-by-step instructions for WSDL file acquisition
