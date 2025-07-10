@@ -6,20 +6,25 @@
         <!-- Sidebar with object list -->
         <div class="col-md-3 col-lg-2">
             <div class="sidebar">
-                <h4 class="mb-3">Salesforce Objects</h4>
+                <div class="mb-3">
+                    <h4 class="text-white">Salesforce Objects</h4>
+                    <input type="text" id="objectSearch" class="form-control bg-dark text-light" placeholder="Search objects...">
+                </div>
                 
                 {% if objects %}
-                <ul class="list-group object-list" id="object-list">
+                <div class="object-list" style="max-height: 500px; overflow-y: auto;">
                     {% for obj in objects %}
-                    <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
-                        data-object="{{ obj.name }}" data-object-label="{{ obj.label }}">
+                    <div class="object-item list-group-item list-group-item-action d-flex justify-content-between align-items-center" 
+                         data-object="{{ obj.name }}" data-object-label="{{ obj.label }}">
                         <span>{{ obj.label }}</span>
                         <span class="badge rounded-pill {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
                             {% if obj.custom %}Custom{% else %}Standard{% endif %}
                         </span>
-                    </li>
+                    </div>
                     {% endfor %}
-                </ul>
+                </div>
+                
+                <p id="noResults" class="text-muted mt-3" style="display: none;">No objects match your search.</p>
                 {% else %}
                 <div class="alert alert-warning">
                     No objects found or unable to retrieve schema.
@@ -245,51 +250,15 @@
     });
     
     document.addEventListener('DOMContentLoaded', function() {
-        // Initialize search functionality for object list
-        const searchInput = document.getElementById('object-search');
-        const clearButton = document.getElementById('clear-search');
-        const objectList = document.getElementById('object-list');
-        
-        if (searchInput && objectList) {
-            searchInput.addEventListener('input', function() {
-                const query = this.value.toLowerCase();
-                
-                const items = objectList.querySelectorAll('li');
-                items.forEach(item => {
-                    const label = item.textContent.toLowerCase();
-                    if (label.includes(query)) {
-                        item.style.display = '';
-                    } else {
-                        item.style.display = 'none';
-                    }
-                });
-                
-                // Show/hide the clear button based on input value
-                if (this.value) {
-                    clearButton.style.display = 'block';
-                } else {
-                    clearButton.style.display = 'none';
-                }
-            });
-            
-            // Clear search input
-            clearButton.addEventListener('click', function() {
-                searchInput.value = '';
-                const items = objectList.querySelectorAll('li');
-                items.forEach(item => {
-                    item.style.display = '';
-                });
-                clearButton.style.display = 'none';
-            });
-        }
+        // Note: Search functionality is now handled by schema_search.js
         
         // Object selection handling
         if (objectList) {
             objectList.addEventListener('click', function(event) {
-                const listItem = event.target.closest('li');
+                const listItem = event.target.closest('.object-item');
                 if (listItem) {
                     // Remove active class from all items
-                    const allItems = this.querySelectorAll('li');
+                    const allItems = this.querySelectorAll('.object-item');
                     allItems.forEach(item => item.classList.remove('active'));
                     
                     // Add active class to the clicked item
@@ -632,4 +601,7 @@
         }
     });
 </script>
+
+<!-- Load the search functionality -->
+<script src="{{ url_for('static', filename='js/schema_search.js') }}"></script>
 {% endblock %}
