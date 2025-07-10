@@ -593,14 +593,9 @@ def init_routes(app):
         try:
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
             
-            # Get objects - try REST API first, then SOAP as fallback
-            try:
-                objects = get_all_objects(sf_org.instance_url, sf_org.access_token)
-                logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
-            except Exception as rest_error:
-                logger.warning(f"REST API failed, falling back to SOAP: {str(rest_error)}")
-                objects = get_all_objects_soap(sf_org.instance_url, sf_org.access_token)
-                logger.debug(f"Successfully retrieved {len(objects)} objects via SOAP API")
+            # Use the exact same logic as the working /combined route
+            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
             
             # Filter objects based on search query
             if search_query:
