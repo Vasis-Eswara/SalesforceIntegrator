@@ -720,27 +720,23 @@
 <!-- Live Search Script -->
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  const searchInput = document.getElementById("objectSearch");
-  const items = document.querySelectorAll(".object-item");
-  const noResults = document.getElementById("noResults");
+    const searchInput = document.getElementById("objectSearch");
+    const items = document.querySelectorAll(".object-item");
+    const noResults = document.getElementById("noResults");
 
-  if (searchInput && items.length > 0) {
     searchInput.addEventListener("input", function () {
-      const query = this.value.toLowerCase();
-      let visibleCount = 0;
+        const query = this.value.toLowerCase();
+        let visibleCount = 0;
 
-      items.forEach(item => {
-        const text = item.textContent.toLowerCase();
-        const match = text.includes(query);
-        item.style.display = match ? "block" : "none";
-        if (match) visibleCount++;
-      });
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            const match = text.includes(query);
+            item.style.display = match ? "block" : "none";
+            if (match) visibleCount++;
+        });
 
-      if (noResults) {
-        noResults.style.display = visibleCount === 0 && query.trim() !== "" ? "block" : "none";
-      }
+        noResults.style.display = visibleCount === 0 ? "block" : "none";
     });
-  }
 });
 </script>
 
