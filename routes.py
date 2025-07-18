@@ -250,6 +250,7 @@ def init_routes(app):
             return render_template('login_error.html', error=str(e))
     
     @app.route('/oauth/callback')
+    @app.route('/salesforce/callback')
     def oauth_callback():
         """Handle OAuth callback from Salesforce"""
         from oauth_utils import exchange_code_for_tokens, store_tokens_in_session
