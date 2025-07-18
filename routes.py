@@ -492,8 +492,6 @@ def init_routes(app):
             flash(f'Error connecting to Salesforce: {str(e)}', 'danger')
             return redirect(url_for('login'))
     
-    @app.route('/salesforce/callback')
-    @app.route('/salesforce/callback/', endpoint='salesforce_callback_slash') # Handle trailing slash variant
     @app.route('/services/oauth2/success') # Add support for direct Salesforce callback URL
     def salesforce_callback():
         """Handle Salesforce OAuth callback"""
