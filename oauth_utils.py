@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 SALESFORCE_CLIENT_ID = os.environ.get('SALESFORCE_CLIENT_ID')
 SALESFORCE_CLIENT_SECRET = os.environ.get('SALESFORCE_CLIENT_SECRET')
 SALESFORCE_REDIRECT_URI = os.environ.get('SALESFORCE_REDIRECT_URI', 'https://2dbf6f12-560a-4cb9-8ca7-c2cd30a7fe4e-00-2kbskpp6fbk9s.worf.replit.dev/salesforce/callback')
-SALESFORCE_LOGIN_URL = os.environ.get('SALESFORCE_DOMAIN', 'https://login.salesforce.com')
+SALESFORCE_LOGIN_URL = os.environ.get('SALESFORCE_DOMAIN', 'login.salesforce.com')
+if not SALESFORCE_LOGIN_URL.startswith('http'):
+    SALESFORCE_LOGIN_URL = f'https://{SALESFORCE_LOGIN_URL}'
 
 # Ensure no trailing slash
 if SALESFORCE_LOGIN_URL.endswith('/'):
