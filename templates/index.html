@@ -65,10 +65,16 @@
                             Connect to Salesforce
                         </h4>
                         <p class="card-text">To get started, connect your Salesforce org using OAuth authentication.</p>
-                        <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
-                            <i class="bi bi-cloud-arrow-up-fill me-2"></i>
-                            Connect Now
-                        </a>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-cloud-arrow-up-fill me-2"></i>
+                                Connect with OAuth
+                            </a>
+                            <a href="{{ url_for('legacy_login') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-key me-2"></i>
+                                Use Username & Password (SOAP)
+                            </a>
+                        </div>
                     </div>
                 </div>
                 {% endif %}
