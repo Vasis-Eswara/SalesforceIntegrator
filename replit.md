@@ -95,6 +95,11 @@ Required environment variables:
 
 ## Changelog
 
+- July 15, 2025: **NAVIGATION RESTORATION** - Restored "Configure Salesforce" navigation item per user request
+  - **Navigation item restored**: Added "Configure Salesforce" back to main navigation menu
+  - **Proper positioning**: Placed between "Schema & Data Gen" and "Manage Credentials" for logical flow
+  - **Icon consistency**: Added gear icon to match other navigation items
+  - **Active state handling**: Proper active state detection for configure route
 - July 10, 2025: **COMPLEX PROMPT PARSING ENHANCEMENT** - Dramatically improved bulk data parser for sophisticated natural language prompts
   - **Complex pattern support**: Enhanced parser to handle "Create Account and establish following related records" format
   - **Object deduplication**: Fixed duplicate object counting for single mentions in complex prompts

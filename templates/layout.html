@@ -52,6 +52,9 @@
                         <a class="nav-link {% if request.path == url_for('combined') %}active{% endif %}" href="{{ url_for('combined') }}"><i class="bi bi-diagram-3 me-1"></i>Schema & Data Gen</a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.path == url_for('configure') %}active{% endif %}" href="{{ url_for('configure') }}"><i class="bi bi-gear me-1"></i>Configure Salesforce</a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.path == url_for('credentials') %}active{% endif %}" href="{{ url_for('credentials') }}"><i class="bi bi-key me-1"></i>Manage Credentials</a>
                     </li>
                     {% endif %}
