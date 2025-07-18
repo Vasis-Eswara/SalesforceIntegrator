@@ -1389,7 +1389,34 @@ def init_routes(app):
         # GET request - show combined interface
         try:
             sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+            
+            # Try to get objects with token refresh if needed
+            try:
+                objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
+            except Exception as api_error:
+                # Check if it's a 401 authorization error
+                if "401" in str(api_error) or "Unauthorized" in str(api_error):
+                    logger.info("Access token expired, attempting to refresh...")
+                    try:
+                        # Attempt to refresh the token
+                        new_token_data = refresh_access_token(sf_org.refresh_token)
+                        sf_org.access_token = new_token_data['access_token']
+                        db.session.commit()
+                        logger.info("Successfully refreshed access token")
+                        
+                        # Retry with new token
+                        objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                        logger.debug(f"Successfully retrieved {len(objects)} objects after token refresh")
+                    except Exception as refresh_error:
+                        logger.error(f"Token refresh failed: {str(refresh_error)}")
+                        flash('Your session has expired. Please reconnect to Salesforce.', 'warning')
+                        return redirect(url_for('logout'))
+                else:
+                    # For other errors, try SOAP as fallback
+                    logger.warning(f"REST API failed, trying SOAP fallback: {str(api_error)}")
+                    objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
+                    logger.debug(f"Successfully retrieved {len(objects)} objects via SOAP API")
             
             # Apply server-side search filter if search query exists
             if search_query:

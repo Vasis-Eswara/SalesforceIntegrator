@@ -95,6 +95,11 @@ Required environment variables:
 
 ## Changelog
 
+- July 18, 2025: **AUTHENTICATION FIX** - Fixed 401 Unauthorized error in Schema & Data Gen page
+  - **Token refresh logic**: Added automatic access token refresh when 401 errors occur
+  - **Graceful degradation**: SOAP API fallback when REST API fails
+  - **User experience**: Clear messaging when session expires and reconnection is needed
+  - **Error handling**: Proper logging and user feedback for authentication issues
 - July 15, 2025: **NAVIGATION RESTORATION** - Restored "Configure Salesforce" navigation item per user request
   - **Navigation item restored**: Added "Configure Salesforce" back to main navigation menu
   - **Proper positioning**: Placed between "Schema & Data Gen" and "Manage Credentials" for logical flow
