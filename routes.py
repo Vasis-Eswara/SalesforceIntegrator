@@ -237,17 +237,134 @@ def init_routes(app):
     # CLEAN SALESFORCE OAUTH 2.0 IMPLEMENTATION
     # =============================================================================
     
-    @app.route('/login')
+    @app.route('/login', methods=['GET', 'POST'])
     def login():
-        """Clean OAuth 2.0 login - redirect to Salesforce authorization"""
+        """Unified login page supporting both OAuth and SOAP"""
+        if request.method == 'GET':
+            # Show the login options page
+            saved_credentials = SalesforceCredential.query.all()
+            return render_template('login.html', saved_credentials=saved_credentials)
+        
+        # Handle POST requests for SOAP login
+        login_type = request.form.get('login_type')
+        
+        if login_type == 'oauth':
+            # OAuth redirect
+            try:
+                from oauth_utils import get_authorization_url
+                auth_url = get_authorization_url()
+                return redirect(auth_url)
+            except Exception as e:
+                logger.error(f"OAuth login error: {str(e)}")
+                flash(f'OAuth configuration error: {str(e)}', 'danger')
+                return render_template('login.html', saved_credentials=SalesforceCredential.query.all())
+        
+        elif login_type == 'direct':
+            # Direct SOAP login (same as legacy_login logic)
+            username = request.form.get('username')
+            password = request.form.get('password')
+            security_token = request.form.get('security_token', '')
+            remember = request.form.get('remember') == 'on'
+            sandbox = request.form.get('sandbox') == 'on'
+            
+            if not username or not password:
+                flash('Username and password are required', 'danger')
+                return redirect(url_for('login'))
+            
+            try:
+                # Attempt login with username/password via SOAP API
+                logger.debug(f"Attempting SOAP login for username: {username}")
+                login_result = login_with_username_password(username, password, security_token, sandbox)
+                
+                # Store connection in database
+                sf_org = SalesforceOrg(
+                    instance_url=login_result.get('instance_url'),
+                    access_token=login_result.get('access_token'),
+                    org_id=login_result.get('user_info', {}).get('org_id'),
+                    user_id=login_result.get('user_info', {}).get('user_id')
+                )
+                
+                db.session.add(sf_org)
+                db.session.commit()
+                
+                # Store in session
+                session['salesforce_org_id'] = sf_org.id
+                session['salesforce_instance_url'] = sf_org.instance_url
+                session['salesforce_access_token'] = sf_org.access_token
+                
+                flash('Successfully connected to Salesforce via SOAP!', 'success')
+                return redirect(url_for('combined'))
+                
+            except Exception as e:
+                logger.error(f"SOAP login error: {str(e)}")
+                flash(f'Login failed: {str(e)}', 'danger')
+                return redirect(url_for('login'))
+        
+        elif login_type == 'saved':
+            # Handle saved credentials login
+            credential_id = request.form.get('credential_id')
+            one_time_password = request.form.get('one_time_password')
+            
+            if not credential_id or not one_time_password:
+                flash('Credential and password are required', 'danger')
+                return redirect(url_for('login'))
+            
+            try:
+                cred = SalesforceCredential.query.get(credential_id)
+                if not cred:
+                    flash('Saved credential not found', 'danger')
+                    return redirect(url_for('login'))
+                
+                # Use saved credentials with provided password
+                login_result = login_with_username_password(
+                    cred.username, 
+                    one_time_password, 
+                    cred.security_token or '', 
+                    cred.sandbox
+                )
+                
+                # Store connection in database
+                sf_org = SalesforceOrg(
+                    instance_url=login_result.get('instance_url'),
+                    access_token=login_result.get('access_token'),
+                    org_id=login_result.get('user_info', {}).get('org_id'),
+                    user_id=login_result.get('user_info', {}).get('user_id')
+                )
+                
+                db.session.add(sf_org)
+                db.session.commit()
+                
+                # Store in session
+                session['salesforce_org_id'] = sf_org.id
+                session['salesforce_instance_url'] = sf_org.instance_url
+                session['salesforce_access_token'] = sf_org.access_token
+                
+                # Update last used timestamp
+                cred.last_used = datetime.utcnow()
+                db.session.commit()
+                
+                flash(f'Successfully connected using saved credentials for {cred.username}!', 'success')
+                return redirect(url_for('combined'))
+                
+            except Exception as e:
+                logger.error(f"Saved credential login error: {str(e)}")
+                flash(f'Login failed: {str(e)}', 'danger')
+                return redirect(url_for('login'))
+        
+        # Default case
+        flash('Invalid login type', 'danger')
+        return redirect(url_for('login'))
+    
+    @app.route('/oauth-direct')
+    def oauth_direct():
+        """Direct OAuth redirect for popup windows"""
         try:
             from oauth_utils import get_authorization_url
             auth_url = get_authorization_url()
             return redirect(auth_url)
         except Exception as e:
-            logger.error(f"OAuth login error: {str(e)}")
-            flash(f'OAuth configuration error: {str(e)}', 'danger')
-            return render_template('login_error.html', error=str(e))
+            logger.error(f"OAuth direct error: {str(e)}")
+            return f"<html><body><h1>OAuth Error</h1><p>{str(e)}</p><script>window.close();</script></body></html>"
     
     @app.route('/oauth/callback')
     @app.route('/salesforce/callback')

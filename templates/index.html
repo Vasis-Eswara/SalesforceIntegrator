@@ -66,15 +66,36 @@
                         </h4>
                         <p class="card-text">To get started, connect your Salesforce org using OAuth authentication.</p>
                         <div class="d-grid gap-2">
-                            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">
-                                <i class="bi bi-cloud-arrow-up-fill me-2"></i>
-                                Connect with OAuth
-                            </a>
-                            <a href="{{ url_for('legacy_login') }}" class="btn btn-outline-secondary">
-                                <i class="bi bi-key me-2"></i>
-                                Use Username & Password (SOAP)
-                            </a>
+                            <div class="btn-group-vertical" role="group">
+                                <a href="{{ url_for('legacy_login') }}" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-key me-2"></i>
+                                    Connect with Username & Password
+                                </a>
+                                <small class="text-muted text-center mt-1 mb-2">Direct SOAP login - works in all environments</small>
+                                
+                                <button type="button" class="btn btn-outline-secondary" onclick="openOAuthInNewWindow()">
+                                    <i class="bi bi-cloud-arrow-up-fill me-2"></i>
+                                    Connect with OAuth (New Window)
+                                </button>
+                                <small class="text-muted text-center mt-1">Opens in new browser tab to avoid iframe restrictions</small>
+                            </div>
                         </div>
+                        
+                        <script>
+                        function openOAuthInNewWindow() {
+                            // Open OAuth in new window to avoid iframe restrictions
+                            const authWindow = window.open('{{ url_for("oauth_direct") }}', 'salesforce_auth', 'width=600,height=700,scrollbars=yes,resizable=yes');
+                            
+                            // Check if window is closed (user completed auth)
+                            const checkClosed = setInterval(function() {
+                                if (authWindow.closed) {
+                                    clearInterval(checkClosed);
+                                    // Reload the main page to check if auth was successful
+                                    window.location.reload();
+                                }
+                            }, 1000);
+                        }
+                        </script>
                     </div>
                 </div>
                 {% endif %}
