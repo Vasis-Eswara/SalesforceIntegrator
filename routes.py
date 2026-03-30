@@ -274,7 +274,7 @@ def init_routes(app):
             try:
                 # Attempt login with username/password via SOAP API
                 logger.debug(f"Attempting SOAP login for username: {username}")
-                login_result = login_with_username_password(username, password, security_token, sandbox)
+                login_result = login_with_username_password(username, password, security_token)
                 
                 # Store connection in database
                 sf_org = SalesforceOrg(
@@ -319,8 +319,7 @@ def init_routes(app):
                 login_result = login_with_username_password(
                     cred.username, 
                     one_time_password, 
-                    cred.security_token or '', 
-                    cred.sandbox
+                    cred.security_token or ''
                 )
                 
                 # Store connection in database
