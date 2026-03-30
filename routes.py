@@ -92,7 +92,7 @@ def init_routes(app):
                     if config_actions and config_actions.get('actions'):
                         # Apply schema changes
                         metadata_client = create_metadata_client(sf_org.instance_url, sf_org.access_token)
-                        schema_results = apply_configuration(config_actions, metadata_client)
+                        schema_results = apply_configuration(sf_org.instance_url, sf_org.access_token, config_actions)
                         results['actions'].extend(schema_results.get('actions', []))
                         results['errors'].extend(schema_results.get('errors', []))
                 
@@ -1022,6 +1022,17 @@ def init_routes(app):
         if not prompt:
             flash('Please enter a data creation prompt', 'warning')
             return redirect(url_for('bulk_data'))
+
+        # Detect schema-creation intent and redirect to Configure Salesforce
+        _pl = prompt.lower()
+        _schema_keywords = ('custom object', 'custom field', 'create object', 'create field', 'add field')
+        if any(kw in _pl for kw in _schema_keywords):
+            flash(
+                'That looks like a schema creation request. '
+                'Use the "Configure Salesforce" page to create custom objects and fields.',
+                'info'
+            )
+            return redirect(url_for('configure'))
         
         try:
             # Parse natural language prompt

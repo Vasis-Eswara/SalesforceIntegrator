@@ -70,7 +70,12 @@ class BulkDataParser:
     def _extract_objects(self, prompt: str, result: Dict[str, Any]):
         """Extract object creation instructions from prompt"""
         # Skip generic terms that aren't real Salesforce objects
-        skip_terms = {'record', 'records', 'data', 'item', 'items', 'entry', 'entries', 'owner', 'relationship', 'hierarchical', 'new', 'parent', 'following', 'related'}
+        skip_terms = {
+            'record', 'records', 'data', 'item', 'items', 'entry', 'entries',
+            'owner', 'relationship', 'hierarchical', 'new', 'parent', 'following',
+            'related', 'custom', 'object', 'objects', 'field', 'fields',
+            'called', 'named', 'following', 'standard', 'sobject',
+        }
         
         for pattern in self.object_patterns:
             matches = re.finditer(pattern, prompt, re.IGNORECASE)
