@@ -3,259 +3,194 @@
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-8 text-center">
-            <div class="p-5">
-                <h1 class="display-5 mb-4">Connect to Salesforce</h1>
-                <p class="lead">
-                    To get started, authorize this application to access your Salesforce org.
+        <div class="col-md-9">
+            <div class="p-4 p-md-5">
+                <h1 class="display-5 mb-2 text-center">Connect to Salesforce</h1>
+                <p class="lead text-center text-secondary mb-4">
+                    Authorize this application using your Salesforce Connected App (OAuth 2.0)
                 </p>
-                
-                {% if not config.SALESFORCE_CLIENT_ID or not config.SALESFORCE_CLIENT_SECRET or not config.OPENAI_API_KEY %}
+
+                {% if not config.SALESFORCE_CLIENT_ID or not config.SALESFORCE_CLIENT_SECRET %}
                 <div class="alert alert-danger mt-4">
                     <h5 class="alert-heading">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        Configuration Missing
+                        Connected App Credentials Missing
                     </h5>
-                    <p>This application requires proper configuration before it can connect to Salesforce and generate data:</p>
-                    <ul class="text-start">
-                        {% if not config.SALESFORCE_CLIENT_ID or not config.SALESFORCE_CLIENT_SECRET %}
-                        <li><strong>Salesforce Connected App Credentials</strong> - Please set SALESFORCE_CLIENT_ID and SALESFORCE_CLIENT_SECRET</li>
-                        {% endif %}
-                        {% if not config.OPENAI_API_KEY %}
-                        <li><strong>OpenAI API Key</strong> - Please set OPENAI_API_KEY</li>
-                        {% endif %}
+                    <p class="mb-1">Set these environment variables before connecting:</p>
+                    <ul class="mb-0">
+                        <li><code>SALESFORCE_CLIENT_ID</code> — Consumer Key from your Connected App</li>
+                        <li><code>SALESFORCE_CLIENT_SECRET</code> — Consumer Secret from your Connected App</li>
+                        <li><code>SALESFORCE_REDIRECT_URI</code> — Must match the callback URL below</li>
                     </ul>
-                    <p>Please configure these environment variables to continue.</p>
                 </div>
                 {% else %}
+
                 {% if saved_credentials %}
-                <div class="row mt-4 mb-4">
-                    <div class="col-12">
-                        <div class="card bg-dark">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h5 class="card-title mb-0">Saved Connections</h5>
-                                <a href="{{ url_for('credentials') }}" class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-gear-fill me-1"></i> Manage
-                                </a>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">Select a saved connection to quickly log in to Salesforce.</p>
-                                
-                                <div class="row">
-                                    {% for cred in saved_credentials %}
-                                    <div class="col-md-6 col-lg-4 mb-3">
-                                        <div class="card h-100 {% if cred.default %}bg-primary bg-opacity-25{% else %}bg-secondary bg-opacity-10{% endif %}">
-                                            <div class="card-body">
-                                                <h6 class="card-title">{{ cred.name }}</h6>
-                                                <p class="card-text small mb-1">{{ cred.username }}</p>
-                                                <p class="card-text small mb-2">
-                                                    <span class="badge {% if cred.sandbox %}bg-warning{% else %}bg-success{% endif %} text-dark">
-                                                        {% if cred.sandbox %}Sandbox{% else %}Production{% endif %}
-                                                    </span>
-                                                    {% if cred.default %}
-                                                    <span class="badge bg-primary">Default</span>
-                                                    {% endif %}
-                                                </p>
-                                                <form method="post" action="{{ url_for('login') }}">
-                                                    <input type="hidden" name="login_type" value="saved">
-                                                    <input type="hidden" name="credential_id" value="{{ cred.id }}">
-                                                    <div class="mb-2">
-                                                        <input type="password" class="form-control form-control-sm" 
-                                                                id="one_time_password_{{ cred.id }}" name="one_time_password"
-                                                                placeholder="Enter password" required>
-                                                    </div>
-                                                    <div class="d-grid">
-                                                        <button type="submit" class="btn btn-sm btn-primary">
-                                                            <i class="bi bi-box-arrow-in-right me-1"></i> Connect
-                                                        </button>
-                                                    </div>
-                                                </form>
-                                            </div>
+                <div class="card bg-dark mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-bookmark-star me-2"></i>Saved Connections
+                        </h5>
+                        <a href="{{ url_for('credentials') }}" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-gear-fill me-1"></i> Manage
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-secondary small mb-3">
+                            Select an org below — it will open Salesforce in a new tab for you to authorize.
+                        </p>
+                        <div class="row g-3">
+                            {% for cred in saved_credentials %}
+                            <div class="col-sm-6 col-lg-4">
+                                <div class="card h-100 {% if cred.default %}border-primary{% else %}border-secondary border-opacity-25{% endif %} bg-secondary bg-opacity-10">
+                                    <div class="card-body d-flex flex-column">
+                                        <h6 class="card-title mb-1">{{ cred.name }}</h6>
+                                        <p class="card-text small text-secondary mb-2">{{ cred.username }}</p>
+                                        <div class="mb-3">
+                                            <span class="badge {% if cred.sandbox %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                                                {% if cred.sandbox %}Sandbox{% else %}Production{% endif %}
+                                            </span>
+                                            {% if cred.default %}
+                                            <span class="badge bg-primary ms-1">Default</span>
+                                            {% endif %}
                                         </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                
-                <div class="row mt-4">
-                    <div class="col-md-6 mb-4">
-                        <div class="card bg-dark h-100">
-                            <div class="card-header">
-                                <h5 class="card-title mb-0">OAuth 2.0 Authentication</h5>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">
-                                    Connect using OAuth 2.0 to securely access your Salesforce org.
-                                    This is the recommended method for most users.
-                                </p>
-                                
-                                <div class="alert alert-info text-start mt-2 mb-3">
-                                    <h6 class="mb-2"><i class="bi bi-info-circle me-1"></i> When to use OAuth:</h6>
-                                    <ul class="mb-0 small">
-                                        <li>Recommended for most users</li>
-                                        <li>Works with all Salesforce editions</li>
-                                        <li>No need for security tokens</li>
-                                    </ul>
-                                </div>
-                                
-                                <h6 class="mt-4">Permissions Required:</h6>
-                                <ul class="list-group list-group-flush text-start mb-4">
-                                    <li class="list-group-item bg-dark">Access basic information (your user identity)</li>
-                                    <li class="list-group-item bg-dark">Access and manage your data (to read schema and insert test data)</li>
-                                    <li class="list-group-item bg-dark">Perform requests on your behalf at any time</li>
-                                </ul>
-                                
-                                <div class="d-grid gap-2">
-                                    <a href="{{ url_for('oauth_direct') }}" target="_blank" class="btn btn-primary" id="oauthBtn" onclick="handleOAuthClick(this)">
-                                        <i class="bi bi-box-arrow-up-right me-2"></i>
-                                        Connect with OAuth (New Tab)
-                                    </a>
-                                    <div id="oauthWaiting" class="d-none text-center mt-2">
-                                        <div class="spinner-border spinner-border-sm text-primary me-2"></div>
-                                        <span class="small">Waiting for authorization... After approving in the new tab, <a href="javascript:window.location.reload()">click here to refresh</a>.</span>
-                                    </div>
-                                </div>
-                                
-                                <p class="mt-3 small text-secondary">
-                                    Opens Salesforce in a new browser tab. After logging in there, return here and the page will detect the connection.
-                                </p>
-                                <script>
-                                function handleOAuthClick(btn) {
-                                    document.getElementById('oauthWaiting').classList.remove('d-none');
-                                    btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Opened in New Tab';
-                                    btn.classList.replace('btn-primary', 'btn-success');
-                                }
-                                </script>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="col-md-6 mb-4">
-                        <div class="card border-primary h-100">
-                            <div class="card-header d-flex justify-content-between align-items-center bg-primary bg-opacity-25">
-                                <h5 class="card-title mb-0">Direct SOAP API Login</h5>
-                                <a href="{{ url_for('credentials') }}" class="btn btn-sm btn-outline-secondary">
-                                    <i class="bi bi-save-fill me-1"></i> Manage Saved
-                                </a>
-                            </div>
-                            <div class="card-body">
-                                <p class="card-text">
-                                    Connect directly using your Salesforce username and password via the SOAP API.
-                                    This is an alternative if OAuth isn't working for your organization.
-                                </p>
-                                
-                                <div class="alert alert-warning text-start mt-2 mb-3">
-                                    <h6 class="mb-2"><i class="bi bi-exclamation-triangle me-1"></i> Common Issues & Solutions:</h6>
-                                    <ul class="mb-0 small">
-                                        <li><strong>Invalid Login Error:</strong> Most often caused by missing security token</li>
-                                        <li><strong>Security Token:</strong> Required for API access from unknown IPs</li>
-                                        <li><strong>IP Restrictions:</strong> Check if your org has IP restrictions enabled</li>
-                                        <li><strong>Account Status:</strong> Verify your account is active and not locked</li>
-                                    </ul>
-                                    <div class="mt-2">
-                                        <a href="{{ url_for('auth_help') }}" class="btn btn-sm btn-outline-info me-2">
-                                            <i class="bi bi-question-circle me-1"></i> Detailed Help
-                                        </a>
-                                        <a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm" target="_blank" class="btn btn-sm btn-outline-warning">
-                                            <i class="bi bi-shield-lock me-1"></i> Get Security Token
-                                        </a>
-                                    </div>
-                                </div>
-                                
-                                <form method="post" action="{{ url_for('login') }}" class="text-start">
-                                    <input type="hidden" name="login_type" value="direct">
-                                    
-                                    <div class="mb-3">
-                                        <label for="username" class="form-label">Username</label>
-                                        <input type="email" class="form-control" id="username" name="username" 
-                                               placeholder="your.email@example.com" required>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="password" class="form-label">Password</label>
-                                        <input type="password" class="form-control" id="password" name="password" required>
-                                    </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="security_token" class="form-label">Security Token (if required)</label>
-                                        <input type="password" class="form-control" id="security_token" name="security_token">
-                                        <div class="form-text">
-                                            <strong>Required for API access from unrecognized IPs.</strong> You can either:
-                                            <ol class="mt-1 mb-2">
-                                                <li>Enter it in this field, OR</li>
-                                                <li>Append it to your password (e.g., if password is "mypass" and token is "ABCDE", enter "mypassABCDE" as your password)</li>
-                                            </ol>
-                                            <div class="alert alert-success p-2 mt-2">
-                                                <strong>💡 How to get your security token:</strong>
-                                                <ol class="mb-0 mt-1">
-                                                    <li>Log into Salesforce in your browser</li>
-                                                    <li>Go to Setup → My Personal Information → Reset Security Token</li>
-                                                    <li>Click "Reset Security Token" - it will be emailed to you</li>
-                                                    <li>Use that token here or append it to your password</li>
-                                                </ol>
-                                            </div>
-                                            <a href="https://help.salesforce.com/s/articleView?id=sf.user_security_token.htm" target="_blank" class="btn btn-sm btn-outline-primary mt-1">
-                                                <i class="bi bi-link-45deg me-1"></i> Official Documentation
+                                        <div class="mt-auto d-grid">
+                                            <a href="{{ url_for('oauth_direct') }}?env={% if cred.sandbox %}sandbox{% else %}production{% endif %}"
+                                               target="_blank"
+                                               class="btn btn-sm btn-primary"
+                                               onclick="showOAuthNote(this)">
+                                                <i class="bi bi-box-arrow-up-right me-1"></i>
+                                                Connect via OAuth
                                             </a>
                                         </div>
                                     </div>
-                                    
-                                    <div class="mb-3">
-                                        <label for="connection_name" class="form-label">Connection Name (optional)</label>
-                                        <input type="text" class="form-control" id="connection_name" name="connection_name" 
-                                               placeholder="My Production Org">
-                                    </div>
-                                    
-                                    <div class="mb-3 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="sandbox" name="sandbox">
-                                        <label class="form-check-label" for="sandbox">Sandbox Environment</label>
-                                    </div>
-                                    
-                                    <div class="mb-3 form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" id="remember" name="remember">
-                                        <label class="form-check-label" for="remember">Remember credentials</label>
-                                        <div class="form-text">Store credentials securely for future use</div>
-                                    </div>
-                                    
-                                    <div class="d-grid gap-2">
-                                        <button type="submit" class="btn btn-primary btn-lg">
-                                            <i class="bi bi-key-fill me-2"></i>
-                                            Login with SOAP API
-                                        </button>
-                                    </div>
-                                </form>
-                                
-                                <p class="mt-3 small text-secondary">
-                                    If you check "Remember credentials", they will be stored securely for future use.
-                                </p>
+                                </div>
                             </div>
+                            {% endfor %}
                         </div>
                     </div>
                 </div>
                 {% endif %}
-                
-                <div class="alert alert-info mt-4">
-                    <h5 class="alert-heading">
-                        <i class="bi bi-info-circle-fill me-2"></i>
-                        Environment Setup
-                    </h5>
-                    <p>
-                        This application requires proper configuration of Salesforce Connected App credentials.
-                        Make sure the following environment variables are set:
-                    </p>
-                    <ul class="text-start">
-                        <li><code>SALESFORCE_CLIENT_ID</code> - Your Connected App's Consumer Key</li>
-                        <li><code>SALESFORCE_CLIENT_SECRET</code> - Your Connected App's Consumer Secret</li>
-                        <li><code>SALESFORCE_REDIRECT_URI</code> - The callback URL for OAuth</li>
-                        <li><code>OPENAI_API_KEY</code> - Your OpenAI API Key for ChatGPT</li>
-                    </ul>
+
+                <div class="card bg-dark mb-4">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-cloud-lock me-2"></i>OAuth 2.0 — Choose Your Org Type
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-secondary mb-4">
+                            Salesforce requires all external connections via a Connected App (ECA). 
+                            Choose the type of org you want to connect to — it opens in a new tab, 
+                            and once you authorize, the session is captured automatically.
+                        </p>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="card bg-secondary bg-opacity-10 border-success h-100">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <span class="badge bg-success fs-6 me-2">Production</span>
+                                            <span class="text-secondary small">login.salesforce.com</span>
+                                        </div>
+                                        <p class="card-text small text-secondary mb-3">
+                                            Connect to a live Salesforce production org.
+                                        </p>
+                                        <div class="mt-auto d-grid">
+                                            <a href="{{ url_for('oauth_direct') }}?env=production"
+                                               target="_blank"
+                                               class="btn btn-success"
+                                               id="prodOAuthBtn"
+                                               onclick="showOAuthNote(this)">
+                                                <i class="bi bi-box-arrow-up-right me-2"></i>
+                                                Connect to Production Org
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="card bg-secondary bg-opacity-10 border-warning h-100">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <span class="badge bg-warning text-dark fs-6 me-2">Sandbox</span>
+                                            <span class="text-secondary small">test.salesforce.com</span>
+                                        </div>
+                                        <p class="card-text small text-secondary mb-3">
+                                            Connect to a Salesforce sandbox or developer org.
+                                        </p>
+                                        <div class="mt-auto d-grid">
+                                            <a href="{{ url_for('oauth_direct') }}?env=sandbox"
+                                               target="_blank"
+                                               class="btn btn-warning text-dark"
+                                               id="sandboxOAuthBtn"
+                                               onclick="showOAuthNote(this)">
+                                                <i class="bi bi-box-arrow-up-right me-2"></i>
+                                                Connect to Sandbox / Dev Org
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="oauthNote" class="alert alert-info mt-4 d-none">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Salesforce has opened in a new tab. Log in and approve access there.
+                            Once done, <a href="javascript:window.location.reload()" class="alert-link">click here to refresh this page</a> 
+                            and the connection will be detected.
+                        </div>
+                    </div>
                 </div>
+
+                <div class="card bg-dark border-secondary border-opacity-25">
+                    <div class="card-header">
+                        <h6 class="mb-0 text-secondary">
+                            <i class="bi bi-info-circle me-2"></i>Connected App Setup — Callback URL
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="small text-secondary mb-2">
+                            Your Salesforce Connected App must have this exact URL listed as an allowed callback URL:
+                        </p>
+                        <div class="input-group">
+                            <input type="text" class="form-control form-control-sm font-monospace bg-dark text-light border-secondary"
+                                   id="callbackUrl"
+                                   value="{{ request.host_url.rstrip('/') }}/salesforce/callback"
+                                   readonly>
+                            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyCallback()">
+                                <i class="bi bi-clipboard"></i> Copy
+                            </button>
+                        </div>
+                        <p class="small text-secondary mt-2 mb-0">
+                            In Salesforce: <strong>Setup → App Manager → Your Connected App → Edit → Callback URL</strong>
+                        </p>
+                    </div>
+                </div>
+
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function showOAuthNote(btn) {
+    const note = document.getElementById('oauthNote');
+    if (note) note.classList.remove('d-none');
+    btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Opened in New Tab';
+    btn.classList.add('disabled');
+}
+
+function copyCallback() {
+    const input = document.getElementById('callbackUrl');
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => {
+        const btn = input.nextElementSibling;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Copied!';
+        setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy'; }, 2000);
+    });
+}
+</script>
 {% endblock %}

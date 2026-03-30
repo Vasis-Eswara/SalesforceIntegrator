@@ -368,14 +368,15 @@ def init_routes(app):
     
     @app.route('/oauth-direct')
     def oauth_direct():
-        """Direct OAuth redirect for popup windows"""
+        """OAuth redirect — supports ?env=production or ?env=sandbox"""
+        env = request.args.get('env', 'production')
         try:
             from oauth_utils import get_authorization_url
-            auth_url = get_authorization_url()
+            auth_url = get_authorization_url(env=env)
             return redirect(auth_url)
         except Exception as e:
             logger.error(f"OAuth direct error: {str(e)}")
-            return f"<html><body><h1>OAuth Error</h1><p>{str(e)}</p><script>window.close();</script></body></html>"
+            return f"<html><body style='background:#1a1a2e;color:#eee;font-family:sans-serif;padding:2rem'><h2>OAuth Error</h2><p>{str(e)}</p></body></html>"
     
     @app.route('/oauth/callback')
     @app.route('/salesforce/callback')

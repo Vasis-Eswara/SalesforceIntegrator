@@ -53,15 +53,26 @@ def generate_pkce_pair():
     
     return code_verifier, code_challenge
 
-def get_authorization_url():
-    """Generate Salesforce OAuth authorization URL"""
+def get_authorization_url(env='production'):
+    """Generate Salesforce OAuth authorization URL.
+    
+    Args:
+        env: 'production' uses login.salesforce.com, 'sandbox' uses test.salesforce.com
+    """
     validate_oauth_config()
+    
+    # Choose the correct login URL based on org type
+    if env == 'sandbox':
+        base_url = 'https://test.salesforce.com'
+    else:
+        base_url = SALESFORCE_LOGIN_URL  # defaults to login.salesforce.com
     
     # Generate PKCE parameters
     code_verifier, code_challenge = generate_pkce_pair()
     
-    # Store code verifier in session
+    # Store code verifier and env in session
     session['oauth_code_verifier'] = code_verifier
+    session['oauth_env'] = env
     
     # OAuth parameters
     params = {
@@ -74,8 +85,8 @@ def get_authorization_url():
         'prompt': 'login'
     }
     
-    auth_url = f"{SALESFORCE_LOGIN_URL}/services/oauth2/authorize?{urlencode(params)}"
-    logger.info(f"Generated authorization URL for client ID: {SALESFORCE_CLIENT_ID[:8]}...")
+    auth_url = f"{base_url}/services/oauth2/authorize?{urlencode(params)}"
+    logger.info(f"Generated authorization URL for {env} org (client ID: {SALESFORCE_CLIENT_ID[:8]}...)")
     
     return auth_url
 
