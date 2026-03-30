@@ -54,14 +54,17 @@ class SchemaField(db.Model):
         return f'<SchemaField {self.api_name}>'
 
 class SalesforceCredential(db.Model):
-    """Model to store Salesforce credentials for direct SOAP login"""
+    """Model to store Salesforce org connection details"""
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)  # A name for this connection
+    name = db.Column(db.String(100), nullable=False)
     username = db.Column(db.String(100), nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)  # Securely stored
-    security_token = db.Column(db.String(50), nullable=True)  # Optional security token
-    sandbox = db.Column(db.Boolean, default=False)  # Is this a sandbox environment?
-    default = db.Column(db.Boolean, default=False)  # Is this the default connection?
+    password_hash = db.Column(db.String(256), nullable=False)
+    security_token = db.Column(db.String(50), nullable=True)
+    sandbox = db.Column(db.Boolean, default=False)
+    default = db.Column(db.Boolean, default=False)
+    # Per-org Connected App (ECA) credentials
+    consumer_key = db.Column(db.String(500), nullable=True)
+    consumer_secret = db.Column(db.String(500), nullable=True)
     last_used = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

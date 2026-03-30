@@ -368,11 +368,25 @@ def init_routes(app):
     
     @app.route('/oauth-direct')
     def oauth_direct():
-        """OAuth redirect — supports ?env=production or ?env=sandbox"""
+        """OAuth redirect — supports ?env=production|sandbox and ?cred_id=N for per-org credentials"""
         env = request.args.get('env', 'production')
+        cred_id = request.args.get('cred_id')
+
+        client_id = None
+        client_secret = None
+
+        if cred_id:
+            cred = SalesforceCredential.query.get(cred_id)
+            if cred:
+                client_id = cred.consumer_key or None
+                client_secret = cred.consumer_secret or None
+                # Honour the sandbox flag on the saved credential
+                env = 'sandbox' if cred.sandbox else 'production'
+                logger.info(f"Using per-org credentials for: {cred.name}")
+
         try:
             from oauth_utils import get_authorization_url
-            auth_url = get_authorization_url(env=env)
+            auth_url = get_authorization_url(env=env, client_id=client_id, client_secret=client_secret)
             return redirect(auth_url)
         except Exception as e:
             logger.error(f"OAuth direct error: {str(e)}")
@@ -733,8 +747,16 @@ def init_routes(app):
                     
                 # Update security token if provided
                 security_token = request.form.get('security_token')
-                if security_token is not None:  # Empty string is valid (no security token)
+                if security_token is not None:
                     cred.security_token = security_token
+
+                # Update per-org Connected App credentials if provided
+                consumer_key = request.form.get('consumer_key', '').strip()
+                consumer_secret = request.form.get('consumer_secret', '').strip()
+                if consumer_key:
+                    cred.consumer_key = consumer_key
+                if consumer_secret:
+                    cred.consumer_secret = consumer_secret
                     
                 # Set as default if requested
                 if request.form.get('default') == 'on':

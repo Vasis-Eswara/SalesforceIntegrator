@@ -44,6 +44,7 @@
                                      data-name="{{ cred.name }}"
                                      data-username="{{ cred.username }}"
                                      data-env="{% if cred.sandbox %}sandbox{% else %}production{% endif %}"
+                                     data-cred-id="{{ cred.id }}"
                                      onclick="selectOrg(this)"
                                      style="cursor:pointer; transition: border-color 0.15s;">
                                     <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between">
@@ -57,6 +58,11 @@
                                             </span>
                                             {% if cred.default %}
                                             <span class="badge bg-primary">Default</span>
+                                            {% endif %}
+                                            {% if cred.consumer_key %}
+                                            <span class="badge bg-info text-dark" title="Has its own Connected App credentials">
+                                                <i class="bi bi-key-fill"></i> ECA
+                                            </span>
                                             {% endif %}
                                             <i class="bi bi-circle org-check text-secondary" style="font-size:1.2rem;"></i>
                                         </div>
@@ -238,13 +244,18 @@ function selectOrg(card) {
     document.querySelectorAll('.org-card').forEach(c => c.classList.remove('selected'));
     card.classList.add('selected');
 
-    const env  = card.dataset.env;
-    const name = card.dataset.name;
-    const user = card.dataset.username;
+    const env    = card.dataset.env;
+    const name   = card.dataset.name;
+    const user   = card.dataset.username;
+    const credId = card.dataset.credId;
 
     selectedEnv = env;
 
-    const authUrl = OAUTH_BASE + '?env=' + env;
+    // Build URL — include cred_id so the server uses org-specific ECA credentials
+    let authUrl = OAUTH_BASE + '?env=' + env;
+    if (credId && !credId.startsWith('new-')) {
+        authUrl += '&cred_id=' + credId;
+    }
     document.getElementById('authorizeBtn').href = authUrl;
 
     const isSandbox = env === 'sandbox';

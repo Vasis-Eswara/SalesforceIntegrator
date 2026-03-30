@@ -53,41 +53,56 @@ def generate_pkce_pair():
     
     return code_verifier, code_challenge
 
-def get_authorization_url(env='production'):
+def get_authorization_url(env='production', client_id=None, client_secret=None):
     """Generate Salesforce OAuth authorization URL.
     
     Args:
         env: 'production' uses login.salesforce.com, 'sandbox' uses test.salesforce.com
+        client_id: Override consumer key (uses global SALESFORCE_CLIENT_ID if None)
+        client_secret: Override consumer secret (stored in session for token exchange)
     """
-    validate_oauth_config()
+    # Use per-org credentials if provided, otherwise fall back to global config
+    effective_client_id = client_id or SALESFORCE_CLIENT_ID
+    
+    if not effective_client_id:
+        raise Exception("No Consumer Key (Client ID) configured. Set SALESFORCE_CLIENT_ID or add a Consumer Key to the org.")
+    if not SALESFORCE_REDIRECT_URI:
+        raise Exception("Missing SALESFORCE_REDIRECT_URI environment variable.")
     
     # Choose the correct login URL based on org type
     if env == 'sandbox':
         base_url = 'https://test.salesforce.com'
     else:
         base_url = SALESFORCE_LOGIN_URL  # defaults to login.salesforce.com
-    
+
     # Generate PKCE parameters
     code_verifier, code_challenge = generate_pkce_pair()
-    
-    # Store code verifier and env in session
+
+    # Store state in session (including per-org secret for token exchange)
     session['oauth_code_verifier'] = code_verifier
     session['oauth_env'] = env
-    
-    # OAuth parameters
+    if client_id:
+        session['oauth_client_id'] = client_id
+    else:
+        session.pop('oauth_client_id', None)
+    if client_secret:
+        session['oauth_client_secret'] = client_secret
+    else:
+        session.pop('oauth_client_secret', None)
+
     params = {
         'response_type': 'code',
-        'client_id': SALESFORCE_CLIENT_ID,
+        'client_id': effective_client_id,
         'redirect_uri': SALESFORCE_REDIRECT_URI,
         'scope': 'api refresh_token offline_access',
         'code_challenge': code_challenge,
         'code_challenge_method': 'S256',
         'prompt': 'login'
     }
-    
+
     auth_url = f"{base_url}/services/oauth2/authorize?{urlencode(params)}"
-    logger.info(f"Generated authorization URL for {env} org (client ID: {SALESFORCE_CLIENT_ID[:8]}...)")
-    
+    logger.info(f"Generated authorization URL for {env} org (client ID: {effective_client_id[:10]}...)")
+
     return auth_url
 
 def exchange_code_for_tokens(authorization_code):
@@ -102,17 +117,28 @@ def exchange_code_for_tokens(authorization_code):
     # Clear code verifier from session
     session.pop('oauth_code_verifier', None)
     
+    # Use per-org credentials if stored in session, otherwise fall back to global config
+    effective_client_id = session.pop('oauth_client_id', None) or SALESFORCE_CLIENT_ID
+    effective_client_secret = session.pop('oauth_client_secret', None) or SALESFORCE_CLIENT_SECRET
+
+    # Use the correct token endpoint based on env (sandbox vs production)
+    env = session.get('oauth_env', 'production')
+    if env == 'sandbox':
+        token_base = 'https://test.salesforce.com'
+    else:
+        token_base = SALESFORCE_LOGIN_URL
+
     # Token exchange parameters
     data = {
         'grant_type': 'authorization_code',
-        'client_id': SALESFORCE_CLIENT_ID,
-        'client_secret': SALESFORCE_CLIENT_SECRET,
+        'client_id': effective_client_id,
+        'client_secret': effective_client_secret,
         'redirect_uri': SALESFORCE_REDIRECT_URI,
         'code': authorization_code,
         'code_verifier': code_verifier
     }
-    
-    token_url = f"{SALESFORCE_LOGIN_URL}/services/oauth2/token"
+
+    token_url = f"{token_base}/services/oauth2/token"
     
     try:
         response = requests.post(token_url, data=data)
