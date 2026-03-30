@@ -3,169 +3,211 @@
 {% block content %}
 <div class="container">
     <div class="row justify-content-center">
-        <div class="col-md-9">
-            <div class="p-4 p-md-5">
-                <h1 class="display-5 mb-2 text-center">Connect to Salesforce</h1>
-                <p class="lead text-center text-secondary mb-4">
-                    Authorize this application using your Salesforce Connected App (OAuth 2.0)
-                </p>
+        <div class="col-md-8 col-lg-7">
+            <div class="py-4 px-3">
+
+                <h1 class="h3 mb-1 text-center">Connect to Salesforce</h1>
+                <p class="text-secondary text-center mb-4">Select an org to authorize with OAuth 2.0</p>
 
                 {% if not config.SALESFORCE_CLIENT_ID or not config.SALESFORCE_CLIENT_SECRET %}
-                <div class="alert alert-danger mt-4">
-                    <h5 class="alert-heading">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        Connected App Credentials Missing
-                    </h5>
-                    <p class="mb-1">Set these environment variables before connecting:</p>
-                    <ul class="mb-0">
-                        <li><code>SALESFORCE_CLIENT_ID</code> — Consumer Key from your Connected App</li>
-                        <li><code>SALESFORCE_CLIENT_SECRET</code> — Consumer Secret from your Connected App</li>
+                <div class="alert alert-danger">
+                    <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill me-2"></i>Connected App Credentials Missing</h6>
+                    <p class="mb-1 small">Set these environment variables before connecting:</p>
+                    <ul class="mb-0 small">
+                        <li><code>SALESFORCE_CLIENT_ID</code> — Consumer Key</li>
+                        <li><code>SALESFORCE_CLIENT_SECRET</code> — Consumer Secret</li>
                         <li><code>SALESFORCE_REDIRECT_URI</code> — Must match the callback URL below</li>
                     </ul>
                 </div>
                 {% else %}
 
-                {% if saved_credentials %}
-                <div class="card bg-dark mb-4">
+                {# ========== STEP 1: Org Selector ========== #}
+                <div class="card bg-dark mb-3" id="step1-card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-bookmark-star me-2"></i>Saved Connections
-                        </h5>
+                        <span class="fw-semibold">
+                            <span class="badge bg-primary me-2">1</span>
+                            Select an Org
+                        </span>
                         <a href="{{ url_for('credentials') }}" class="btn btn-sm btn-outline-secondary">
-                            <i class="bi bi-gear-fill me-1"></i> Manage
+                            <i class="bi bi-plus-lg me-1"></i> Add Org
                         </a>
                     </div>
                     <div class="card-body">
-                        <p class="text-secondary small mb-3">
-                            Select an org below — it will open Salesforce in a new tab for you to authorize.
-                        </p>
-                        <div class="row g-3">
+
+                        {% if saved_credentials %}
+                        <p class="text-secondary small mb-3">Click an org to select it, then proceed to Step 2.</p>
+                        <div class="row g-2" id="orgList">
                             {% for cred in saved_credentials %}
-                            <div class="col-sm-6 col-lg-4">
-                                <div class="card h-100 {% if cred.default %}border-primary{% else %}border-secondary border-opacity-25{% endif %} bg-secondary bg-opacity-10">
-                                    <div class="card-body d-flex flex-column">
-                                        <h6 class="card-title mb-1">{{ cred.name }}</h6>
-                                        <p class="card-text small text-secondary mb-2">{{ cred.username }}</p>
-                                        <div class="mb-3">
+                            <div class="col-12">
+                                <div class="org-card card border-secondary border-opacity-25 bg-secondary bg-opacity-10"
+                                     data-id="{{ cred.id }}"
+                                     data-name="{{ cred.name }}"
+                                     data-username="{{ cred.username }}"
+                                     data-env="{% if cred.sandbox %}sandbox{% else %}production{% endif %}"
+                                     onclick="selectOrg(this)"
+                                     style="cursor:pointer; transition: border-color 0.15s;">
+                                    <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div class="fw-semibold">{{ cred.name }}</div>
+                                            <div class="small text-secondary">{{ cred.username }}</div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
                                             <span class="badge {% if cred.sandbox %}bg-warning text-dark{% else %}bg-success{% endif %}">
                                                 {% if cred.sandbox %}Sandbox{% else %}Production{% endif %}
                                             </span>
                                             {% if cred.default %}
-                                            <span class="badge bg-primary ms-1">Default</span>
+                                            <span class="badge bg-primary">Default</span>
                                             {% endif %}
-                                        </div>
-                                        <div class="mt-auto d-grid">
-                                            <a href="{{ url_for('oauth_direct') }}?env={% if cred.sandbox %}sandbox{% else %}production{% endif %}"
-                                               target="_blank"
-                                               class="btn btn-sm btn-primary"
-                                               onclick="showOAuthNote(this)">
-                                                <i class="bi bi-box-arrow-up-right me-1"></i>
-                                                Connect via OAuth
-                                            </a>
+                                            <i class="bi bi-circle org-check text-secondary" style="font-size:1.2rem;"></i>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             {% endfor %}
+
+                            <div class="col-12">
+                                <div class="org-card card border-secondary border-opacity-25 bg-secondary bg-opacity-10"
+                                     data-id="new-production"
+                                     data-name="New Production Org"
+                                     data-username=""
+                                     data-env="production"
+                                     onclick="selectOrg(this)"
+                                     style="cursor:pointer; transition: border-color 0.15s;">
+                                    <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div class="fw-semibold text-secondary">+ Connect a New Production Org</div>
+                                            <div class="small text-secondary">login.salesforce.com</div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-success">Production</span>
+                                            <i class="bi bi-circle org-check text-secondary" style="font-size:1.2rem;"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <div class="org-card card border-secondary border-opacity-25 bg-secondary bg-opacity-10"
+                                     data-id="new-sandbox"
+                                     data-name="New Sandbox / Dev Org"
+                                     data-username=""
+                                     data-env="sandbox"
+                                     onclick="selectOrg(this)"
+                                     style="cursor:pointer; transition: border-color 0.15s;">
+                                    <div class="card-body py-2 px-3 d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <div class="fw-semibold text-secondary">+ Connect a New Sandbox / Dev Org</div>
+                                            <div class="small text-secondary">test.salesforce.com</div>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="badge bg-warning text-dark">Sandbox</span>
+                                            <i class="bi bi-circle org-check text-secondary" style="font-size:1.2rem;"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        {% else %}
+                        <p class="text-secondary small mb-3">No orgs registered yet. Choose the type of org you want to connect to:</p>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <div class="org-card card border-secondary border-opacity-25 bg-secondary bg-opacity-10"
+                                     data-id="new-production"
+                                     data-name="Production Org"
+                                     data-username=""
+                                     data-env="production"
+                                     onclick="selectOrg(this)"
+                                     style="cursor:pointer;">
+                                    <div class="card-body text-center py-3">
+                                        <span class="badge bg-success mb-2 d-block fs-6">Production</span>
+                                        <div class="small text-secondary">login.salesforce.com</div>
+                                        <i class="bi bi-circle org-check text-secondary mt-2 d-block" style="font-size:1.2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="org-card card border-secondary border-opacity-25 bg-secondary bg-opacity-10"
+                                     data-id="new-sandbox"
+                                     data-name="Sandbox / Dev Org"
+                                     data-username=""
+                                     data-env="sandbox"
+                                     onclick="selectOrg(this)"
+                                     style="cursor:pointer;">
+                                    <div class="card-body text-center py-3">
+                                        <span class="badge bg-warning text-dark mb-2 d-block fs-6">Sandbox</span>
+                                        <div class="small text-secondary">test.salesforce.com</div>
+                                        <i class="bi bi-circle org-check text-secondary mt-2 d-block" style="font-size:1.2rem;"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
                     </div>
                 </div>
-                {% endif %}
 
-                <div class="card bg-dark mb-4">
+                {# ========== STEP 2: Authorize ========== #}
+                <div class="card bg-dark mb-3" id="step2-card">
                     <div class="card-header">
-                        <h5 class="card-title mb-0">
-                            <i class="bi bi-cloud-lock me-2"></i>OAuth 2.0 — Choose Your Org Type
-                        </h5>
+                        <span class="fw-semibold">
+                            <span class="badge bg-secondary me-2" id="step2-badge">2</span>
+                            Authorize with Salesforce
+                        </span>
                     </div>
                     <div class="card-body">
-                        <p class="text-secondary mb-4">
-                            Salesforce requires all external connections via a Connected App (ECA). 
-                            Choose the type of org you want to connect to — it opens in a new tab, 
-                            and once you authorize, the session is captured automatically.
-                        </p>
 
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <div class="card bg-secondary bg-opacity-10 border-success h-100">
-                                    <div class="card-body d-flex flex-column">
-                                        <div class="d-flex align-items-center mb-3">
-                                            <span class="badge bg-success fs-6 me-2">Production</span>
-                                            <span class="text-secondary small">login.salesforce.com</span>
-                                        </div>
-                                        <p class="card-text small text-secondary mb-3">
-                                            Connect to a live Salesforce production org.
-                                        </p>
-                                        <div class="mt-auto d-grid">
-                                            <a href="{{ url_for('oauth_direct') }}?env=production"
-                                               target="_blank"
-                                               class="btn btn-success"
-                                               id="prodOAuthBtn"
-                                               onclick="showOAuthNote(this)">
-                                                <i class="bi bi-box-arrow-up-right me-2"></i>
-                                                Connect to Production Org
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <div class="card bg-secondary bg-opacity-10 border-warning h-100">
-                                    <div class="card-body d-flex flex-column">
-                                        <div class="d-flex align-items-center mb-3">
-                                            <span class="badge bg-warning text-dark fs-6 me-2">Sandbox</span>
-                                            <span class="text-secondary small">test.salesforce.com</span>
-                                        </div>
-                                        <p class="card-text small text-secondary mb-3">
-                                            Connect to a Salesforce sandbox or developer org.
-                                        </p>
-                                        <div class="mt-auto d-grid">
-                                            <a href="{{ url_for('oauth_direct') }}?env=sandbox"
-                                               target="_blank"
-                                               class="btn btn-warning text-dark"
-                                               id="sandboxOAuthBtn"
-                                               onclick="showOAuthNote(this)">
-                                                <i class="bi bi-box-arrow-up-right me-2"></i>
-                                                Connect to Sandbox / Dev Org
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div id="step2-placeholder" class="text-center text-secondary py-3">
+                            <i class="bi bi-arrow-up-circle fs-4 mb-2 d-block"></i>
+                            Select an org above to continue
                         </div>
 
-                        <div id="oauthNote" class="alert alert-info mt-4 d-none">
-                            <i class="bi bi-info-circle me-2"></i>
-                            Salesforce has opened in a new tab. Log in and approve access there.
-                            Once done, <a href="javascript:window.location.reload()" class="alert-link">click here to refresh this page</a> 
-                            and the connection will be detected.
+                        <div id="step2-ready" class="d-none">
+                            <div class="d-flex align-items-center gap-3 mb-3 p-3 bg-secondary bg-opacity-10 rounded">
+                                <div>
+                                    <div class="fw-semibold" id="selected-org-name">—</div>
+                                    <div class="small text-secondary" id="selected-org-meta">—</div>
+                                </div>
+                                <span class="badge ms-auto" id="selected-org-badge">—</span>
+                            </div>
+
+                            <div class="alert alert-info py-2 small d-none" id="oauthNote">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Salesforce opened in a new tab. Authorize there, then
+                                <a href="javascript:window.location.reload()" class="alert-link">click here to refresh</a>.
+                            </div>
+
+                            <div class="d-grid">
+                                <a href="#" id="authorizeBtn" target="_blank" class="btn btn-primary btn-lg" onclick="onAuthorize(this)">
+                                    <i class="bi bi-box-arrow-up-right me-2"></i>
+                                    Authorize with Salesforce
+                                </a>
+                            </div>
+                            <p class="text-secondary small text-center mt-2 mb-0">
+                                Opens Salesforce in a new tab. Return here after authorizing.
+                            </p>
                         </div>
+
                     </div>
                 </div>
 
+                {# ========== Callback URL reference ========== #}
                 <div class="card bg-dark border-secondary border-opacity-25">
-                    <div class="card-header">
-                        <h6 class="mb-0 text-secondary">
-                            <i class="bi bi-info-circle me-2"></i>Connected App Setup — Callback URL
+                    <div class="card-header py-2">
+                        <h6 class="mb-0 text-secondary small">
+                            <i class="bi bi-info-circle me-1"></i>Connected App Callback URL (must be registered in Salesforce)
                         </h6>
                     </div>
-                    <div class="card-body">
-                        <p class="small text-secondary mb-2">
-                            Your Salesforce Connected App must have this exact URL listed as an allowed callback URL:
-                        </p>
-                        <div class="input-group">
-                            <input type="text" class="form-control form-control-sm font-monospace bg-dark text-light border-secondary"
+                    <div class="card-body py-2">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control font-monospace bg-dark text-light border-secondary"
                                    id="callbackUrl"
                                    value="{{ request.host_url.rstrip('/') }}/salesforce/callback"
                                    readonly>
-                            <button class="btn btn-outline-secondary btn-sm" type="button" onclick="copyCallback()">
+                            <button class="btn btn-outline-secondary" type="button" onclick="copyCallback()">
                                 <i class="bi bi-clipboard"></i> Copy
                             </button>
                         </div>
-                        <p class="small text-secondary mt-2 mb-0">
-                            In Salesforce: <strong>Setup → App Manager → Your Connected App → Edit → Callback URL</strong>
-                        </p>
                     </div>
                 </div>
 
@@ -175,12 +217,65 @@
     </div>
 </div>
 
+<style>
+.org-card.selected {
+    border-color: var(--bs-primary) !important;
+    background-color: rgba(var(--bs-primary-rgb), 0.08) !important;
+}
+.org-card.selected .org-check {
+    color: var(--bs-primary) !important;
+}
+.org-card.selected .org-check::before {
+    content: "\F26B"; /* bi-check-circle-fill */
+}
+</style>
+
 <script>
-function showOAuthNote(btn) {
-    const note = document.getElementById('oauthNote');
-    if (note) note.classList.remove('d-none');
+const OAUTH_BASE = "{{ url_for('oauth_direct') }}";
+let selectedEnv = null;
+
+function selectOrg(card) {
+    document.querySelectorAll('.org-card').forEach(c => c.classList.remove('selected'));
+    card.classList.add('selected');
+
+    const env  = card.dataset.env;
+    const name = card.dataset.name;
+    const user = card.dataset.username;
+
+    selectedEnv = env;
+
+    const authUrl = OAUTH_BASE + '?env=' + env;
+    document.getElementById('authorizeBtn').href = authUrl;
+
+    const isSandbox = env === 'sandbox';
+    document.getElementById('selected-org-name').textContent = name;
+    document.getElementById('selected-org-meta').textContent = user ? user + ' — ' + (isSandbox ? 'test.salesforce.com' : 'login.salesforce.com') : (isSandbox ? 'test.salesforce.com' : 'login.salesforce.com');
+
+    const badge = document.getElementById('selected-org-badge');
+    badge.textContent = isSandbox ? 'Sandbox' : 'Production';
+    badge.className = 'badge ms-auto ' + (isSandbox ? 'bg-warning text-dark' : 'bg-success');
+
+    document.getElementById('step2-badge').className = 'badge bg-primary me-2';
+    document.getElementById('step2-placeholder').classList.add('d-none');
+    document.getElementById('step2-ready').classList.remove('d-none');
+    document.getElementById('oauthNote').classList.add('d-none');
+
+    const btn = document.getElementById('authorizeBtn');
+    btn.classList.remove('btn-success', 'disabled');
+    btn.classList.add('btn-primary');
+    btn.innerHTML = '<i class="bi bi-box-arrow-up-right me-2"></i>Authorize with Salesforce';
+}
+
+function onAuthorize(btn) {
+    document.getElementById('oauthNote').classList.remove('d-none');
     btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Opened in New Tab';
+    btn.classList.replace('btn-primary', 'btn-success');
     btn.classList.add('disabled');
+    setTimeout(() => {
+        btn.classList.remove('disabled');
+        btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Re-open Salesforce Tab';
+        btn.classList.replace('btn-success', 'btn-outline-primary');
+    }, 4000);
 }
 
 function copyCallback() {
@@ -192,5 +287,18 @@ function copyCallback() {
         setTimeout(() => { btn.innerHTML = '<i class="bi bi-clipboard"></i> Copy'; }, 2000);
     });
 }
+
+// Auto-select default org on load
+window.addEventListener('DOMContentLoaded', () => {
+    const defaultCard = document.querySelector('.org-card[data-id]');
+    // Look for the one marked default first
+    const allCards = document.querySelectorAll('.org-card');
+    let picked = null;
+    allCards.forEach(c => {
+        if (c.querySelector('.badge.bg-primary')) picked = c;
+    });
+    if (!picked && allCards.length > 0) picked = allCards[0];
+    if (picked) selectOrg(picked);
+});
 </script>
 {% endblock %}
