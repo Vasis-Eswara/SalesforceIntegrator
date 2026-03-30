@@ -507,47 +507,23 @@ def apply_configuration(instance_url, access_token, config):
 
 def create_custom_object(instance_url, access_token, object_name, details):
     """
-    Generate configuration for custom object creation (manual process required)
-    Custom objects cannot be created via REST API - requires Metadata API deployment
+    Create a custom object via the Salesforce Metadata API (SOAP, no WSDL needed).
+    Uses the OAuth access token directly as the session ID.
     """
-    logger.info(f"Generating configuration for custom object: {object_name}")
-    
+    logger.info(f"Creating custom object via Metadata API: {object_name}")
     try:
-        label = details.get('label', object_name.replace('__c', '').replace('_', ' ').title())
-        plural_label = details.get('plural_label', label + 's')
-        
-        logger.info(f"Generated configuration for custom object {object_name} with label: {label}")
-        
-        return {
-            "action": "create_object",
-            "target": object_name,
-            "success": True,
-            "message": f"Configuration generated for custom object: {object_name} (Manual creation required)",
-            "details": {
-                "object_name": object_name,
-                "label": label,
-                "plural_label": plural_label,
-                "name_field_label": details.get('name_field_label', 'Name'),
-                "instructions": [
-                    "1. Go to Salesforce Setup > Object Manager",
-                    "2. Click 'Create' > 'Custom Object'", 
-                    f"3. Set Label: {label}",
-                    f"4. Set Plural Label: {plural_label}",
-                    f"5. Set Object Name: {object_name.replace('__c', '')}",
-                    "6. Configure other settings as needed",
-                    "7. Save the object"
-                ]
-            }
-        }
-            
+        from salesforce_metadata_api import create_custom_object as _create
+        result = _create(instance_url, access_token, object_name, details)
+        result["target"] = object_name
+        return result
     except Exception as e:
-        logger.error(f"Error creating custom object {object_name}: {str(e)}")
+        logger.error(f"Error in create_custom_object: {str(e)}")
         return {
             "action": "create_object",
             "target": object_name,
             "success": False,
             "message": f"Error creating custom object: {str(e)}",
-            "details": details
+            "details": details,
         }
 
 def modify_custom_object(instance_url, access_token, object_name, details):
