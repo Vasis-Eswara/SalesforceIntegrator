@@ -1,51 +1,87 @@
-{% extends 'layout.html' %}
-
-{% block content %}
+{% extends 'layout.html' %} {% block content %}
 <div class="container-fluid">
     <div class="row">
         <!-- Sidebar with object list (Responsive: collapsible on mobile) -->
-        <div class="col-md-3 col-lg-2 d-md-block collapse" id="sidebar-collapse">
+        <div
+            class="col-md-3 col-lg-2 d-md-block collapse"
+            id="sidebar-collapse"
+        >
             <div class="sidebar">
                 <!-- Salesforce Objects Title & Real-time Search -->
                 <div class="mb-3">
                     <h5 class="text-white">Salesforce Objects</h5>
                     <div class="position-relative">
-                        <input type="text" id="search-objects" class="form-control form-control-sm bg-dark text-light border-secondary" 
-                               placeholder="Search objects..." value="{{ search_query or '' }}">
-                        <div id="search-status" class="position-absolute top-50 end-0 translate-middle-y me-2" style="display: none;">
-                            <div class="spinner-border spinner-border-sm text-light" role="status">
-                                <span class="visually-hidden">Searching...</span>
+                        <input
+                            type="text"
+                            id="search-objects"
+                            class="form-control form-control-sm bg-dark text-light border-secondary"
+                            placeholder="Search objects..."
+                            value="{{ search_query or '' }}"
+                        />
+                        <div
+                            id="search-status"
+                            class="position-absolute top-50 end-0 translate-middle-y me-2"
+                            style="display: none"
+                        >
+                            <div
+                                class="spinner-border spinner-border-sm text-light"
+                                role="status"
+                            >
+                                <span class="visually-hidden"
+                                    >Searching...</span
+                                >
                             </div>
                         </div>
                     </div>
-                    <div id="search-info" class="mt-2" style="display: none;">
+                    <div id="search-info" class="mt-2" style="display: none">
                         <small class="text-muted">
                             <span id="search-results-text"></span>
-                            <button id="clear-search" class="btn btn-link btn-sm text-decoration-none p-0 ms-2">
+                            <button
+                                id="clear-search"
+                                class="btn btn-link btn-sm text-decoration-none p-0 ms-2"
+                            >
                                 <i class="bi bi-x-circle"></i> Clear
                             </button>
                         </small>
                     </div>
                 </div>
-                
+
                 {% if objects %}
                 <!-- Object List -->
-                <div class="object-list" id="object-list" style="max-height: 500px; overflow-y: auto;">
+                <div
+                    class="object-list"
+                    id="object-list"
+                    style="max-height: 500px; overflow-y: auto"
+                >
                     {% for obj in objects %}
-                    <div class="object-item btn btn-outline-light w-100 text-start mb-1 d-flex justify-content-between align-items-center" 
-                         data-object="{{ obj.name }}" data-object-label="{{ obj.label }}" onclick="loadObjectDiagram('{{ obj.name }}')">
+                    <div
+                        class="object-item btn btn-outline-light w-100 text-start mb-1 d-flex justify-content-between align-items-center"
+                        data-object="{{ obj.name }}"
+                        data-object-label="{{ obj.label }}"
+                        onclick="loadObjectDiagram('{{ obj.name }}')"
+                    >
                         {{ obj.label }}
-                        <span class="badge {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}">
-                            {% if obj.custom %}Custom{% else %}Standard{% endif %}
+                        <span
+                            class="badge {% if obj.custom %}bg-success{% else %}bg-secondary{% endif %}"
+                        >
+                            {% if obj.custom %}Custom{% else %}Standard{% endif
+                            %}
                         </span>
                     </div>
                     {% endfor %}
                 </div>
-                
+
                 <!-- No Search Results Message -->
-                <div id="no-results" class="alert alert-info" style="display: none;">
-                    <i class="bi bi-search"></i> <span id="no-results-text">No objects match your search.</span>
-                    <br><small>Try a different search term.</small>
+                <div
+                    id="no-results"
+                    class="alert alert-info"
+                    style="display: none"
+                >
+                    <i class="bi bi-search"></i>
+                    <span id="no-results-text"
+                        >No objects match your search.</span
+                    >
+                    <br /><small>Try a different search term.</small>
                 </div>
                 {% else %}
                 <div class="alert alert-warning">
@@ -54,96 +90,199 @@
                 {% endif %}
             </div>
         </div>
-        
+
         <!-- Main content area -->
         <div class="col-md-9 col-lg-10">
             <div class="p-2 p-md-3">
                 <!-- Mobile-friendly header with sidebar toggle -->
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2 class="header-title mb-0 fs-3 fs-md-2">Schema & Data Generation</h2>
+                <div
+                    class="d-flex justify-content-between align-items-center mb-4"
+                >
+                    <h2 class="header-title mb-0 fs-3 fs-md-2">
+                        Schema & Data Generation
+                    </h2>
                     <div class="d-flex align-items-center">
-                        <button class="btn btn-outline-secondary me-2" onclick="refreshSchema()" title="Refresh Schema">
+                        <button
+                            class="btn btn-outline-secondary me-2"
+                            onclick="refreshSchema()"
+                            title="Refresh Schema"
+                        >
                             <i class="bi bi-arrow-clockwise"></i> Refresh Schema
                         </button>
-                        <button class="btn btn-outline-primary d-md-none" type="button" data-bs-toggle="collapse" data-bs-target="#sidebar-collapse" aria-expanded="false" aria-controls="sidebar-collapse">
+                        <button
+                            class="btn btn-outline-primary d-md-none"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#sidebar-collapse"
+                            aria-expanded="false"
+                            aria-controls="sidebar-collapse"
+                        >
                             <i class="bi bi-list"></i> Objects
                         </button>
                     </div>
                 </div>
-                
+
                 <div class="p-3 border rounded bg-body-tertiary">
                     <!-- Schema Viewer Content -->
                     <div id="schema-content">
                         <div id="object-details">
                             <div class="text-center my-5">
-                                <i class="bi bi-arrow-left-circle-fill text-primary" style="font-size: 3rem;"></i>
-                                <p class="lead mt-3">Select an object from the list to view its schema details and relationships</p>
+                                <i
+                                    class="bi bi-arrow-left-circle-fill text-primary"
+                                    style="font-size: 3rem"
+                                ></i>
+                                <p class="lead mt-3">
+                                    Select an object from the list to view its
+                                    schema details and relationships
+                                </p>
                             </div>
                         </div>
-                        
+
                         <!-- Object Relationship Diagram Section -->
-                        <div id="schema-diagram" style="display:none;" class="mt-4">
+                        <div
+                            id="schema-diagram"
+                            style="display: none"
+                            class="mt-4"
+                        >
                             <div class="card border-info">
-                                <div class="card-header bg-info text-white" style="cursor: pointer;" onclick="toggleDiagramVisibility()">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <h4 id="diagram-title" class="mb-0">Object Relationship Diagram</h4>
+                                <div
+                                    class="card-header bg-info text-white"
+                                    style="cursor: pointer"
+                                    onclick="toggleDiagramVisibility()"
+                                >
+                                    <div
+                                        class="d-flex justify-content-between align-items-center"
+                                    >
+                                        <h4 id="diagram-title" class="mb-0">
+                                            Object Relationship Diagram
+                                        </h4>
                                         <div class="d-flex align-items-center">
-                                            <i class="bi bi-chevron-up" id="diagram-toggle-icon"></i>
+                                            <i
+                                                class="bi bi-chevron-up"
+                                                id="diagram-toggle-icon"
+                                            ></i>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="card-body" id="diagram-body" style="display: block;">
-                                    <div id="object-diagram" class="mermaid-diagram bg-light" style="height: 400px; overflow: auto; resize: both; border-radius: 8px; padding: 15px;"></div>
+                                <div
+                                    class="card-body"
+                                    id="diagram-body"
+                                    style="display: block"
+                                >
+                                    <div
+                                        id="object-diagram"
+                                        class="mermaid-diagram bg-light"
+                                        style="
+                                            height: 400px;
+                                            overflow: auto;
+                                            resize: both;
+                                            border-radius: 8px;
+                                            padding: 15px;
+                                        "
+                                    ></div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Generate Data Section (Always Visible) -->
                     <div id="generate-content" class="mt-4">
                         <div class="card">
-                            <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
-                                <h4 class="header-title mb-2 mb-md-0"><i class="bi bi-magic me-2"></i>Schema & Data Prompt</h4>
+                            <div
+                                class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center"
+                            >
+                                <h4 class="header-title mb-2 mb-md-0">
+                                    <i class="bi bi-magic me-2"></i>Schema &
+                                    Data Prompt
+                                </h4>
                                 <div class="d-flex align-items-center">
-                                    <button class="btn btn-sm btn-outline-info me-2" type="button" data-bs-toggle="modal" data-bs-target="#examplesModal" title="View examples">
-                                        <i class="bi bi-question-circle"></i> Examples
+                                    <button
+                                        class="btn btn-sm btn-outline-info me-2"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#examplesModal"
+                                        title="View examples"
+                                    >
+                                        <i class="bi bi-question-circle"></i>
+                                        Examples
                                     </button>
-                                    <button class="btn btn-sm btn-outline-primary" id="toggle-generate" title="Toggle prompt form">
+                                    <button
+                                        class="btn btn-sm btn-outline-primary"
+                                        id="toggle-generate"
+                                        title="Toggle prompt form"
+                                    >
                                         <i class="bi bi-chevron-up"></i>
                                     </button>
                                 </div>
                             </div>
-                            <div class="card-body" id="generate-body" style="display: block;">
+                            <div
+                                class="card-body"
+                                id="generate-body"
+                                style="display: block"
+                            >
                                 {% if not config.OPENAI_API_KEY %}
                                 <div class="alert alert-warning mb-4">
                                     <h4 class="alert-heading">
-                                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                        <i
+                                            class="bi bi-exclamation-triangle-fill me-2"
+                                        ></i>
                                         Enhanced Features Limited
                                     </h4>
-                                    <p>Advanced intelligent data generation features require additional configuration. The system will use standard data generation patterns.</p>
+                                    <p>
+                                        Advanced intelligent data generation
+                                        features require additional
+                                        configuration. The system will use
+                                        standard data generation patterns.
+                                    </p>
                                 </div>
                                 {% endif %}
                                 <!-- Unified Prompt Interface -->
-                                <form id="unified-prompt-form" method="POST" action="{{ url_for('combined') }}">
+                                <form
+                                    id="unified-prompt-form"
+                                    method="POST"
+                                    action="{{ url_for('combined') }}"
+                                >
                                     <!-- Mode Selection (Hidden by default, auto-detected) -->
-                                    <input type="hidden" id="prompt-mode" name="mode" value="auto">
-                                    
+                                    <input
+                                        type="hidden"
+                                        id="prompt-mode"
+                                        name="mode"
+                                        value="auto"
+                                    />
+
                                     <!-- Main Prompt Area -->
                                     <div class="mb-4">
-                                        <div class="d-flex justify-content-between align-items-center mb-2">
-                                            <label for="unified-prompt" class="form-label d-flex align-items-center mb-0">
-                                                <i class="bi bi-chat-text me-2"></i>
-                                                <span>Natural Language Prompt</span>
+                                        <div
+                                            class="d-flex justify-content-between align-items-center mb-2"
+                                        >
+                                            <label
+                                                for="unified-prompt"
+                                                class="form-label d-flex align-items-center mb-0"
+                                            >
+                                                <i
+                                                    class="bi bi-chat-text me-2"
+                                                ></i>
+                                                <span
+                                                    >Natural Language
+                                                    Prompt</span
+                                                >
                                             </label>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="togglePromptExpand()">
-                                                <i class="bi bi-arrows-expand" id="prompt-expand-icon"></i>
+                                            <button
+                                                type="button"
+                                                class="btn btn-sm btn-outline-primary"
+                                                onclick="togglePromptExpand()"
+                                            >
+                                                <i
+                                                    class="bi bi-arrows-expand"
+                                                    id="prompt-expand-icon"
+                                                ></i>
                                             </button>
                                         </div>
-                                        <textarea 
-                                            class="form-control" 
-                                            id="unified-prompt" 
-                                            name="prompt" 
-                                            rows="5" 
+                                        <textarea
+                                            class="form-control"
+                                            id="unified-prompt"
+                                            name="prompt"
+                                            rows="5"
                                             placeholder="Describe what you want to create:
 
 Schema Examples:
@@ -157,96 +296,227 @@ Data Examples:
 Combined Examples:
 • Create a Task object with fields, then generate 50 Tasks linked to existing Accounts
 • Build a Product object with custom fields, then create 15 Products and 30 related Orders"
-                                            style="resize: both;"
+                                            style="resize: both"
                                             required
                                         ></textarea>
-                                        <div class="form-text d-flex align-items-center">
+                                        <div
+                                            class="form-text d-flex align-items-center"
+                                        >
                                             <i class="bi bi-lightbulb me-1"></i>
-                                            <span>Describe schema changes, data generation, or both. The system will automatically detect what you need.</span>
-                                            <button type="button" class="btn btn-link p-0 ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Learn about bulk data creation capabilities" onclick="showBulkDataInfo()">
-                                                <i class="bi bi-info-circle text-info"></i>
+                                            <span
+                                                >Describe schema changes, data
+                                                generation, or both. The system
+                                                will automatically detect what
+                                                you need.</span
+                                            >
+                                            <button
+                                                type="button"
+                                                class="btn btn-link p-0 ms-2"
+                                                data-bs-toggle="tooltip"
+                                                data-bs-placement="top"
+                                                title="Learn about bulk data creation capabilities"
+                                                onclick="showBulkDataInfo()"
+                                            >
+                                                <i
+                                                    class="bi bi-info-circle text-info"
+                                                ></i>
                                             </button>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- GitHub Config Option -->
                                     <div class="row mb-4">
                                         <div class="col-md-12">
                                             <div class="card border-secondary">
                                                 <div class="card-header">
                                                     <div class="form-check">
-                                                        <input class="form-check-input" type="checkbox" id="use-github-config">
-                                                        <label class="form-check-label" for="use-github-config">
-                                                            <i class="bi bi-github me-1"></i>
-                                                            Use GitHub Configuration File
+                                                        <input
+                                                            class="form-check-input"
+                                                            type="checkbox"
+                                                            id="use-github-config"
+                                                        />
+                                                        <label
+                                                            class="form-check-label"
+                                                            for="use-github-config"
+                                                        >
+                                                            <i
+                                                                class="bi bi-github me-1"
+                                                            ></i>
+                                                            Use GitHub
+                                                            Configuration File
                                                         </label>
                                                     </div>
                                                 </div>
-                                                <div class="card-body" id="github-config-section" style="display: none;">
+                                                <div
+                                                    class="card-body"
+                                                    id="github-config-section"
+                                                    style="display: none"
+                                                >
                                                     <div class="mb-3">
-                                                        <label for="github-url" class="form-label">GitHub File URL</label>
-                                                        <input 
-                                                            type="url" 
-                                                            class="form-control" 
-                                                            id="github-url" 
-                                                            name="github_url" 
-                                                            placeholder="https://github.com/user/repo/blob/main/data-config.yml"
+                                                        <label
+                                                            for="github-url"
+                                                            class="form-label"
+                                                            >GitHub File
+                                                            URL</label
                                                         >
+                                                        <input
+                                                            type="url"
+                                                            class="form-control"
+                                                            id="github-url"
+                                                            name="github_url"
+                                                            placeholder="https://github.com/user/repo/blob/main/data-config.yml"
+                                                        />
                                                         <div class="form-text">
-                                                            Supports Snowfakery recipes and custom YAML/JSON configuration files
+                                                            Supports Snowfakery
+                                                            recipes and custom
+                                                            YAML/JSON
+                                                            configuration files
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Advanced Options (Collapsible) -->
                                     <div class="card border-info mb-4">
-                                        <div class="card-header" style="cursor: pointer;" onclick="toggleAdvancedOptionsManual()">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span><i class="bi bi-gear me-1"></i> Advanced Options</span>
-                                                <i class="bi bi-chevron-down" id="advanced-options-icon"></i>
+                                        <div
+                                            class="card-header"
+                                            style="cursor: pointer"
+                                            onclick="toggleAdvancedOptionsManual()"
+                                        >
+                                            <div
+                                                class="d-flex justify-content-between align-items-center"
+                                            >
+                                                <span
+                                                    ><i
+                                                        class="bi bi-gear me-1"
+                                                    ></i>
+                                                    Advanced Options</span
+                                                >
+                                                <i
+                                                    class="bi bi-chevron-down"
+                                                    id="advanced-options-icon"
+                                                ></i>
                                             </div>
                                         </div>
-                                        <div class="collapse" id="advanced-options">
+                                        <div
+                                            class="collapse"
+                                            id="advanced-options"
+                                        >
                                             <div class="card-body">
                                                 <div class="row">
                                                     <div class="col-md-6">
                                                         <div class="mb-3">
-                                                            <label for="default-record-count" class="form-label">Default Record Count</label>
-                                                            <input type="number" class="form-control" id="default-record-count" name="default_record_count" min="1" max="1000" value="10">
-                                                            <div class="form-text">Used when no count is specified in the prompt</div>
+                                                            <label
+                                                                for="default-record-count"
+                                                                class="form-label"
+                                                                >Default Record
+                                                                Count</label
+                                                            >
+                                                            <input
+                                                                type="number"
+                                                                class="form-control"
+                                                                id="default-record-count"
+                                                                name="default_record_count"
+                                                                min="1"
+                                                                max="1000"
+                                                                value="10"
+                                                            />
+                                                            <div
+                                                                class="form-text"
+                                                            >
+                                                                Used when no
+                                                                count is
+                                                                specified in the
+                                                                prompt
+                                                            </div>
                                                         </div>
                                                     </div>
                                                     <div class="col-md-6">
                                                         <div class="mb-3">
-                                                            <label for="data-quality" class="form-label d-flex align-items-center">
+                                                            <label
+                                                                for="data-quality"
+                                                                class="form-label d-flex align-items-center"
+                                                            >
                                                                 Data Quality
-                                                                <button type="button" class="btn btn-link p-0 ms-2" data-bs-toggle="tooltip" data-bs-placement="top" title="Data Quality Options Explained" onclick="showDataQualityInfo()">
-                                                                    <i class="bi bi-info-circle text-info"></i>
+                                                                <button
+                                                                    type="button"
+                                                                    class="btn btn-link p-0 ms-2"
+                                                                    data-bs-toggle="tooltip"
+                                                                    data-bs-placement="top"
+                                                                    title="Data Quality Options Explained"
+                                                                    onclick="showDataQualityInfo()"
+                                                                >
+                                                                    <i
+                                                                        class="bi bi-info-circle text-info"
+                                                                    ></i>
                                                                 </button>
                                                             </label>
-                                                            <select class="form-select" id="data-quality" name="data_quality">
-                                                                <option value="realistic">Realistic (Recommended)</option>
-                                                                <option value="diverse">Maximum Diversity</option>
-                                                                <option value="minimal">Minimal Valid Data</option>
+                                                            <select
+                                                                class="form-select"
+                                                                id="data-quality"
+                                                                name="data_quality"
+                                                            >
+                                                                <option
+                                                                    value="realistic"
+                                                                >
+                                                                    Realistic
+                                                                    (Recommended)
+                                                                </option>
+                                                                <option
+                                                                    value="diverse"
+                                                                >
+                                                                    Maximum
+                                                                    Diversity
+                                                                </option>
+                                                                <option
+                                                                    value="minimal"
+                                                                >
+                                                                    Minimal
+                                                                    Valid Data
+                                                                </option>
                                                             </select>
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <div class="row">
                                                     <div class="col-md-12">
-                                                        <div class="form-check mb-2">
-                                                            <input class="form-check-input" type="checkbox" id="preview-mode" name="preview_mode" checked>
-                                                            <label class="form-check-label" for="preview-mode">
-                                                                Show confirmation preview before execution
+                                                        <div
+                                                            class="form-check mb-2"
+                                                        >
+                                                            <input
+                                                                class="form-check-input"
+                                                                type="checkbox"
+                                                                id="preview-mode"
+                                                                name="preview_mode"
+                                                                checked
+                                                            />
+                                                            <label
+                                                                class="form-check-label"
+                                                                for="preview-mode"
+                                                            >
+                                                                Show
+                                                                confirmation
+                                                                preview before
+                                                                execution
                                                             </label>
                                                         </div>
                                                         <div class="form-check">
-                                                            <input class="form-check-input" type="checkbox" id="respect-relationships" name="respect_relationships" checked>
-                                                            <label class="form-check-label" for="respect-relationships">
-                                                                Automatically handle object relationships
+                                                            <input
+                                                                class="form-check-input"
+                                                                type="checkbox"
+                                                                id="respect-relationships"
+                                                                name="respect_relationships"
+                                                                checked
+                                                            />
+                                                            <label
+                                                                class="form-check-label"
+                                                                for="respect-relationships"
+                                                            >
+                                                                Automatically
+                                                                handle object
+                                                                relationships
                                                             </label>
                                                         </div>
                                                     </div>
@@ -254,16 +524,21 @@ Combined Examples:
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Submit Button -->
                                     <div class="d-grid">
-                                        <button type="submit" class="btn btn-primary btn-lg">
+                                        <button
+                                            type="submit"
+                                            class="btn btn-primary btn-lg"
+                                        >
                                             <i class="bi bi-magic me-2"></i>
-                                            <span id="submit-text">Process Prompt</span>
+                                            <span id="submit-text"
+                                                >Process Prompt</span
+                                            >
                                         </button>
                                     </div>
                                 </form>
-                                
+
                                 <!-- Unified Results Display -->
                                 {% if unified_results %}
                                 <div class="card mt-4">
@@ -274,72 +549,114 @@ Combined Examples:
                                         </h5>
                                     </div>
                                     <div class="card-body">
-                                        {% if unified_results.status == 'success' %}
+                                        {% if unified_results.status ==
+                                        'success' %}
                                         <div class="alert alert-success">
-                                            <h6><i class="bi bi-check-circle me-2"></i>Processing Completed Successfully</h6>
+                                            <h6>
+                                                <i
+                                                    class="bi bi-check-circle me-2"
+                                                ></i
+                                                >Processing Completed
+                                                Successfully
+                                            </h6>
                                             {% if unified_results.actions %}
-                                            <p>Completed {{ unified_results.actions|length }} actions</p>
-                                            {% endif %}
-                                            {% if unified_results.success %}
-                                            <p>Created {{ unified_results.success }} records successfully</p>
+                                            <p>
+                                                Completed {{
+                                                unified_results.actions|length
+                                                }} actions
+                                            </p>
+                                            {% endif %} {% if
+                                            unified_results.success %}
+                                            <p>
+                                                Created {{
+                                                unified_results.success }}
+                                                records successfully
+                                            </p>
                                             {% endif %}
                                         </div>
-                                        {% endif %}
-                                        
-                                        {% if unified_results.actions %}
+                                        {% endif %} {% if
+                                        unified_results.actions %}
                                         <div class="mb-3">
                                             <h6>Schema Actions Performed:</h6>
-                                            {% for action in unified_results.actions %}
+                                            {% for action in
+                                            unified_results.actions %}
                                             <div class="alert alert-info">
-                                                <strong>{{ action.type|title }}:</strong> {{ action.description }}
-                                                {% if action.result %}
-                                                <br><small>Result: {{ action.result }}</small>
+                                                <strong
+                                                    >{{ action.type|title
+                                                    }}:</strong
+                                                >
+                                                {{ action.description }} {% if
+                                                action.result %} <br /><small
+                                                    >Result: {{ action.result
+                                                    }}</small
+                                                >
                                                 {% endif %}
                                             </div>
                                             {% endfor %}
                                         </div>
-                                        {% endif %}
-                                        
-                                        {% if unified_results.success or unified_results.failure %}
+                                        {% endif %} {% if
+                                        unified_results.success or
+                                        unified_results.failure %}
                                         <div class="row mb-3">
                                             <div class="col-md-6">
                                                 <div class="text-center">
-                                                    <span class="fs-2 text-success">{{ unified_results.success or 0 }}</span>
-                                                    <p class="mb-0 text-muted">Records Created</p>
+                                                    <span
+                                                        class="fs-2 text-success"
+                                                        >{{
+                                                        unified_results.success
+                                                        or 0 }}</span
+                                                    >
+                                                    <p class="mb-0 text-muted">
+                                                        Records Created
+                                                    </p>
                                                 </div>
                                             </div>
                                             {% if unified_results.failure > 0 %}
                                             <div class="col-md-6">
                                                 <div class="text-center">
-                                                    <span class="fs-2 text-danger">{{ unified_results.failure }}</span>
-                                                    <p class="mb-0 text-muted">Failed Records</p>
+                                                    <span
+                                                        class="fs-2 text-danger"
+                                                        >{{
+                                                        unified_results.failure
+                                                        }}</span
+                                                    >
+                                                    <p class="mb-0 text-muted">
+                                                        Failed Records
+                                                    </p>
                                                 </div>
                                             </div>
                                             {% endif %}
                                         </div>
-                                        {% endif %}
-                                        
-                                        {% if unified_results.created_ids %}
+                                        {% endif %} {% if
+                                        unified_results.created_ids %}
                                         <div class="mb-3">
                                             <h6>Created Record IDs:</h6>
                                             <div class="bg-light p-2 rounded">
-                                                <code>{{ unified_results.created_ids|join(', ') }}</code>
+                                                <code
+                                                    >{{
+                                                    unified_results.created_ids|join(',
+                                                    ') }}</code
+                                                >
                                             </div>
                                         </div>
-                                        {% endif %}
-                                        
-                                        {% if unified_results.errors %}
+                                        {% endif %} {% if unified_results.errors
+                                        %}
                                         <div class="alert alert-warning">
-                                            <h6><i class="bi bi-exclamation-triangle me-2"></i>Issues Encountered:</h6>
+                                            <h6>
+                                                <i
+                                                    class="bi bi-exclamation-triangle me-2"
+                                                ></i
+                                                >Issues Encountered:
+                                            </h6>
                                             <ul class="mb-0">
-                                                {% for error in unified_results.errors %}
+                                                {% for error in
+                                                unified_results.errors %}
                                                 <li>{{ error }}</li>
                                                 {% endfor %}
                                             </ul>
                                         </div>
-                                        {% endif %}
-                                        
-                                        {% if unified_results.preview %}
+                                        {% endif %} {% if
+                                        unified_results.preview %}
                                         <div class="mt-3">
                                             <h6>Execution Preview:</h6>
                                             <div class="bg-light p-3 rounded">
@@ -349,62 +666,101 @@ Combined Examples:
                                         {% endif %}
                                     </div>
                                 </div>
-                                {% endif %}
-                                
-                                {% if job and results %}
+                                {% endif %} {% if job and results %}
                                 <!-- Show generation results -->
                                 <div class="card mt-4">
                                     <div class="card-header">
                                         <h5>
-                                            <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                            Generation Results for {{ object_name }}
+                                            <i
+                                                class="bi bi-check-circle-fill text-success me-2"
+                                            ></i>
+                                            Generation Results for {{
+                                            object_name }}
                                         </h5>
                                     </div>
                                     <div class="card-body">
-                                        <div class="d-flex align-items-center mb-3">
+                                        <div
+                                            class="d-flex align-items-center mb-3"
+                                        >
                                             <div class="me-3">
-                                                <span class="fs-1 text-success">{{ results.success }}</span>
-                                                <p class="mb-0 text-muted">Records Created</p>
+                                                <span class="fs-1 text-success"
+                                                    >{{ results.success }}</span
+                                                >
+                                                <p class="mb-0 text-muted">
+                                                    Records Created
+                                                </p>
                                             </div>
-                                            
+
                                             {% if results.failure > 0 %}
                                             <div class="ms-4">
-                                                <span class="fs-1 text-danger">{{ results.failure }}</span>
-                                                <p class="mb-0 text-muted">Failed Records</p>
+                                                <span class="fs-1 text-danger"
+                                                    >{{ results.failure }}</span
+                                                >
+                                                <p class="mb-0 text-muted">
+                                                    Failed Records
+                                                </p>
                                             </div>
                                             {% endif %}
-                                            
+
                                             <div class="ms-auto">
-                                                <div class="btn-group" role="group" aria-label="Export Options">
-                                                    <button type="button" class="btn btn-outline-secondary" id="export-csv">
-                                                        <i class="bi bi-filetype-csv me-1"></i> Export CSV
+                                                <div
+                                                    class="btn-group"
+                                                    role="group"
+                                                    aria-label="Export Options"
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-outline-secondary"
+                                                        id="export-csv"
+                                                    >
+                                                        <i
+                                                            class="bi bi-filetype-csv me-1"
+                                                        ></i>
+                                                        Export CSV
                                                     </button>
-                                                    <button type="button" class="btn btn-outline-secondary" id="export-json">
-                                                        <i class="bi bi-filetype-json me-1"></i> Export JSON
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-outline-secondary"
+                                                        id="export-json"
+                                                    >
+                                                        <i
+                                                            class="bi bi-filetype-json me-1"
+                                                        ></i>
+                                                        Export JSON
                                                     </button>
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         {% if results.created_ids %}
                                         <div class="mb-3">
                                             <h5>Created Record IDs:</h5>
                                             <div class="results-container">
-                                                <code>{{ results.created_ids|join(', ') }}</code>
+                                                <code
+                                                    >{{
+                                                    results.created_ids|join(',
+                                                    ') }}</code
+                                                >
                                             </div>
                                         </div>
-                                        {% endif %}
-                                        
-                                        {% if results.errors %}
+                                        {% endif %} {% if results.errors %}
                                         <div class="mt-4">
                                             <h5>Errors:</h5>
                                             <div class="alert alert-danger">
                                                 <ul class="mb-0">
-                                                    {% for error in results.errors %}
+                                                    {% for error in
+                                                    results.errors %}
                                                     <li>
-                                                        <strong>{{ error.message }}</strong>
+                                                        <strong
+                                                            >{{ error.message
+                                                            }}</strong
+                                                        >
                                                         {% if error.fields %}
-                                                        <div>Fields: {{ error.fields|join(', ') }}</div>
+                                                        <div>
+                                                            Fields: {{
+                                                            error.fields|join(',
+                                                            ') }}
+                                                        </div>
                                                         {% endif %}
                                                     </li>
                                                     {% endfor %}
@@ -417,13 +773,19 @@ Combined Examples:
                                 {% endif %}
                             </div>
                         </div>
-                        
+
                         <!-- How It Works Card -->
                         <div class="card mt-4">
-                            <div class="card-header d-flex justify-content-between align-items-center">
+                            <div
+                                class="card-header d-flex justify-content-between align-items-center"
+                            >
                                 <h4>How It Works</h4>
                                 <div class="generate-controls">
-                                    <button class="btn btn-sm btn-outline-primary" id="toggle-how-it-works" title="Toggle information">
+                                    <button
+                                        class="btn btn-sm btn-outline-primary"
+                                        id="toggle-how-it-works"
+                                        title="Toggle information"
+                                    >
                                         <i class="bi bi-chevron-up"></i>
                                     </button>
                                 </div>
@@ -432,23 +794,50 @@ Combined Examples:
                                 <div class="row">
                                     <div class="col-md-4">
                                         <div class="text-center mb-3">
-                                            <i class="bi bi-diagram-3-fill text-primary" style="font-size: 2.5rem"></i>
-                                            <h5 class="mt-2">1. Analyze Schema</h5>
-                                            <p>We retrieve and analyze the object's schema, fields, and relationships.</p>
+                                            <i
+                                                class="bi bi-diagram-3-fill text-primary"
+                                                style="font-size: 2.5rem"
+                                            ></i>
+                                            <h5 class="mt-2">
+                                                1. Analyze Schema
+                                            </h5>
+                                            <p>
+                                                We retrieve and analyze the
+                                                object's schema, fields, and
+                                                relationships.
+                                            </p>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <div class="text-center mb-3">
-                                            <i class="bi bi-robot text-primary" style="font-size: 2.5rem"></i>
-                                            <h5 class="mt-2">2. Generate with AI</h5>
-                                            <p>Intelligent automation generates realistic test data respecting all schema constraints.</p>
+                                            <i
+                                                class="bi bi-robot text-primary"
+                                                style="font-size: 2.5rem"
+                                            ></i>
+                                            <h5 class="mt-2">
+                                                2. Generate with AI
+                                            </h5>
+                                            <p>
+                                                Intelligent automation generates
+                                                realistic test data respecting
+                                                all schema constraints.
+                                            </p>
                                         </div>
                                     </div>
                                     <div class="col-md-4">
                                         <div class="text-center mb-3">
-                                            <i class="bi bi-cloud-upload-fill text-primary" style="font-size: 2.5rem"></i>
-                                            <h5 class="mt-2">3. Insert to Salesforce</h5>
-                                            <p>The generated data is inserted into your Salesforce org with error handling.</p>
+                                            <i
+                                                class="bi bi-cloud-upload-fill text-primary"
+                                                style="font-size: 2.5rem"
+                                            ></i>
+                                            <h5 class="mt-2">
+                                                3. Insert to Salesforce
+                                            </h5>
+                                            <p>
+                                                The generated data is inserted
+                                                into your Salesforce org with
+                                                error handling.
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
@@ -462,7 +851,13 @@ Combined Examples:
 </div>
 
 <!-- Examples Modal -->
-<div class="modal fade" id="examplesModal" tabindex="-1" aria-labelledby="examplesModalLabel" aria-hidden="true">
+<div
+    class="modal fade"
+    id="examplesModal"
+    tabindex="-1"
+    aria-labelledby="examplesModalLabel"
+    aria-hidden="true"
+>
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
@@ -470,27 +865,38 @@ Combined Examples:
                     <i class="bi bi-lightbulb me-2"></i>
                     Prompt Examples
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button
+                    type="button"
+                    class="btn-close"
+                    data-bs-dismiss="modal"
+                    aria-label="Close"
+                ></button>
             </div>
             <div class="modal-body">
                 <div class="row">
                     <div class="col-md-6">
                         <h6 class="text-primary">Schema Creation Examples:</h6>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Create a Project object with Name (text), Status (picklist with Active, Completed, On Hold), and Budget (currency) fields">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Create a Project object with Name (text), Status (picklist with Active, Completed, On Hold), and Budget (currency) fields"
+                            >
                                 Create Project object with fields
                             </button>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Add Description (long text) and Phone (phone) fields to the Contact object">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Add Description (long text) and Phone (phone) fields to the Contact object"
+                            >
                                 Add fields to existing object
                             </button>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Create a Task object with Subject, Priority (High, Medium, Low), Due Date, and Account lookup fields">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Create a Task object with Subject, Priority (High, Medium, Low), Due Date, and Account lookup fields"
+                            >
                                 Create Task with lookup relationship
                             </button>
                         </div>
@@ -498,20 +904,26 @@ Combined Examples:
                     <div class="col-md-6">
                         <h6 class="text-success">Data Generation Examples:</h6>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Generate 10 Accounts with realistic company names and addresses">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Generate 10 Accounts with realistic company names and addresses"
+                            >
                                 Generate basic data records
                             </button>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Create 20 Leads and link each to a random existing Account">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Create 20 Leads and link each to a random existing Account"
+                            >
                                 Generate with relationships
                             </button>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Generate 5 Opportunities for each Account, with realistic stages and amounts">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Generate 5 Opportunities for each Account, with realistic stages and amounts"
+                            >
                                 Generate related records
                             </button>
                         </div>
@@ -519,22 +931,30 @@ Combined Examples:
                 </div>
                 <div class="row mt-4">
                     <div class="col-12">
-                        <h6 class="text-info">Combined Schema + Data Examples:</h6>
+                        <h6 class="text-info">
+                            Combined Schema + Data Examples:
+                        </h6>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Create a Product object with Name, Price, Category fields, then generate 15 Products and 30 related Orders">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Create a Product object with Name, Price, Category fields, then generate 15 Products and 30 related Orders"
+                            >
                                 Create object then generate data
                             </button>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Build a Training object with Title, Duration, Instructor fields, then create 10 Trainings and assign 5 employees to each">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Build a Training object with Title, Duration, Instructor fields, then create 10 Trainings and assign 5 employees to each"
+                            >
                                 Complex schema and data creation
                             </button>
                         </div>
                         <div class="mb-3">
-                            <button class="btn btn-outline-secondary btn-sm w-100 text-start example-btn" 
-                                    data-example="Use this GitHub config: https://github.com/SFDO-Tooling/Snowfakery/blob/main/examples/salesforce/simple_salesforce.yml and create 50 records">
+                            <button
+                                class="btn btn-outline-secondary btn-sm w-100 text-start example-btn"
+                                data-example="Use this GitHub config: https://github.com/SFDO-Tooling/Snowfakery/blob/main/examples/salesforce/simple_salesforce.yml and create 50 records"
+                            >
                                 GitHub configuration example
                             </button>
                         </div>
@@ -542,26 +962,30 @@ Combined Examples:
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    data-bs-dismiss="modal"
+                >
+                    Close
+                </button>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
+{% endblock %} {% block scripts %}
 <!-- Include Mermaid.js for diagram generation -->
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
 
 <!-- Object List Functionality -->
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const objList = document.getElementById('object-list');
-        
+    document.addEventListener("DOMContentLoaded", function () {
+        const objList = document.getElementById("object-list");
+
         if (!objList) return;
-        
+
         // All objects are now server-side filtered - no client-side manipulation needed
-        console.log('Object list loaded with server-side filtering');
+        console.log("Object list loaded with server-side filtering");
     });
 </script>
 
@@ -569,20 +993,20 @@ Combined Examples:
 <script>
     // Data export functionality
     document.addEventListener('DOMContentLoaded', function() {
-        
+
         // Add event listeners to export buttons if they exist
         const exportCsvBtn = document.getElementById('export-csv');
         const exportJsonBtn = document.getElementById('export-json');
-        
+
         if (exportCsvBtn && exportJsonBtn) {
             // We need to get the job ID from the page
             // This assumes the job ID is stored somewhere in the page
             // For this implementation, we'll add a data attribute to the export buttons
-            
+
             // First, let's find the last job ID from the page context
             // We'll extract it from the results section if available
             const jobId = {{ job.id if job else 'null' }};
-            
+
             exportCsvBtn.addEventListener('click', function() {
                 if (jobId) {
                     window.location.href = `/export/csv/${jobId}`;
@@ -590,7 +1014,7 @@ Combined Examples:
                     alert('No data available to export');
                 }
             });
-            
+
             exportJsonBtn.addEventListener('click', function() {
                 if (jobId) {
                     window.location.href = `/export/json/${jobId}`;
@@ -604,21 +1028,22 @@ Combined Examples:
 
 <!-- Enhanced UI Functionality for Unified Interface -->
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // GitHub config toggle
-    const useGithubCheck = document.getElementById('use-github-config');
-    const githubSection = document.getElementById('github-config-section');
-    const unifiedPrompt = document.getElementById('unified-prompt');
-    const githubUrl = document.getElementById('github-url');
-    
-    useGithubCheck?.addEventListener('change', function() {
-        if (this.checked) {
-            githubSection.style.display = 'block';
-            unifiedPrompt.placeholder = 'Describe how to use the GitHub configuration file or leave blank to use the config as-is...';
-            githubUrl.required = true;
-        } else {
-            githubSection.style.display = 'none';
-            unifiedPrompt.placeholder = `Describe what you want to create:
+    document.addEventListener("DOMContentLoaded", function () {
+        // GitHub config toggle
+        const useGithubCheck = document.getElementById("use-github-config");
+        const githubSection = document.getElementById("github-config-section");
+        const unifiedPrompt = document.getElementById("unified-prompt");
+        const githubUrl = document.getElementById("github-url");
+
+        useGithubCheck?.addEventListener("change", function () {
+            if (this.checked) {
+                githubSection.style.display = "block";
+                unifiedPrompt.placeholder =
+                    "Describe how to use the GitHub configuration file or leave blank to use the config as-is...";
+                githubUrl.required = true;
+            } else {
+                githubSection.style.display = "none";
+                unifiedPrompt.placeholder = `Describe what you want to create:
 
 Schema Examples:
 • Create a Project object with Name, Status, and Budget fields
@@ -631,124 +1056,146 @@ Data Examples:
 Combined Examples:
 • Create a Task object with fields, then generate 50 Tasks linked to existing Accounts
 • Build a Product object with custom fields, then create 15 Products and 30 related Orders`;
-            githubUrl.required = false;
-        }
-    });
-    
-    // Example buttons functionality
-    const exampleButtons = document.querySelectorAll('.example-btn');
-    exampleButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const example = this.getAttribute('data-example');
-            unifiedPrompt.value = example;
-            
-            // Close modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('examplesModal'));
-            if (modal) {
-                modal.hide();
+                githubUrl.required = false;
             }
-            
-            // Focus on the prompt textarea
-            unifiedPrompt.focus();
         });
-    });
-    
-    // Auto-detect prompt intent and update submit button text
-    unifiedPrompt?.addEventListener('input', function() {
-        const text = this.value.toLowerCase();
-        const submitText = document.getElementById('submit-text');
-        
-        if (text.includes('create') && text.includes('object')) {
-            if (text.includes('generate') || text.includes('insert') || text.includes('data')) {
-                submitText.textContent = 'Create Schema & Generate Data';
+
+        // Example buttons functionality
+        const exampleButtons = document.querySelectorAll(".example-btn");
+        exampleButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                const example = this.getAttribute("data-example");
+                unifiedPrompt.value = example;
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(
+                    document.getElementById("examplesModal"),
+                );
+                if (modal) {
+                    modal.hide();
+                }
+
+                // Focus on the prompt textarea
+                unifiedPrompt.focus();
+            });
+        });
+
+        // Auto-detect prompt intent and update submit button text
+        unifiedPrompt?.addEventListener("input", function () {
+            const text = this.value.toLowerCase();
+            const submitText = document.getElementById("submit-text");
+
+            if (text.includes("create") && text.includes("object")) {
+                if (
+                    text.includes("generate") ||
+                    text.includes("insert") ||
+                    text.includes("data")
+                ) {
+                    submitText.textContent = "Create Schema & Generate Data";
+                } else {
+                    submitText.textContent = "Create Schema";
+                }
+            } else if (
+                text.includes("generate") ||
+                text.includes("insert") ||
+                text.includes("data")
+            ) {
+                submitText.textContent = "Generate Data";
+            } else if (
+                text.includes("github") ||
+                text.includes("config") ||
+                text.includes("yml") ||
+                text.includes("yaml")
+            ) {
+                submitText.textContent = "Process Configuration";
             } else {
-                submitText.textContent = 'Create Schema';
-            }
-        } else if (text.includes('generate') || text.includes('insert') || text.includes('data')) {
-            submitText.textContent = 'Generate Data';
-        } else if (text.includes('github') || text.includes('config') || text.includes('yml') || text.includes('yaml')) {
-            submitText.textContent = 'Process Configuration';
-        } else {
-            submitText.textContent = 'Process Prompt';
-        }
-    });
-    
-    // Form submission handling
-    const unifiedForm = document.getElementById('unified-prompt-form');
-    unifiedForm?.addEventListener('submit', function(e) {
-        const prompt = unifiedPrompt.value.trim();
-        const useGithub = useGithubCheck.checked;
-        const githubUrlValue = githubUrl.value.trim();
-        
-        // Basic validation
-        if (!prompt && !useGithub) {
-            e.preventDefault();
-            alert('Please enter a prompt or enable GitHub configuration.');
-            return;
-        }
-        
-        if (useGithub && !githubUrlValue) {
-            e.preventDefault();
-            alert('Please enter a GitHub URL when using GitHub configuration.');
-            return;
-        }
-        
-        // Set mode based on content
-        const modeInput = document.getElementById('prompt-mode');
-        if (useGithub) {
-            modeInput.value = 'github';
-        } else if (prompt.toLowerCase().includes('github') || prompt.toLowerCase().includes('http')) {
-            modeInput.value = 'github_inline';
-        } else {
-            modeInput.value = 'natural';
-        }
-        
-        // Show loading state
-        const submitButton = this.querySelector('button[type="submit"]');
-        const originalText = submitButton.innerHTML;
-        submitButton.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
-        submitButton.disabled = true;
-        
-        // Re-enable after a timeout to prevent permanent disable if form fails
-        setTimeout(() => {
-            submitButton.innerHTML = originalText;
-            submitButton.disabled = false;
-        }, 30000);
-    });
-    
-    // Responsive textarea height
-    function adjustTextareaHeight() {
-        if (unifiedPrompt) {
-            unifiedPrompt.style.height = 'auto';
-            unifiedPrompt.style.height = Math.min(unifiedPrompt.scrollHeight, 300) + 'px';
-        }
-    }
-    
-    unifiedPrompt?.addEventListener('input', adjustTextareaHeight);
-    
-    // Toggle functionality for collapsible sections
-    const toggleButtons = document.querySelectorAll('[id^="toggle-"]');
-    toggleButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const icon = this.querySelector('i');
-            if (icon) {
-                icon.classList.toggle('bi-chevron-up');
-                icon.classList.toggle('bi-chevron-down');
+                submitText.textContent = "Process Prompt";
             }
         });
+
+        // Form submission handling
+        const unifiedForm = document.getElementById("unified-prompt-form");
+        unifiedForm?.addEventListener("submit", function (e) {
+            const prompt = unifiedPrompt.value.trim();
+            const useGithub = useGithubCheck.checked;
+            const githubUrlValue = githubUrl.value.trim();
+
+            // Basic validation
+            if (!prompt && !useGithub) {
+                e.preventDefault();
+                alert("Please enter a prompt or enable GitHub configuration.");
+                return;
+            }
+
+            if (useGithub && !githubUrlValue) {
+                e.preventDefault();
+                alert(
+                    "Please enter a GitHub URL when using GitHub configuration.",
+                );
+                return;
+            }
+
+            // Set mode based on content
+            const modeInput = document.getElementById("prompt-mode");
+            if (useGithub) {
+                modeInput.value = "github";
+            } else if (
+                prompt.toLowerCase().includes("github") ||
+                prompt.toLowerCase().includes("http")
+            ) {
+                modeInput.value = "github_inline";
+            } else {
+                modeInput.value = "natural";
+            }
+
+            // Show loading state
+            const submitButton = this.querySelector('button[type="submit"]');
+            const originalText = submitButton.innerHTML;
+            submitButton.innerHTML =
+                '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+            submitButton.disabled = true;
+
+            // Re-enable after a timeout to prevent permanent disable if form fails
+            setTimeout(() => {
+                submitButton.innerHTML = originalText;
+                submitButton.disabled = false;
+            }, 30000);
+        });
+
+        // Responsive textarea height
+        function adjustTextareaHeight() {
+            if (unifiedPrompt) {
+                unifiedPrompt.style.height = "auto";
+                unifiedPrompt.style.height =
+                    Math.min(unifiedPrompt.scrollHeight, 300) + "px";
+            }
+        }
+
+        unifiedPrompt?.addEventListener("input", adjustTextareaHeight);
+
+        // Toggle functionality for collapsible sections
+        const toggleButtons = document.querySelectorAll('[id^="toggle-"]');
+        toggleButtons.forEach((button) => {
+            button.addEventListener("click", function () {
+                const icon = this.querySelector("i");
+                if (icon) {
+                    icon.classList.toggle("bi-chevron-up");
+                    icon.classList.toggle("bi-chevron-down");
+                }
+            });
+        });
     });
-});
 </script>
 
 <!-- Object Selection and Schema Loading -->
 <script>
-function loadObjectDiagram(objectName) {
-    // Clear previous content
-    const objectDetails = document.getElementById('object-details');
-    const schemaDiagram = document.getElementById('schema-diagram');
-    
-    // Show loading state
-    objectDetails.innerHTML = `
+    function loadObjectDiagram(objectName) {
+        // Clear previous content
+        const objectDetails = document.getElementById("object-details");
+        const schemaDiagram = document.getElementById("schema-diagram");
+
+        // Show loading state
+        objectDetails.innerHTML = `
         <div class="text-center my-5">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
@@ -756,31 +1203,30 @@ function loadObjectDiagram(objectName) {
             <p class="lead mt-3">Loading ${objectName} schema...</p>
         </div>
     `;
-    
-    // Hide diagram initially
-    schemaDiagram.style.display = 'none';
-    
-    // Fetch object schema details
-    fetch(`/api/object/${objectName}/details`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            // Display object details with the restored comprehensive function
-            displayObjectDetails(objectName, data);
-            
-            // Load relationship diagram
-            loadObjectRelationshipDiagram(objectName);
-            
-            // Update unified prompt context
-            updatePromptContext(objectName);
-            
-        })
-        .catch(error => {
-            console.error('Error loading object details:', error);
-            objectDetails.innerHTML = `
+
+        // Hide diagram initially
+        schemaDiagram.style.display = "none";
+
+        // Fetch object schema details
+        fetch(`/api/object/${objectName}/details`)
+            .then((response) => response.json())
+            .then((data) => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Display object details with the restored comprehensive function
+                displayObjectDetails(objectName, data);
+
+                // Load relationship diagram
+                loadObjectRelationshipDiagram(objectName);
+
+                // Update unified prompt context
+                updatePromptContext(objectName);
+            })
+            .catch((error) => {
+                console.error("Error loading object details:", error);
+                objectDetails.innerHTML = `
                 <div class="alert alert-danger">
                     <h5><i class="bi bi-exclamation-triangle me-2"></i>Error Loading Schema</h5>
                     <p>Failed to load schema for ${objectName}: ${error.message}</p>
@@ -789,134 +1235,150 @@ function loadObjectDiagram(objectName) {
                     </button>
                 </div>
             `;
-        });
-}
+            });
+    }
 
-// Note: displayObjectDetails function is now defined in the restored schema functionality section below
+    // Note: displayObjectDetails function is now defined in the restored schema functionality section below
 
-// All schema functions are defined in the comprehensive section below this script block
+    // All schema functions are defined in the comprehensive section below this script block
 </script>
 
 <!-- Additional schema functionality that was cleaned up -->
 <script>
-function generateMermaidDiagram(objectName, relationshipData) {
-    let diagram = 'graph TD\n';
-    
-    // Sanitize object names for Mermaid (replace special characters)
-    function sanitizeName(name) {
-        return name.replace(/[^a-zA-Z0-9]/g, '_');
-    }
-    
-    const mainObjectId = sanitizeName(objectName);
-    diagram += `    ${mainObjectId}["${objectName}"]\n`;
-    
-    // Add parent relationships from parent_relationships array
-    if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
-        relationshipData.parent_relationships.forEach(parent => {
-            const parentId = sanitizeName(parent.target_object);
-            const relationshipType = parent.relationship_type === 'master_detail' ? '==>' : '-->';
-            diagram += `    ${parentId}["${parent.target_object}"] ${relationshipType} ${mainObjectId}\n`;
-        });
-    }
-    
-    // Add child relationships from child_relationships array
-    if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
-        relationshipData.child_relationships.forEach(child => {
-            const childId = sanitizeName(child.source_object);
-            const relationshipType = child.relationship_type === 'master_detail' ? '==>' : '-->';
-            diagram += `    ${mainObjectId} ${relationshipType} ${childId}["${child.source_object}"]\n`;
-        });
-    }
-    
-    // Style the main object with dark theme friendly colors
-    diagram += `    classDef mainObject fill:#0d6efd,stroke:#0a58ca,stroke-width:3px,color:#fff\n`;
-    diagram += `    classDef parentObject fill:#28a745,stroke:#1e7e34,stroke-width:2px,color:#fff\n`;
-    diagram += `    classDef childObject fill:#ffc107,stroke:#e0a800,stroke-width:2px,color:#000\n`;
-    diagram += `    class ${mainObjectId} mainObject\n`;
-    
-    // Apply styling to parent objects
-    if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
-        relationshipData.parent_relationships.forEach(parent => {
-            const parentId = sanitizeName(parent.target_object);
-            diagram += `    class ${parentId} parentObject\n`;
-        });
-    }
-    
-    // Apply styling to child objects
-    if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
-        relationshipData.child_relationships.forEach(child => {
-            const childId = sanitizeName(child.source_object);
-            diagram += `    class ${childId} childObject\n`;
-        });
-    }
-    
-    console.log('Generated Mermaid diagram:', diagram);
-    return diagram;
-}
+    function generateMermaidDiagram(objectName, relationshipData) {
+        let diagram = "graph TD\n";
 
-function updatePromptContext(objectName) {
-    const unifiedPrompt = document.getElementById('unified-prompt');
-    if (unifiedPrompt && !unifiedPrompt.value.trim()) {
-        unifiedPrompt.placeholder = `Selected: ${objectName}
+        // Sanitize object names for Mermaid (replace special characters)
+        function sanitizeName(name) {
+            return name.replace(/[^a-zA-Z0-9]/g, "_");
+        }
+
+        const mainObjectId = sanitizeName(objectName);
+        diagram += `    ${mainObjectId}["${objectName}"]\n`;
+
+        // Add parent relationships from parent_relationships array
+        if (
+            relationshipData.parent_relationships &&
+            relationshipData.parent_relationships.length > 0
+        ) {
+            relationshipData.parent_relationships.forEach((parent) => {
+                const parentId = sanitizeName(parent.target_object);
+                const relationshipType =
+                    parent.relationship_type === "master_detail"
+                        ? "==>"
+                        : "-->";
+                diagram += `    ${parentId}["${parent.target_object}"] ${relationshipType} ${mainObjectId}\n`;
+            });
+        }
+
+        // Add child relationships from child_relationships array
+        if (
+            relationshipData.child_relationships &&
+            relationshipData.child_relationships.length > 0
+        ) {
+            relationshipData.child_relationships.forEach((child) => {
+                const childId = sanitizeName(child.source_object);
+                const relationshipType =
+                    child.relationship_type === "master_detail" ? "==>" : "-->";
+                diagram += `    ${mainObjectId} ${relationshipType} ${childId}["${child.source_object}"]\n`;
+            });
+        }
+
+        // Style the main object with dark theme friendly colors
+        diagram += `    classDef mainObject fill:#0d6efd,stroke:#0a58ca,stroke-width:3px,color:#fff\n`;
+        diagram += `    classDef parentObject fill:#28a745,stroke:#1e7e34,stroke-width:2px,color:#fff\n`;
+        diagram += `    classDef childObject fill:#ffc107,stroke:#e0a800,stroke-width:2px,color:#000\n`;
+        diagram += `    class ${mainObjectId} mainObject\n`;
+
+        // Apply styling to parent objects
+        if (
+            relationshipData.parent_relationships &&
+            relationshipData.parent_relationships.length > 0
+        ) {
+            relationshipData.parent_relationships.forEach((parent) => {
+                const parentId = sanitizeName(parent.target_object);
+                diagram += `    class ${parentId} parentObject\n`;
+            });
+        }
+
+        // Apply styling to child objects
+        if (
+            relationshipData.child_relationships &&
+            relationshipData.child_relationships.length > 0
+        ) {
+            relationshipData.child_relationships.forEach((child) => {
+                const childId = sanitizeName(child.source_object);
+                diagram += `    class ${childId} childObject\n`;
+            });
+        }
+
+        console.log("Generated Mermaid diagram:", diagram);
+        return diagram;
+    }
+
+    function updatePromptContext(objectName) {
+        const unifiedPrompt = document.getElementById("unified-prompt");
+        if (unifiedPrompt && !unifiedPrompt.value.trim()) {
+            unifiedPrompt.placeholder = `Selected: ${objectName}
 
 Examples for ${objectName}:
 • Generate 10 ${objectName} records with realistic data
 • Add custom fields to ${objectName} object
 • Create relationships between ${objectName} and other objects`;
+        }
     }
-}
 
-// Field category toggle function
-function toggleFieldCategory(collapseId) {
-    const collapseElement = document.getElementById(collapseId);
-    const icon = document.getElementById(`icon-${collapseId}`);
-    
-    if (collapseElement.classList.contains('show')) {
-        collapseElement.classList.remove('show');
-        icon.classList.remove('bi-chevron-up');
-        icon.classList.add('bi-chevron-down');
-    } else {
-        collapseElement.classList.add('show');
-        icon.classList.remove('bi-chevron-down');
-        icon.classList.add('bi-chevron-up');
+    // Field category toggle function
+    function toggleFieldCategory(collapseId) {
+        const collapseElement = document.getElementById(collapseId);
+        const icon = document.getElementById(`icon-${collapseId}`);
+
+        if (collapseElement.classList.contains("show")) {
+            collapseElement.classList.remove("show");
+            icon.classList.remove("bi-chevron-up");
+            icon.classList.add("bi-chevron-down");
+        } else {
+            collapseElement.classList.add("show");
+            icon.classList.remove("bi-chevron-down");
+            icon.classList.add("bi-chevron-up");
+        }
     }
-}
 
-// Advanced options toggle function - manual version
-function toggleAdvancedOptionsManual() {
-    const icon = document.getElementById('advanced-options-icon');
-    const advancedOptions = document.getElementById('advanced-options');
-    
-    if (advancedOptions.classList.contains('show')) {
-        advancedOptions.classList.remove('show');
-        icon.classList.remove('bi-chevron-up');
-        icon.classList.add('bi-chevron-down');
-    } else {
-        advancedOptions.classList.add('show');
-        icon.classList.remove('bi-chevron-down');
-        icon.classList.add('bi-chevron-up');
+    // Advanced options toggle function - manual version
+    function toggleAdvancedOptionsManual() {
+        const icon = document.getElementById("advanced-options-icon");
+        const advancedOptions = document.getElementById("advanced-options");
+
+        if (advancedOptions.classList.contains("show")) {
+            advancedOptions.classList.remove("show");
+            icon.classList.remove("bi-chevron-up");
+            icon.classList.add("bi-chevron-down");
+        } else {
+            advancedOptions.classList.add("show");
+            icon.classList.remove("bi-chevron-down");
+            icon.classList.add("bi-chevron-up");
+        }
     }
-}
 
-// Prompt expand/retract function
-function togglePromptExpand() {
-    const prompt = document.getElementById('unified-prompt');
-    const icon = document.getElementById('prompt-expand-icon');
-    
-    if (prompt.rows <= 5) {
-        prompt.rows = 15;
-        icon.classList.remove('bi-arrows-expand');
-        icon.classList.add('bi-arrows-collapse');
-    } else {
-        prompt.rows = 5;
-        icon.classList.remove('bi-arrows-collapse');
-        icon.classList.add('bi-arrows-expand');
+    // Prompt expand/retract function
+    function togglePromptExpand() {
+        const prompt = document.getElementById("unified-prompt");
+        const icon = document.getElementById("prompt-expand-icon");
+
+        if (prompt.rows <= 5) {
+            prompt.rows = 15;
+            icon.classList.remove("bi-arrows-expand");
+            icon.classList.add("bi-arrows-collapse");
+        } else {
+            prompt.rows = 5;
+            icon.classList.remove("bi-arrows-collapse");
+            icon.classList.add("bi-arrows-expand");
+        }
     }
-}
 
-// Data Quality info modal
-function showDataQualityInfo() {
-    const modalHtml = `
+    // Data Quality info modal
+    function showDataQualityInfo() {
+        const modalHtml = `
         <div class="modal fade" id="dataQualityModal" tabindex="-1">
             <div class="modal-dialog">
                 <div class="modal-content bg-dark text-light">
@@ -945,24 +1407,26 @@ function showDataQualityInfo() {
             </div>
         </div>
     `;
-    
-    // Remove existing modal if it exists
-    const existingModal = document.getElementById('dataQualityModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Add modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('dataQualityModal'));
-    modal.show();
-}
 
-// Bulk data info modal
-function showBulkDataInfo() {
-    const modalHtml = `
+        // Remove existing modal if it exists
+        const existingModal = document.getElementById("dataQualityModal");
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to body
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+        // Show modal
+        const modal = new bootstrap.Modal(
+            document.getElementById("dataQualityModal"),
+        );
+        modal.show();
+    }
+
+    // Bulk data info modal
+    function showBulkDataInfo() {
+        const modalHtml = `
         <div class="modal fade" id="bulkDataModal" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content bg-dark text-light">
@@ -1016,181 +1480,197 @@ function showBulkDataInfo() {
             </div>
         </div>
     `;
-    
-    // Remove existing modal if it exists
-    const existingModal = document.getElementById('bulkDataModal');
-    if (existingModal) {
-        existingModal.remove();
+
+        // Remove existing modal if it exists
+        const existingModal = document.getElementById("bulkDataModal");
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Add modal to body
+        document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+        // Show modal
+        const modal = new bootstrap.Modal(
+            document.getElementById("bulkDataModal"),
+        );
+        modal.show();
     }
-    
-    // Add modal to body
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('bulkDataModal'));
-    modal.show();
-}
 
-// Refresh schema function
-function refreshSchema() {
-    window.location.reload();
-}
-
-// Diagram visibility toggle
-function toggleDiagramVisibility() {
-    const diagramBody = document.getElementById('diagram-body');
-    const icon = document.getElementById('diagram-toggle-icon');
-    
-    if (diagramBody.style.display === 'none') {
-        diagramBody.style.display = 'block';
-        icon.classList.remove('bi-chevron-down');
-        icon.classList.add('bi-chevron-up');
-    } else {
-        diagramBody.style.display = 'none';
-        icon.classList.remove('bi-chevron-up');
-        icon.classList.add('bi-chevron-down');
+    // Refresh schema function
+    function refreshSchema() {
+        window.location.reload();
     }
-}
 
-// Diagram resize function
-function resizeDiagram(direction) {
-    const diagramContainer = document.getElementById('object-diagram');
-    const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
-    
-    if (direction === 'smaller' && currentHeight > 200) {
-        diagramContainer.style.height = (currentHeight - 100) + 'px';
-    } else if (direction === 'larger') {
-        diagramContainer.style.height = (currentHeight + 100) + 'px';
+    // Diagram visibility toggle
+    function toggleDiagramVisibility() {
+        const diagramBody = document.getElementById("diagram-body");
+        const icon = document.getElementById("diagram-toggle-icon");
+
+        if (diagramBody.style.display === "none") {
+            diagramBody.style.display = "block";
+            icon.classList.remove("bi-chevron-down");
+            icon.classList.add("bi-chevron-up");
+        } else {
+            diagramBody.style.display = "none";
+            icon.classList.remove("bi-chevron-up");
+            icon.classList.add("bi-chevron-down");
+        }
     }
-}
 
-// Search functionality (enhanced for mobile)
-document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('search-objects');
-    const searchForm = document.createElement('form');
-    
-    if (searchInput) {
-        // Make search mobile-friendly
-        searchInput.addEventListener('input', debounce(function() {
-            const query = this.value.trim();
-            if (query.length >= 2) {
-                performSearch(query);
-            } else if (query.length === 0) {
-                clearSearch();
-            }
-        }, 300));
-        
-        // Handle Enter key
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = this.value.trim();
-                if (query) {
-                    performSearch(query);
+    // Diagram resize function
+    function resizeDiagram(direction) {
+        const diagramContainer = document.getElementById("object-diagram");
+        const currentHeight = parseInt(
+            getComputedStyle(diagramContainer).height,
+        );
+
+        if (direction === "smaller" && currentHeight > 200) {
+            diagramContainer.style.height = currentHeight - 100 + "px";
+        } else if (direction === "larger") {
+            diagramContainer.style.height = currentHeight + 100 + "px";
+        }
+    }
+
+    // Search functionality (enhanced for mobile)
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("search-objects");
+        const searchForm = document.createElement("form");
+
+        if (searchInput) {
+            // Make search mobile-friendly
+            searchInput.addEventListener(
+                "input",
+                debounce(function () {
+                    const query = this.value.trim();
+                    if (query.length >= 2) {
+                        performSearch(query);
+                    } else if (query.length === 0) {
+                        clearSearch();
+                    }
+                }, 300),
+            );
+
+            // Handle Enter key
+            searchInput.addEventListener("keypress", function (e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    const query = this.value.trim();
+                    if (query) {
+                        performSearch(query);
+                    }
                 }
-            }
-        });
-    }
-    
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
+            });
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
                 clearTimeout(timeout);
-                func(...args);
+                timeout = setTimeout(later, wait);
             };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }
-    
-    function performSearch(query) {
-        // Implement search functionality
-        window.location.href = `{{ url_for('combined') }}?q=${encodeURIComponent(query)}`;
-    }
-    
-    function clearSearch() {
-        window.location.href = `{{ url_for('combined') }}`;
-    }
-});
+        }
+
+        function performSearch(query) {
+            // Implement search functionality
+            window.location.href = `{{ url_for('combined') }}?q=${encodeURIComponent(query)}`;
+        }
+
+        function clearSearch() {
+            window.location.href = `{{ url_for('combined') }}`;
+        }
+    });
 </script>
 <script>
     mermaid.initialize({
         startOnLoad: true,
-        theme: 'dark',
-        securityLevel: 'loose',
-        fontFamily: 'system-ui, -apple-system, sans-serif'
+        theme: "dark",
+        securityLevel: "loose",
+        fontFamily: "system-ui, -apple-system, sans-serif",
     });
-    
-    document.addEventListener('DOMContentLoaded', function() {
+
+    document.addEventListener("DOMContentLoaded", function () {
         // This is the main initialization code for the page UI
-        
+
         // Get object list element
-        const objectList = document.getElementById('object-list');
-        
+        const objectList = document.getElementById("object-list");
+
         // Object selection handling
         if (objectList) {
-            objectList.addEventListener('click', function(event) {
-                const listItem = event.target.closest('.object-item');
+            objectList.addEventListener("click", function (event) {
+                const listItem = event.target.closest(".object-item");
                 if (listItem) {
                     // Remove active class from all items
-                    const allItems = this.querySelectorAll('.object-item');
-                    allItems.forEach(item => {
-                        item.classList.remove('active');
-                        item.classList.remove('btn-primary');
-                        item.classList.add('btn-outline-light');
+                    const allItems = this.querySelectorAll(".object-item");
+                    allItems.forEach((item) => {
+                        item.classList.remove("active");
+                        item.classList.remove("btn-primary");
+                        item.classList.add("btn-outline-light");
                     });
-                    
+
                     // Add active class to the clicked item
-                    listItem.classList.add('active');
-                    listItem.classList.remove('btn-outline-light');
-                    listItem.classList.add('btn-primary');
-                    
+                    listItem.classList.add("active");
+                    listItem.classList.remove("btn-outline-light");
+                    listItem.classList.add("btn-primary");
+
                     // Get the object name and display it
-                    const objectName = listItem.getAttribute('data-object');
-                    const objectLabel = listItem.getAttribute('data-object-label');
-                    
+                    const objectName = listItem.getAttribute("data-object");
+                    const objectLabel =
+                        listItem.getAttribute("data-object-label");
+
                     // Update display in Generate Data section
-                    document.getElementById('object-name-display').textContent = objectLabel;
-                    document.getElementById('object-name-input').value = objectName;
-                    
+                    document.getElementById("object-name-display").textContent =
+                        objectLabel;
+                    document.getElementById("object-name-input").value =
+                        objectName;
+
                     // Hide placeholder and show form in Generate Data section
-                    document.getElementById('generation-placeholder').style.display = 'none';
-                    document.getElementById('generation-form').style.display = 'block';
-                    
+                    document.getElementById(
+                        "generation-placeholder",
+                    ).style.display = "none";
+                    document.getElementById("generation-form").style.display =
+                        "block";
+
                     // Make sure the generate sections are properly initialized
                     initGenerateControls();
-                    
+
                     // Load object details and relationship diagram using the original function
                     loadObjectDiagram(objectName);
                 }
             });
         }
-        
+
         // Generate form controls initialization
         function initGenerateControls() {
             // Add any specific initialization for generation controls
-            console.log('Generate controls initialized');
+            console.log("Generate controls initialized");
         }
     });
-    
+
     // Complete schema viewing functionality restoration
     function displayObjectDetails(objectName, objectInfo) {
-        const objectDetails = document.getElementById('object-details');
-        
+        const objectDetails = document.getElementById("object-details");
+
         // Parse fields data
         let fields = [];
         if (objectInfo.fields) {
-            fields = Array.isArray(objectInfo.fields) ? objectInfo.fields : 
-                     typeof objectInfo.fields === 'string' ? JSON.parse(objectInfo.fields) : [];
+            fields = Array.isArray(objectInfo.fields)
+                ? objectInfo.fields
+                : typeof objectInfo.fields === "string"
+                  ? JSON.parse(objectInfo.fields)
+                  : [];
         }
-        
+
         // Categorize fields
         const fieldCategories = categorizeFields(fields);
-        
+
         // Generate field tables HTML
         const fieldTablesHtml = generateFieldTables(fieldCategories);
-        
+
         objectDetails.innerHTML = `
             <div class="object-schema-details">
                 <!-- Object Header -->
@@ -1208,9 +1688,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="row">
                             <div class="col-md-8">
                                 <p class="mb-2"><strong>API Name:</strong> ${objectName}</p>
-                                <p class="mb-2"><strong>Label:</strong> ${objectInfo.label || 'N/A'}</p>
-                                <p class="mb-2"><strong>Type:</strong> ${objectInfo.custom ? 'Custom Object' : 'Standard Object'}</p>
-                                ${objectInfo.description ? `<p class="mb-0"><strong>Description:</strong> ${objectInfo.description}</p>` : ''}
+                                <p class="mb-2"><strong>Label:</strong> ${objectInfo.label || "N/A"}</p>
+                                <p class="mb-2"><strong>Type:</strong> ${objectInfo.custom ? "Custom Object" : "Standard Object"}</p>
+                                ${objectInfo.description ? `<p class="mb-0"><strong>Description:</strong> ${objectInfo.description}</p>` : ""}
                             </div>
                             <div class="col-md-4">
                                 <div class="text-center">
@@ -1235,15 +1715,15 @@ document.addEventListener('DOMContentLoaded', function() {
             lookup: [],
             formula: [],
             system: [],
-            custom: []
+            custom: [],
         };
-        
-        fields.forEach(field => {
-            if (field.type === 'id' || field.name === 'Id') {
+
+        fields.forEach((field) => {
+            if (field.type === "id" || field.name === "Id") {
                 categories.identity.push(field);
             } else if (field.nillable === false && !field.defaultValue) {
                 categories.required.push(field);
-            } else if (field.type === 'reference') {
+            } else if (field.type === "reference") {
                 categories.lookup.push(field);
             } else if (field.calculated) {
                 categories.formula.push(field);
@@ -1253,22 +1733,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 categories.system.push(field);
             }
         });
-        
+
         return categories;
     }
 
     function generateFieldTables(categories) {
-        let html = '';
-        
+        let html = "";
+
         const categoryConfig = {
-            identity: { title: 'Identity Fields', icon: 'bi-key', color: 'danger' },
-            required: { title: 'Required Fields', icon: 'bi-exclamation-circle', color: 'warning' },
-            lookup: { title: 'Lookup/Reference Fields', icon: 'bi-arrow-right-circle', color: 'info' },
-            formula: { title: 'Formula/Calculated Fields', icon: 'bi-calculator', color: 'secondary' },
-            custom: { title: 'Custom Fields', icon: 'bi-gear', color: 'success' },
-            system: { title: 'Standard Fields', icon: 'bi-collection', color: 'primary' }
+            identity: {
+                title: "Identity Fields",
+                icon: "bi-key",
+                color: "danger",
+            },
+            required: {
+                title: "Required Fields",
+                icon: "bi-exclamation-circle",
+                color: "warning",
+            },
+            lookup: {
+                title: "Lookup/Reference Fields",
+                icon: "bi-arrow-right-circle",
+                color: "info",
+            },
+            formula: {
+                title: "Formula/Calculated Fields",
+                icon: "bi-calculator",
+                color: "secondary",
+            },
+            custom: {
+                title: "Custom Fields",
+                icon: "bi-gear",
+                color: "success",
+            },
+            system: {
+                title: "Standard Fields",
+                icon: "bi-collection",
+                color: "primary",
+            },
         };
-        
+
         Object.entries(categories).forEach(([category, fields]) => {
             if (fields.length > 0) {
                 const config = categoryConfig[category];
@@ -1298,27 +1802,39 @@ document.addEventListener('DOMContentLoaded', function() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            ${fields.map(field => `
+                                            ${fields
+                                                .map(
+                                                    (field) => `
                                                 <tr>
                                                     <td>
                                                         <code class="text-info">${field.name}</code>
-                                                        ${field.custom ? '<span class="badge bg-success badge-sm ms-1">Custom</span>' : ''}
+                                                        ${field.custom ? '<span class="badge bg-success badge-sm ms-1">Custom</span>' : ""}
                                                     </td>
-                                                    <td class="text-light">${field.label || 'N/A'}</td>
+                                                    <td class="text-light">${field.label || "N/A"}</td>
                                                     <td>
                                                         <span class="badge bg-secondary">${field.type}</span>
-                                                        ${field.referenceTo && field.referenceTo.length > 0 ? 
-                                                          `<br><small class="text-muted">→ ${field.referenceTo.join(', ')}</small>` : ''}
+                                                        ${
+                                                            field.referenceTo &&
+                                                            field.referenceTo
+                                                                .length > 0
+                                                                ? `<br><small class="text-muted">→ ${field.referenceTo.join(", ")}</small>`
+                                                                : ""
+                                                        }
                                                     </td>
-                                                    <td class="text-light">${field.length || 'N/A'}</td>
+                                                    <td class="text-light">${field.length || "N/A"}</td>
                                                     <td>
-                                                        ${field.nillable === false ? 
-                                                          '<i class="bi bi-check-circle text-danger"></i>' : 
-                                                          '<i class="bi bi-dash-circle text-muted"></i>'}
+                                                        ${
+                                                            field.nillable ===
+                                                            false
+                                                                ? '<i class="bi bi-check-circle text-danger"></i>'
+                                                                : '<i class="bi bi-dash-circle text-muted"></i>'
+                                                        }
                                                     </td>
-                                                    <td><small class="text-muted">${field.inlineHelpText || field.helpText || ''}</small></td>
+                                                    <td><small class="text-muted">${field.inlineHelpText || field.helpText || ""}</small></td>
                                                 </tr>
-                                            `).join('')}
+                                            `,
+                                                )
+                                                .join("")}
                                         </tbody>
                                     </table>
                                 </div>
@@ -1328,25 +1844,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             }
         });
-        
+
         return html;
     }
 
     function loadObjectRelationshipDiagram(objectName) {
-        const schemaDiagram = document.getElementById('schema-diagram');
-        const diagramContainer = document.getElementById('object-diagram');
-        const diagramTitle = document.getElementById('diagram-title');
-        
+        const schemaDiagram = document.getElementById("schema-diagram");
+        const diagramContainer = document.getElementById("object-diagram");
+        const diagramTitle = document.getElementById("diagram-title");
+
         // Show diagram section and make it visible by default
-        schemaDiagram.style.display = 'block';
+        schemaDiagram.style.display = "block";
         diagramTitle.textContent = `${objectName} Relationship Diagram`;
-        
+
         // Ensure diagram body is visible
-        const diagramBody = document.getElementById('diagram-body');
+        const diagramBody = document.getElementById("diagram-body");
         if (diagramBody) {
-            diagramBody.style.display = 'block';
+            diagramBody.style.display = "block";
         }
-        
+
         // Show loading indicator
         diagramContainer.innerHTML = `
             <div class="text-center my-5">
@@ -1356,32 +1872,34 @@ document.addEventListener('DOMContentLoaded', function() {
                 <p class="lead mt-3">Loading relationship diagram...</p>
             </div>
         `;
-        
+
         // Fetch relationship mapping
         fetch(`/api/relationship-map/${objectName}`)
-            .then(response => response.json())
-            .then(data => {
+            .then((response) => response.json())
+            .then((data) => {
                 if (data.error) {
                     throw new Error(data.error);
                 }
-                
+
                 // Generate Mermaid diagram
                 const mermaidCode = generateMermaidDiagram(objectName, data);
-                
+
                 // Render the diagram with proper styling
                 diagramContainer.innerHTML = `<div class="mermaid" style="text-align: center;">${mermaidCode}</div>`;
-                
+
                 // Initialize Mermaid for this specific diagram
                 if (window.mermaid) {
-                    mermaid.init(undefined, diagramContainer.querySelector('.mermaid'));
+                    mermaid.init(
+                        undefined,
+                        diagramContainer.querySelector(".mermaid"),
+                    );
                 }
-                
+
                 // Initialize diagram controls
                 initDiagramControls();
-                
             })
-            .catch(error => {
-                console.error('Error loading relationship diagram:', error);
+            .catch((error) => {
+                console.error("Error loading relationship diagram:", error);
                 diagramContainer.innerHTML = `
                     <div class="alert alert-warning">
                         <h6><i class="bi bi-exclamation-triangle me-2"></i>Diagram Loading Issue</h6>
@@ -1395,106 +1913,130 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function generateMermaidDiagram(objectName, relationshipData) {
-        let diagram = 'graph TB\n';
-        
+        let diagram = "graph TB\n";
+
         // Sanitize object names for Mermaid (replace special characters)
         function sanitizeName(name) {
-            return name.replace(/[^a-zA-Z0-9]/g, '_');
+            return name.replace(/[^a-zA-Z0-9]/g, "_");
         }
-        
+
         const mainObjectId = sanitizeName(objectName);
         diagram += `    ${mainObjectId}["${objectName}"]\n`;
-        
+
         // Add parent relationships from parent_relationships array
-        if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
-            relationshipData.parent_relationships.forEach(parent => {
+        if (
+            relationshipData.parent_relationships &&
+            relationshipData.parent_relationships.length > 0
+        ) {
+            relationshipData.parent_relationships.forEach((parent) => {
                 const parentId = sanitizeName(parent.target_object);
-                const relationshipType = parent.relationship_type === 'master_detail' ? '==>' : '-->';
+                const relationshipType =
+                    parent.relationship_type === "master_detail"
+                        ? "==>"
+                        : "-->";
                 diagram += `    ${parentId}["${parent.target_object}"] ${relationshipType} ${mainObjectId}\n`;
             });
         }
-        
+
         // Add child relationships from child_relationships array
-        if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
-            relationshipData.child_relationships.forEach(child => {
+        if (
+            relationshipData.child_relationships &&
+            relationshipData.child_relationships.length > 0
+        ) {
+            relationshipData.child_relationships.forEach((child) => {
                 const childId = sanitizeName(child.source_object);
-                const relationshipType = child.relationship_type === 'master_detail' ? '==>' : '-->';
+                const relationshipType =
+                    child.relationship_type === "master_detail" ? "==>" : "-->";
                 diagram += `    ${mainObjectId} ${relationshipType} ${childId}["${child.source_object}"]\n`;
             });
         }
-        
+
         // Style the main object with dark theme friendly colors
         diagram += `    classDef mainObject fill:#0d6efd,stroke:#0a58ca,stroke-width:3px,color:#fff\n`;
         diagram += `    classDef parentObject fill:#28a745,stroke:#1e7e34,stroke-width:2px,color:#fff\n`;
         diagram += `    classDef childObject fill:#ffc107,stroke:#e0a800,stroke-width:2px,color:#000\n`;
         diagram += `    class ${mainObjectId} mainObject\n`;
-        
+
         // Apply styling to parent objects
-        if (relationshipData.parent_relationships && relationshipData.parent_relationships.length > 0) {
-            relationshipData.parent_relationships.forEach(parent => {
+        if (
+            relationshipData.parent_relationships &&
+            relationshipData.parent_relationships.length > 0
+        ) {
+            relationshipData.parent_relationships.forEach((parent) => {
                 const parentId = sanitizeName(parent.target_object);
                 diagram += `    class ${parentId} parentObject\n`;
             });
         }
-        
+
         // Apply styling to child objects
-        if (relationshipData.child_relationships && relationshipData.child_relationships.length > 0) {
-            relationshipData.child_relationships.forEach(child => {
+        if (
+            relationshipData.child_relationships &&
+            relationshipData.child_relationships.length > 0
+        ) {
+            relationshipData.child_relationships.forEach((child) => {
                 const childId = sanitizeName(child.source_object);
                 diagram += `    class ${childId} childObject\n`;
             });
         }
-        
-        console.log('Generated Mermaid diagram for relationship loading:', diagram);
+
+        console.log(
+            "Generated Mermaid diagram for relationship loading:",
+            diagram,
+        );
         return diagram;
     }
 
     function initDiagramControls() {
-        const toggleButton = document.getElementById('toggle-diagram');
-        const resizeSmallerButton = document.getElementById('resize-smaller');
-        const resizeLargerButton = document.getElementById('resize-larger');
-        const diagramBody = document.getElementById('diagram-body');
-        const diagramContainer = document.getElementById('object-diagram');
-        
+        const toggleButton = document.getElementById("toggle-diagram");
+        const resizeSmallerButton = document.getElementById("resize-smaller");
+        const resizeLargerButton = document.getElementById("resize-larger");
+        const diagramBody = document.getElementById("diagram-body");
+        const diagramContainer = document.getElementById("object-diagram");
+
         // Make sure the diagram body is visible initially
         if (diagramBody) {
-            diagramBody.style.display = 'block';
+            diagramBody.style.display = "block";
         }
-        
+
         // Toggle diagram visibility
         if (toggleButton && diagramBody) {
-            toggleButton.onclick = function() {
-                if (diagramBody.style.display === 'none') {
-                    diagramBody.style.display = 'block';
+            toggleButton.onclick = function () {
+                if (diagramBody.style.display === "none") {
+                    diagramBody.style.display = "block";
                     toggleButton.innerHTML = '<i class="bi bi-chevron-up"></i>';
                 } else {
-                    diagramBody.style.display = 'none';
-                    toggleButton.innerHTML = '<i class="bi bi-chevron-down"></i>';
+                    diagramBody.style.display = "none";
+                    toggleButton.innerHTML =
+                        '<i class="bi bi-chevron-down"></i>';
                 }
             };
         }
-        
+
         // Resize diagram controls
         if (resizeSmallerButton && diagramContainer) {
-            resizeSmallerButton.addEventListener('click', function() {
-                const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
+            resizeSmallerButton.addEventListener("click", function () {
+                const currentHeight = parseInt(
+                    getComputedStyle(diagramContainer).height,
+                );
                 if (currentHeight > 200) {
-                    diagramContainer.style.height = (currentHeight - 100) + 'px';
+                    diagramContainer.style.height = currentHeight - 100 + "px";
                 }
             });
         }
-        
+
         if (resizeLargerButton && diagramContainer) {
-            resizeLargerButton.addEventListener('click', function() {
-                const currentHeight = parseInt(getComputedStyle(diagramContainer).height);
-                diagramContainer.style.height = (currentHeight + 100) + 'px';
+            resizeLargerButton.addEventListener("click", function () {
+                const currentHeight = parseInt(
+                    getComputedStyle(diagramContainer).height,
+                );
+                diagramContainer.style.height = currentHeight + 100 + "px";
             });
         }
     }
 
     function updatePromptContext(objectName) {
         // Update the unified prompt interface context with selected object
-        const promptTextarea = document.getElementById('prompt');
+        const promptTextarea = document.getElementById("prompt");
         if (promptTextarea && !promptTextarea.value.trim()) {
             promptTextarea.placeholder = `Example: "Generate 10 ${objectName} records with realistic data" or "Create custom fields for ${objectName}: Name (Text), Priority (Picklist)"`;
         }

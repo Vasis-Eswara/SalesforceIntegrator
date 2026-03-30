@@ -297,7 +297,13 @@ def init_routes(app):
                 
             except Exception as e:
                 logger.error(f"SOAP login error: {str(e)}")
-                flash(f'Login failed: {str(e)}', 'danger')
+                err = str(e)
+                if 'SOAP API login() is disabled' in err or 'INVALID_OPERATION' in err:
+                    flash('SOAP API login is disabled for this org. Please use the OAuth 2.0 option instead — click "Connect with OAuth (New Tab)" below.', 'warning')
+                elif 'INVALID_LOGIN' in err:
+                    flash('Invalid username or password. If your org requires a security token, append it directly to your password (e.g. mypassword + mytoken).', 'danger')
+                else:
+                    flash(f'Login failed: {err}', 'danger')
                 return redirect(url_for('login'))
         
         elif login_type == 'saved':
@@ -347,7 +353,13 @@ def init_routes(app):
                 
             except Exception as e:
                 logger.error(f"Saved credential login error: {str(e)}")
-                flash(f'Login failed: {str(e)}', 'danger')
+                err = str(e)
+                if 'SOAP API login() is disabled' in err or 'INVALID_OPERATION' in err:
+                    flash(f'SOAP API login is disabled for this org ({cred.username}). Please use the OAuth 2.0 option instead — click "Connect with OAuth (New Tab)" below.', 'warning')
+                elif 'INVALID_LOGIN' in err:
+                    flash('Invalid password. If your org requires a security token, append it directly to the password field (e.g. mypassword + mytoken).', 'danger')
+                else:
+                    flash(f'Login failed: {err}', 'danger')
                 return redirect(url_for('login'))
         
         # Default case
