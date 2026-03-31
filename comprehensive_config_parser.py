@@ -426,31 +426,117 @@ def _parse_object_creation(prompt_lower, actions, seen_objects):
 
 def _parse_complex_patterns(prompt_lower, actions, seen_objects):
     """
-    Parse complex object + field combinations
+    Parse complex object + field combinations.
+    Handles patterns like:
+      "Create a Project object with fields Name, Status, and Budget"
+      "Create Invoice object with field Amount"
     """
+    # ------------------------------------------------------------------ #
+    # Pattern A: "create [a] <name> object with fields <list>"  (plural)  #
+    # ------------------------------------------------------------------ #
+    multi_field_pattern = re.search(
+        r'(?:create|make|build)\s+(?:an?\s+)?([a-zA-Z][a-zA-Z0-9_\s]*?)\s+object\s+with\s+fields?\s+(.+)',
+        prompt_lower
+    )
+    if multi_field_pattern:
+        object_raw = multi_field_pattern.group(1).strip()
+        field_list_text = multi_field_pattern.group(2).strip()
+
+        object_name = object_raw.replace(' ', '_')
+        if not object_name.endswith('__c'):
+            object_name += '__c'
+
+        if object_name not in seen_objects:
+            seen_objects.add(object_name)
+            label = object_raw.title()
+            actions.append({
+                "type": "create_object",
+                "target": {"object": object_name},
+                "details": {
+                    "api_name": object_name,
+                    "label": label,
+                    "plural_label": label + 's',
+                    "description": f"Custom object for {object_raw.lower()} management",
+                    "deployment_status": "Deployed",
+                    "sharing_model": "ReadWrite",
+                }
+            })
+
+            # Parse the field list (comma/and separated)
+            raw_names = re.split(r',\s*|\s+and\s+', field_list_text)
+            for raw in raw_names:
+                fname = raw.strip()
+                # strip any residual leading 'and'/'or' left after comma-split
+                fname = re.sub(r'^(?:and|or)\s+', '', fname, flags=re.IGNORECASE).strip()
+                fname = fname.replace(' ', '_')
+                # skip empty or known stop words
+                if not fname or fname in ('', 'and', 'or', 'the', 'a', 'an'):
+                    continue
+                # keep system field "Name" without __c; add __c to everything else
+                is_std_name = fname.lower() == 'name'
+                api_field = fname if is_std_name else (fname if fname.endswith('__c') else fname + '__c')
+                ftype = _infer_field_type(fname)
+                fdetails = _generate_field_details(api_field, ftype)
+                actions.append({
+                    "type": "create_field",
+                    "target": {"object": object_name, "field": api_field},
+                    "details": fdetails,
+                })
+        return True
+
+    # ------------------------------------------------------------------ #
+    # Pattern B: standalone "create [a] <name> object" (no fields)        #
+    # ------------------------------------------------------------------ #
+    solo_obj_pattern = re.search(
+        r'(?:create|make|build)\s+(?:an?\s+)?([a-zA-Z][a-zA-Z0-9_\s]*?)\s+object(?:\s*$|\s*[.,!?])',
+        prompt_lower
+    )
+    if solo_obj_pattern:
+        object_raw = solo_obj_pattern.group(1).strip()
+        object_name = object_raw.replace(' ', '_')
+        if not object_name.endswith('__c'):
+            object_name += '__c'
+        if object_name not in seen_objects:
+            seen_objects.add(object_name)
+            label = object_raw.title()
+            actions.append({
+                "type": "create_object",
+                "target": {"object": object_name},
+                "details": {
+                    "api_name": object_name,
+                    "label": label,
+                    "plural_label": label + 's',
+                    "description": f"Custom object for {object_raw.lower()} management",
+                    "deployment_status": "Deployed",
+                    "sharing_model": "ReadWrite",
+                }
+            })
+        return True
+
+    # ------------------------------------------------------------------ #
+    # Legacy single-field patterns                                         #
+    # ------------------------------------------------------------------ #
     complex_patterns = [
         r'create\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+object\s+with\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field',
         r'make\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+object\s+with\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+field'
     ]
-    
+
     found_complex = False
     for pattern in complex_patterns:
         matches = re.finditer(pattern, prompt_lower)
         for match in matches:
             object_name = match.group(1).strip().replace(' ', '_')
             field_name = match.group(2).strip().replace(' ', '_')
-            
+
             if not object_name.endswith('__c'):
                 object_name += '__c'
             if not field_name.endswith('__c'):
                 field_name += '__c'
-            
-            # Skip if we've already processed this object
+
             if object_name in seen_objects:
                 continue
             seen_objects.add(object_name)
-            
-            # Add object creation
+
             actions.append({
                 "type": "create_object",
                 "target": {"object": object_name},
@@ -463,7 +549,7 @@ def _parse_complex_patterns(prompt_lower, actions, seen_objects):
                     "sharing_model": "ReadWrite"
                 }
             })
-            
+
             # Add field creation
             field_type = _infer_field_type(field_name)
             field_details = _generate_field_details(field_name, field_type)

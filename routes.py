@@ -96,7 +96,15 @@ def init_routes(app):
                         results['actions'].extend(schema_results.get('actions', []))
                         results['errors'].extend(schema_results.get('errors', []))
                 
-                if 'generate' in prompt_lower or 'create' in prompt_lower and 'record' in prompt_lower:
+                # Data generation: trigger when there are numeric counts OR explicit data keywords
+                # (but NOT when it was purely a schema/object/field creation prompt with no counts)
+                _has_count = bool(__import__('re').search(r'\b\d+\b', unified_prompt))
+                _data_keywords = ('generate', 'insert', 'link them', 'linked to')
+                _is_data_gen = (
+                    any(kw in prompt_lower for kw in _data_keywords)
+                    or (_has_count and 'create' in prompt_lower)
+                )
+                if _is_data_gen:
                     # Data generation
                     bulk_parser = BulkDataParser()
                     data_plan = bulk_parser.parse_prompt(unified_prompt)
@@ -1025,8 +1033,14 @@ def init_routes(app):
 
         # Detect schema-creation intent and redirect to Configure Salesforce
         _pl = prompt.lower()
-        _schema_keywords = ('custom object', 'custom field', 'create object', 'create field', 'add field')
-        if any(kw in _pl for kw in _schema_keywords):
+        import re as _re
+        _is_schema = (
+            # explicit schema phrases
+            any(kw in _pl for kw in ('custom object', 'custom field', 'create field', 'add field'))
+            # "create/make/build a/an object …" or "create … object named/called …"
+            or bool(_re.search(r'\b(?:create|make|build)\b.{0,20}\bobject\b', _pl))
+        )
+        if _is_schema:
             flash(
                 'That looks like a schema creation request. '
                 'Use the "Configure Salesforce" page to create custom objects and fields.',
