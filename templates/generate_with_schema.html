@@ -549,114 +549,79 @@ Combined Examples:
                                         </h5>
                                     </div>
                                     <div class="card-body">
-                                        {% if unified_results.status ==
-                                        'success' %}
+                                        {% if unified_results.warnings %}
+                                        <div class="alert alert-warning mb-3">
+                                            <h6><i class="bi bi-exclamation-triangle me-2"></i>Warnings:</h6>
+                                            <ul class="mb-0">
+                                                {% for w in unified_results.warnings %}<li>{{ w }}</li>{% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+
+                                        {% if unified_results.status == 'success' %}
                                         <div class="alert alert-success">
-                                            <h6>
-                                                <i
-                                                    class="bi bi-check-circle me-2"
-                                                ></i
-                                                >Processing Completed
-                                                Successfully
-                                            </h6>
+                                            <h6><i class="bi bi-check-circle me-2"></i>Processing Completed Successfully</h6>
                                             {% if unified_results.actions %}
-                                            <p>
-                                                Completed {{
-                                                unified_results.actions|length
-                                                }} actions
-                                            </p>
-                                            {% endif %} {% if
-                                            unified_results.success %}
-                                            <p>
-                                                Created {{
-                                                unified_results.success }}
-                                                records successfully
-                                            </p>
+                                            <p class="mb-0">{{ unified_results.actions|length }} schema action(s) applied.</p>
+                                            {% endif %}
+                                            {% set dr = unified_results.get('data_results', {}) %}
+                                            {% if dr and dr.get('success') %}
+                                            <p class="mb-0">{{ dr.success }} record(s) created in Salesforce.</p>
                                             {% endif %}
                                         </div>
-                                        {% endif %} {% if
-                                        unified_results.actions %}
+                                        {% endif %}
+
+                                        {% if unified_results.actions %}
                                         <div class="mb-3">
-                                            <h6>Schema Actions Performed:</h6>
-                                            {% for action in
-                                            unified_results.actions %}
-                                            <div class="alert alert-info">
-                                                <strong
-                                                    >{{ action.type|title
-                                                    }}:</strong
-                                                >
-                                                {{ action.description }} {% if
-                                                action.result %} <br /><small
-                                                    >Result: {{ action.result
-                                                    }}</small
-                                                >
-                                                {% endif %}
+                                            <h6>Schema Actions Applied:</h6>
+                                            {% for action in unified_results.actions %}
+                                            <div class="alert {% if action.get('success') %}alert-success{% else %}alert-warning{% endif %} py-2">
+                                                <strong>{{ action.get('type', action.get('action', 'Action'))|title|replace('_',' ') }}:</strong>
+                                                {{ action.get('description', action.get('message', '')) }}
+                                                {% if action.get('target') %}<br/><small class="text-muted">Target: {{ action.get('target') }}</small>{% endif %}
                                             </div>
                                             {% endfor %}
                                         </div>
-                                        {% endif %} {% if
-                                        unified_results.success or
-                                        unified_results.failure %}
+                                        {% endif %}
+
+                                        {% set dr = unified_results.get('data_results', {}) %}
+                                        {% if dr and (dr.get('success') or dr.get('failure')) %}
                                         <div class="row mb-3">
                                             <div class="col-md-6">
                                                 <div class="text-center">
-                                                    <span
-                                                        class="fs-2 text-success"
-                                                        >{{
-                                                        unified_results.success
-                                                        or 0 }}</span
-                                                    >
-                                                    <p class="mb-0 text-muted">
-                                                        Records Created
-                                                    </p>
+                                                    <span class="fs-2 text-success">{{ dr.success or 0 }}</span>
+                                                    <p class="mb-0 text-muted">Records Created</p>
                                                 </div>
                                             </div>
-                                            {% if unified_results.failure > 0 %}
+                                            {% if dr.get('failure', 0) > 0 %}
                                             <div class="col-md-6">
                                                 <div class="text-center">
-                                                    <span
-                                                        class="fs-2 text-danger"
-                                                        >{{
-                                                        unified_results.failure
-                                                        }}</span
-                                                    >
-                                                    <p class="mb-0 text-muted">
-                                                        Failed Records
-                                                    </p>
+                                                    <span class="fs-2 text-danger">{{ dr.failure }}</span>
+                                                    <p class="mb-0 text-muted">Failed Records</p>
                                                 </div>
                                             </div>
                                             {% endif %}
                                         </div>
-                                        {% endif %} {% if
-                                        unified_results.created_ids %}
+                                        {% if dr.get('created_ids') %}
                                         <div class="mb-3">
                                             <h6>Created Record IDs:</h6>
                                             <div class="bg-light p-2 rounded">
-                                                <code
-                                                    >{{
-                                                    unified_results.created_ids|join(',
-                                                    ') }}</code
-                                                >
+                                                <code>{{ dr.created_ids|join(', ') }}</code>
                                             </div>
                                         </div>
-                                        {% endif %} {% if unified_results.errors
-                                        %}
-                                        <div class="alert alert-warning">
-                                            <h6>
-                                                <i
-                                                    class="bi bi-exclamation-triangle me-2"
-                                                ></i
-                                                >Issues Encountered:
-                                            </h6>
+                                        {% endif %}
+                                        {% endif %}
+
+                                        {% if unified_results.errors %}
+                                        <div class="alert alert-danger">
+                                            <h6><i class="bi bi-exclamation-triangle me-2"></i>Issues Encountered:</h6>
                                             <ul class="mb-0">
-                                                {% for error in
-                                                unified_results.errors %}
-                                                <li>{{ error }}</li>
-                                                {% endfor %}
+                                                {% for error in unified_results.errors %}<li>{{ error }}</li>{% endfor %}
                                             </ul>
                                         </div>
-                                        {% endif %} {% if
-                                        unified_results.preview %}
+                                        {% endif %}
+
+                                        {% if unified_results.preview %}
                                         <div class="mt-3">
                                             <h6>Execution Preview:</h6>
                                             <div class="bg-light p-3 rounded">

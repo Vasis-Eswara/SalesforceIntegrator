@@ -41,127 +41,150 @@ logger = logging.getLogger(__name__)
 
 def init_routes(app):
     
-    def handle_unified_prompt(mode, unified_prompt, github_url, default_record_count, 
+    def handle_unified_prompt(mode, unified_prompt, github_url, default_record_count,
                             data_quality, preview_mode, respect_relationships):
-        """Handle unified prompt interface processing for schema creation and bulk data generation"""
-        from bulk_data_utils import BulkDataParser, GitHubConfigParser, validate_data_plan
-        from comprehensive_config_parser import analyze_prompt_for_configuration
-        
+        """Handle unified prompt interface for schema creation and bulk data generation."""
+        from bulk_data_utils import GitHubConfigParser, validate_data_plan
+        from prompt_engine import analyze_prompt, to_legacy_config
+
         sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-        results = {'status': 'success', 'actions': [], 'preview': {}, 'errors': []}
-        
+        results = {
+            'status': 'success',
+            'actions': [],
+            'data_results': {},
+            'preview': {},
+            'errors': [],
+            'warnings': [],
+        }
+
         try:
-            # Handle GitHub configuration
+            # ---- GitHub configuration path ----
             if github_url or mode == 'github':
                 logger.info(f"Processing GitHub configuration from URL: {github_url}")
                 github_parser = GitHubConfigParser()
                 config_data = github_parser.parse_github_url(github_url)
-                
+
                 if config_data.get('objects'):
-                    # Validate against available objects
                     available_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
                     available_names = [obj.get('name') for obj in available_objects]
-                    
                     validated_plan = validate_data_plan(config_data, available_names)
                     results['preview'] = validated_plan
-                    
+
                     if preview_mode:
-                        results['message'] = "Configuration preview ready. Review and confirm to proceed."
-                        return render_template('preview_confirmation.html', 
-                                            preview=validated_plan, 
-                                            original_config=config_data)
-                    else:
-                        # Execute the plan directly
-                        execution_results = execute_bulk_data_plan(validated_plan, sf_org)
-                        results.update(execution_results)
-                        
+                        return render_template('preview_confirmation.html',
+                                               preview=validated_plan,
+                                               original_config=config_data)
+                    execution_results = execute_bulk_data_plan(validated_plan, sf_org)
+                    results.update(execution_results)
                 else:
-                    results['errors'].append("No valid objects found in GitHub configuration")
-            
-            # Handle natural language prompt
+                    results['errors'].append("No valid objects found in GitHub configuration.")
+
+            # ---- Natural language prompt path ----
             elif unified_prompt:
-                logger.info(f"Processing natural language prompt: {unified_prompt[:100]}...")
-                
-                # Check if this is schema creation, data generation, or both
-                prompt_lower = unified_prompt.lower()
-                
-                if 'create' in prompt_lower and ('object' in prompt_lower or 'field' in prompt_lower):
-                    # Schema creation
-                    config_actions = analyze_prompt_for_configuration(unified_prompt)
-                    
-                    if config_actions and config_actions.get('actions'):
-                        # Apply schema changes
-                        metadata_client = create_metadata_client(sf_org.instance_url, sf_org.access_token)
-                        schema_results = apply_configuration(sf_org.instance_url, sf_org.access_token, config_actions)
-                        results['actions'].extend(schema_results.get('actions', []))
-                        results['errors'].extend(schema_results.get('errors', []))
-                
-                # Data generation: trigger when there are numeric counts OR explicit data keywords
-                # (but NOT when it was purely a schema/object/field creation prompt with no counts)
-                _has_count = bool(__import__('re').search(r'\b\d+\b', unified_prompt))
-                _data_keywords = ('generate', 'insert', 'link them', 'linked to')
-                _is_data_gen = (
-                    any(kw in prompt_lower for kw in _data_keywords)
-                    or (_has_count and 'create' in prompt_lower)
-                )
-                if _is_data_gen:
-                    # Data generation
-                    bulk_parser = BulkDataParser()
-                    data_plan = bulk_parser.parse_prompt(unified_prompt)
-                    
-                    if data_plan.get('objects'):
-                        # Validate against available objects
-                        available_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
-                        available_names = [obj.get('name') for obj in available_objects]
-                        
-                        validated_plan = validate_data_plan(data_plan, available_names)
-                        
-                        # Set default record counts if not specified
-                        for obj_name, obj_config in validated_plan.get('objects', {}).items():
-                            if not obj_config.get('record_count'):
-                                obj_config['record_count'] = default_record_count
-                        
-                        results['preview'] = validated_plan
-                        
+                logger.info(f"Processing prompt (len={len(unified_prompt)}): {unified_prompt[:120]!r}")
+
+                # Fetch existing org objects for context (used for relationship validation)
+                try:
+                    available_objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+                    existing_object_names = [o.get('name', '') for o in available_objects]
+                except Exception as fetch_err:
+                    logger.warning(f"Could not fetch org objects for context: {fetch_err}")
+                    existing_object_names = []
+
+                # Run the unified prompt engine
+                analysis = analyze_prompt(unified_prompt, existing_object_names)
+                results['warnings'].extend(analysis.get('warnings', []))
+
+                if analysis.get('errors') and not analysis.get('metadata_actions') and not analysis.get('data_plan', {}).get('objects'):
+                    results['errors'].extend(analysis['errors'])
+                    results['status'] = 'error'
+                else:
+                    intent = analysis.get('intent', {})
+
+                    # --- Metadata creation ---
+                    if intent.get('metadata') and analysis.get('metadata_actions'):
+                        meta_actions = analysis['metadata_actions']
+                        logger.info(f"Applying {len(meta_actions)} metadata actions")
+                        legacy_config = to_legacy_config(meta_actions)
+                        schema_result = apply_configuration(
+                            sf_org.instance_url, sf_org.access_token, legacy_config
+                        )
+                        applied = schema_result.get('details', [])
+                        results['actions'].extend(applied)
+                        # Collect any errors from individual action results
+                        for r in applied:
+                            if not r.get('success') and r.get('message'):
+                                results['errors'].append(r['message'])
+
+                    # --- Data record generation ---
+                    if intent.get('data') and analysis.get('data_plan', {}).get('objects'):
+                        data_plan = analysis['data_plan']
+                        logger.info(f"Generating records for: {list(data_plan['objects'].keys())}")
+
+                        # Apply default record count where not specified
+                        for obj_cfg in data_plan['objects'].values():
+                            if not obj_cfg.get('count') or obj_cfg['count'] < 1:
+                                obj_cfg['count'] = default_record_count
+
+                        # Convert data_plan to the format execute_bulk_data_plan expects
+                        bulk_plan = {
+                            'objects': {
+                                name: {**cfg, 'record_count': cfg.get('count', default_record_count)}
+                                for name, cfg in data_plan['objects'].items()
+                            },
+                            'execution_order': data_plan.get('execution_order', list(data_plan['objects'].keys())),
+                        }
+                        results['preview'] = bulk_plan
+
                         if preview_mode:
-                            results['message'] = "Data generation preview ready. Review and confirm to proceed."
-                            return render_template('preview_confirmation.html', 
-                                                preview=validated_plan, 
-                                                original_prompt=unified_prompt)
-                        else:
-                            # Execute the plan directly
-                            execution_results = execute_bulk_data_plan(validated_plan, sf_org)
-                            results.update(execution_results)
-                    else:
-                        # Fallback: If no objects detected but it's a data generation request,
-                        # show helpful guidance
-                        results['errors'].append("I didn't detect specific Salesforce objects in your prompt. Try using formats like:")
-                        results['errors'].append("• 'Generate 5 records for Account'")
-                        results['errors'].append("• 'Create 10 Contacts'") 
-                        results['errors'].append("• 'Insert 3 Opportunities'")
-                        results['errors'].append("Or select an object from the sidebar and use the individual data generation features.")
-                        
+                            return render_template('preview_confirmation.html',
+                                                   preview=bulk_plan,
+                                                   original_prompt=unified_prompt)
+
+                        data_exec = execute_bulk_data_plan(bulk_plan, sf_org)
+                        results['data_results'] = data_exec
+                        results['errors'].extend(data_exec.get('errors', []))
+                        if data_exec.get('success', 0) > 0:
+                            results['status'] = 'success'
+                    elif intent.get('data') and not analysis.get('data_plan', {}).get('objects'):
+                        results['errors'].append(
+                            "No specific Salesforce objects detected for data generation. "
+                            "Try: 'Generate 10 Accounts' or 'Create 5 Contacts linked to each Account'."
+                        )
+
+                    if not intent.get('metadata') and not intent.get('data'):
+                        results['errors'].extend(analysis.get('errors', []))
+                        results['status'] = 'warning'
+
             else:
-                results['errors'].append("No prompt or GitHub URL provided")
-                
+                results['errors'].append("No prompt or GitHub URL provided.")
+                results['status'] = 'error'
+
         except Exception as e:
-            logger.error(f"Error processing unified prompt: {str(e)}")
-            results['errors'].append(f"Processing error: {str(e)}")
+            import traceback
+            logger.error(f"Error processing unified prompt: {e}\n{traceback.format_exc()}")
+            results['errors'].append(f"Processing error: {e}")
             results['status'] = 'error'
-        
-        # Return results to template
-        flash(f"Processed prompt with {len(results.get('actions', []))} actions and {len(results.get('errors', []))} errors", 
-              'success' if results['status'] == 'success' else 'warning')
-        
-        # Get objects for template
-        objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+
+        # Flash summary
+        action_count = len(results.get('actions', []))
+        error_count = len(results.get('errors', []))
+        if results['status'] == 'success' or action_count > 0:
+            flash(f"Processed: {action_count} schema action(s) applied, {error_count} error(s).", 'success')
+        else:
+            flash(f"Prompt processed with {error_count} issue(s). Check results below.", 'warning')
+
+        try:
+            objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
+        except Exception:
+            objects = []
         org_info = get_org_info()
-        
-        return render_template('generate_with_schema.html', 
-                             objects=objects,
-                             unified_results=results,
-                             org_info=org_info,
-                             search_query='')
+
+        return render_template('generate_with_schema.html',
+                               objects=objects,
+                               unified_results=results,
+                               org_info=org_info,
+                               search_query='')
     
     def execute_bulk_data_plan(plan, sf_org):
         """Execute a validated bulk data generation plan"""
@@ -1715,94 +1738,101 @@ def init_routes(app):
     
     @app.route('/configure', methods=['GET', 'POST'])
     def configure():
-        """Configure Salesforce with natural language prompts"""
-        # Check if the user is logged in
+        """Configure Salesforce with natural language prompts."""
+        from prompt_engine import analyze_prompt, to_legacy_config
+
         is_logged_in = 'salesforce_org_id' in session
-        logger.debug(f"Configure page access - logged in: {is_logged_in}")
-        
-        # Configuration now uses rule-based analysis with Faker (no OpenAI dependency)
-        has_openai_key = True  # Always available now since we use Faker
-        
-        # Handle POST request (form submission)
+        has_openai_key = True  # Uses Faker / rule-based engine
+
         if request.method == 'POST':
-            prompt = request.form.get('prompt', '')
-            
+            prompt = request.form.get('prompt', '').strip()
+
             if not prompt:
-                flash('Please enter a prompt', 'warning')
+                flash('Please enter a configuration prompt.', 'warning')
                 return redirect(url_for('configure'))
-                
-            # Ensure user is logged in before processing the prompt
+
             if not is_logged_in:
-                flash('Please connect to Salesforce first to use this feature', 'warning')
-                return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key)
-                
+                flash('Please connect to Salesforce first.', 'warning')
+                return render_template('configure.html',
+                                       is_logged_in=is_logged_in,
+                                       has_openai_key=has_openai_key)
+
             try:
-                # Get Salesforce connection
                 sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
-                
-                # Get org schema information for context
+
+                # Fetch existing objects for relationship validation
+                existing_object_names = []
                 try:
                     objects = get_salesforce_objects(sf_org.instance_url, sf_org.access_token)
-                    logger.debug(f"Successfully retrieved {len(objects)} objects via REST API")
-                except Exception as rest_error:
-                    logger.warning(f"REST API failed for objects, falling back to SOAP: {str(rest_error)}")
-                    try:
-                        objects = get_salesforce_objects_soap(sf_org.instance_url, sf_org.access_token)
-                        logger.debug(f"Successfully retrieved {len(objects)} objects via SOAP API")
-                    except Exception as soap_error:
-                        logger.error(f"Both REST and SOAP APIs failed for objects: {str(soap_error)}")
-                        # Continue with empty objects list - configuration can still work
-                        objects = []
-                
-                # Simplified org info for context
-                org_info = {
-                    'objects': objects
-                }
-                
-                # Analyze prompt to determine configuration
-                logger.info(f"Analyzing prompt: '{prompt}' with {len(objects)} objects in org context")
-                config = analyze_prompt_for_configuration(prompt, org_info)
-                logger.info(f"Configuration analysis completed: {len(config.get('actions', []))} actions found")
-                
-                if 'error' in config:
-                    flash(f'Error analyzing prompt: {config["error"]}', 'danger')
-                    return render_template('configure.html', prompt=prompt, results={
-                        'success': False,
-                        'message': config['error'],
-                        'details': config
-                    }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
+                    existing_object_names = [o.get('name', '') for o in objects]
+                    logger.debug(f"Fetched {len(existing_object_names)} org objects for context")
+                except Exception as fetch_err:
+                    logger.warning(f"Could not fetch org objects: {fetch_err}")
+                    objects = []
 
-                if not config.get('actions'):
-                    message = 'No configuration actions were parsed from that prompt. Please use a clearer Salesforce configuration request.'
-                    flash(message, 'warning')
-                    return render_template('configure.html', prompt=prompt, results={
-                        'success': False,
-                        'message': message,
-                        'details': config
-                    }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
-                
-                # Return the configuration for review
-                return render_template('configure.html', prompt=prompt, results={
-                    'success': True,
-                    'message': 'Configuration generated successfully. Please review before applying.',
-                    'details': config
-                }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
-                
+                # Run the unified prompt engine
+                logger.info(f"Analyze prompt (configure): {prompt[:120]!r}")
+                analysis = analyze_prompt(prompt, existing_object_names)
+
+                metadata_actions = analysis.get('metadata_actions', [])
+                warnings = analysis.get('warnings', [])
+                errors = analysis.get('errors', [])
+
+                if not metadata_actions:
+                    hint = errors[0] if errors else (
+                        'No configuration actions could be parsed. '
+                        'Try: "Create a custom object called Project with fields Name, Start Date, Budget" '
+                        'or "Add an Email field to the Contact object".'
+                    )
+                    flash(hint, 'warning')
+                    return render_template('configure.html',
+                                           prompt=prompt,
+                                           results={'success': False, 'message': hint, 'details': analysis},
+                                           warnings=warnings,
+                                           is_logged_in=is_logged_in,
+                                           has_openai_key=has_openai_key)
+
+                if warnings:
+                    for w in warnings:
+                        flash(w, 'warning')
+
+                # Convert to legacy config format for review page
+                legacy_config = to_legacy_config(metadata_actions)
+                legacy_config['warnings'] = warnings
+
+                flash(f'Configuration parsed: {len(metadata_actions)} action(s) ready. Review below before applying.', 'info')
+                return render_template('configure.html',
+                                       prompt=prompt,
+                                       results={
+                                           'success': True,
+                                           'message': f'{len(metadata_actions)} action(s) ready to apply.',
+                                           'details': legacy_config,
+                                       },
+                                       warnings=warnings,
+                                       is_logged_in=is_logged_in,
+                                       has_openai_key=has_openai_key)
+
             except Exception as e:
                 import traceback
-                error_details = traceback.format_exc()
-                logger.error(f"Error configuring Salesforce: {str(e)}")
-                logger.error(f"Full traceback: {error_details}")
-                flash(f'Error configuring Salesforce: {str(e)}', 'danger')
-                return render_template('configure.html', prompt=prompt, results={
-                    'success': False,
-                    'message': str(e),
-                    'details': {'error': str(e), 'traceback': error_details}
-                }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
-        
-        # GET request - show form
+                tb = traceback.format_exc()
+                logger.error(f"Configure error: {e}\n{tb}")
+                flash(f'Error configuring Salesforce: {e}', 'danger')
+                return render_template('configure.html',
+                                       prompt=prompt,
+                                       results={
+                                           'success': False,
+                                           'message': str(e),
+                                           'details': {'error': str(e)},
+                                       },
+                                       is_logged_in=is_logged_in,
+                                       has_openai_key=has_openai_key)
+
+        # GET request
         org_info = get_org_info()
-        return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key, org_info=org_info)
+        return render_template('configure.html',
+                               is_logged_in=is_logged_in,
+                               has_openai_key=has_openai_key,
+                               org_info=org_info)
 
     @app.route('/configure-alone')
     def configure_alone():

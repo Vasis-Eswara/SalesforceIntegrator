@@ -95,6 +95,18 @@ Required environment variables:
 
 ## Changelog
 
+- April 3, 2026: **PROMPT ENGINE COMPLETE REWRITE** — 14/14 test scenarios now pass (was 12/14)
+  - **Numbered field lists**: Fixed `_split_field_list` sentence-end detector that incorrectly split "1. Tendulkar" at the list item period; now uses lookbehind `(?<=[a-z])` to distinguish sentences from numbered items
+  - **"object called <name>"**: Added `obj_with_fields_pat2` — new PASS A variant handles "Create a custom object called Project with fields..." cleanly
+  - **Spurious object elimination**: Rewrote PASS E patterns with lazy quantifiers and `(?=\s+with\b)` stop anchors; eliminated "Project_With_Fields_Name__c" ghost objects
+  - **Multiple objects**: Fixed PASS D regex — changed `(?:called|named|for)?\s+` to `(?:(?:called|named|for)\s+)?` so the optional keyword properly groups with its trailing space
+  - **Fields-to-object colon form**: Added dedicated pattern for "create fields under <Object>: <list>" — now handles both comma lists and numbered lists
+  - **Object validation relaxed**: Field actions for unknown custom objects are no longer dropped preemptively (Salesforce API will report clear errors); only validates orphan fields when objects ARE being created in the same batch
+  - **De-pluralisation**: Smarter `_depluralize()` handles "-ies → -y" so "Opportunities" → "Opportunity" correctly
+  - **Mixed prompts**: "generate N records" sentence fragment correctly filtered from field lists via `_is_likely_sentence_fragment()`
+  - **Validation rule**: Object name now requires `[a-zA-Z0-9_]{1,60}` (no spaces) to prevent runaway matching
+  - **Results display**: Updated `generate_with_schema.html` to render `warnings`, `data_results`, and per-action `success` badge properly
+
 - April 03, 2026: **BULK DATA INSERTION FIX** - Fixed two critical bugs in the bulk data execution pipeline
   - **Float/int len() crash fixed**: `execute_bulk_data_plan` was calling `len()` on integer counts returned by `insert_records` (e.g. `len(insert_result['success'])` where `'success'` is an int count, not a list) — changed to use the int directly
   - **Records never inserted**: `execute_data_plan` was generating records with `IntelligentDataGenerator` but never calling `insert_records` to push them to Salesforce — now properly calls `insert_records` and tracks created IDs
