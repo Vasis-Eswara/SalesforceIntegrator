@@ -24,23 +24,27 @@ def analyze_prompt_for_configuration(prompt, existing_objects=None):
         prompt_lower = prompt.lower()
         logger.info(f"Analyzing prompt: '{prompt}'")
         
-        # PHASE 1: Multi-field list parsing (highest priority)
-        if _parse_field_list(prompt_lower, actions):
+        # PHASE 1: Exact object + field prompt parsing
+        if _parse_object_field_prompt(prompt_lower, actions):
+            logger.info(f"Object + field prompt parsed successfully, {len(actions)} actions generated")
+
+        # PHASE 2: Multi-field list parsing (highest priority)
+        elif _parse_field_list(prompt_lower, actions):
             logger.info(f"Field list parsed successfully, {len(actions)} actions generated")
         
-        # PHASE 2: Single field patterns
+        # PHASE 3: Single field patterns
         elif _parse_single_field(prompt_lower, actions):
             logger.info(f"Single field parsed successfully, {len(actions)} actions generated")
         
-        # PHASE 3: Object creation patterns
+        # PHASE 4: Object creation patterns
         elif _parse_object_creation(prompt_lower, actions, seen_objects):
             logger.info(f"Object creation parsed successfully")
         
-        # PHASE 4: Complex patterns (object + field combinations)
+        # PHASE 5: Complex patterns (object + field combinations)
         elif _parse_complex_patterns(prompt_lower, actions, seen_objects):
             logger.info(f"Complex pattern parsed successfully")
         
-        # PHASE 5: Validation rules
+        # PHASE 6: Validation rules
         elif _parse_validation_rules(prompt_lower, actions, existing_objects):
             logger.info(f"Validation rule parsed successfully")
         
@@ -126,6 +130,42 @@ def _parse_field_list(prompt_lower, actions):
                 return True
     
     return False
+
+
+def _parse_object_field_prompt(prompt_lower, actions):
+    match = re.search(
+        r'add\s+a\s+custom\s+field\s+called\s+(.+?)\s+to\s+the\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+object\s*\.\s*it\s+should\s+be\s+a\s+([a-zA-Z_][a-zA-Z0-9_\s]*)\s+from\s+(\d+)\s+to\s+(\d+)\s+with\s+a\s+default\s+value\s+of\s+(\d+)',
+        prompt_lower,
+        re.IGNORECASE,
+    )
+    if not match:
+        return False
+
+    field_label = match.group(1).strip()
+    object_name = _normalize_object_name(match.group(2).strip())
+    field_type = _normalize_field_type(match.group(3).strip())
+    min_value = match.group(4).strip()
+    max_value = match.group(5).strip()
+    default_value = match.group(6).strip()
+
+    field_name = re.sub(r'[^a-zA-Z0-9_]+', '_', field_label.strip()).strip('_')
+    if not field_name.endswith('__c'):
+        field_name = f"{field_name}__c"
+
+    actions.append({
+        "type": "create_field",
+        "target": {"object": object_name, "field": field_name},
+        "details": {
+            "label": field_label,
+            "api_name": field_name,
+            "type": field_type,
+            "min_value": min_value,
+            "max_value": max_value,
+            "default_value": default_value,
+            "required": False
+        }
+    })
+    return True
 
 
 def _parse_field_list_content(field_list_text):

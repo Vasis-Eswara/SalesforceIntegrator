@@ -1771,6 +1771,15 @@ def init_routes(app):
                         'message': config['error'],
                         'details': config
                     }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
+
+                if not config.get('actions'):
+                    message = 'No configuration actions were parsed from that prompt. Please use a clearer Salesforce configuration request.'
+                    flash(message, 'warning')
+                    return render_template('configure.html', prompt=prompt, results={
+                        'success': False,
+                        'message': message,
+                        'details': config
+                    }, is_logged_in=is_logged_in, has_openai_key=has_openai_key)
                 
                 # Return the configuration for review
                 return render_template('configure.html', prompt=prompt, results={
