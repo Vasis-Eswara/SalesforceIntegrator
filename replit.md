@@ -95,6 +95,15 @@ Required environment variables:
 
 ## Changelog
 
+- April 03, 2026: **BULK DATA INSERTION FIX** - Fixed two critical bugs in the bulk data execution pipeline
+  - **Float/int len() crash fixed**: `execute_bulk_data_plan` was calling `len()` on integer counts returned by `insert_records` (e.g. `len(insert_result['success'])` where `'success'` is an int count, not a list) — changed to use the int directly
+  - **Records never inserted**: `execute_data_plan` was generating records with `IntelligentDataGenerator` but never calling `insert_records` to push them to Salesforce — now properly calls `insert_records` and tracks created IDs
+  - **Key name alignment**: Fixed `created_ids` vs `success` key mismatch between `insert_records` return value and the code consuming it
+  - **Bulk results template**: Updated `bulk_data_results.html` to show `created_ids` (Salesforce record IDs) instead of raw record dicts
+  - **Robust count handling**: Both `count` and `record_count` keys now accepted in the plan; all counts cast to `int` to prevent float arithmetic issues
+  - **Error string safety**: All error list items are now coerced to strings before joining or displaying
+  - **Restored salesforce_config_utils.py**: File was accidentally overwritten with a single import line; restored from git history
+
 - July 18, 2025: **AUTHENTICATION FIX** - Fixed 401 Unauthorized error in Schema & Data Gen page
   - **Token refresh logic**: Added automatic access token refresh when 401 errors occur
   - **Graceful degradation**: SOAP API fallback when REST API fails

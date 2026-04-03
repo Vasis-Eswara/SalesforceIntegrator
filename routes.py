@@ -190,9 +190,9 @@ def init_routes(app):
                     try:
                         insert_result = insert_records(sf_org.instance_url, sf_org.access_token, 
                                                      object_name, generation_result['records'])
-                        results['success'] += len(insert_result.get('success', []))
-                        results['failure'] += len(insert_result.get('errors', []))
-                        results['created_ids'].extend(insert_result.get('success', []))
+                        results['success'] += int(insert_result.get('success', 0))
+                        results['failure'] += int(insert_result.get('failure', 0))
+                        results['created_ids'].extend(insert_result.get('created_ids', []))
                         
                     except Exception as insert_error:
                         logger.error(f"Error inserting {object_name} records: {str(insert_error)}")
@@ -1161,55 +1161,78 @@ def init_routes(app):
             return redirect(url_for('bulk_data'))
     
     def execute_data_plan(data_plan):
-        """Execute a validated data creation plan"""
-        from faker_utils import generate_test_data_with_faker
+        """Execute a validated data creation plan — generates AND inserts records into Salesforce"""
         from intelligent_data_gen import IntelligentDataGenerator
-        
+
         sf_org = SalesforceOrg.query.get(session['salesforce_org_id'])
         results = {
             'objects': {},
             'total_created': 0,
             'errors': [],
-            'execution_order': data_plan['execution_order']
+            'execution_order': data_plan.get('execution_order', list(data_plan.get('objects', {}).keys()))
         }
-        
+
         # Create connection object for intelligent generator
         sf_connection = type('SFConnection', (), {
             'access_token': sf_org.access_token,
             'instance_url': sf_org.instance_url
         })
-        
+
         generator = IntelligentDataGenerator(sf_connection)
-        
+
         # Execute in dependency order
-        for object_name in data_plan['execution_order']:
-            obj_config = data_plan['objects'][object_name]
-            record_count = obj_config['count']
-            
+        for object_name in results['execution_order']:
+            obj_config = data_plan['objects'].get(object_name, {})
+            # Support both 'count' and 'record_count' keys; default to 1
+            record_count = int(obj_config.get('record_count') or obj_config.get('count') or 1)
+
             try:
                 logger.info(f"Creating {record_count} records for {object_name}")
-                
-                # Generate data using intelligent generator
-                result = generator.generate_data(object_name, record_count)
-                
-                if result['success_count'] > 0:
-                    results['objects'][object_name] = {
-                        'created': result['success_count'],
-                        'errors': result['errors'],
-                        'records': result['records']
-                    }
-                    results['total_created'] += result['success_count']
-                    logger.info(f"Successfully created {result['success_count']} {object_name} records")
-                else:
-                    error_msg = f"Failed to create {object_name} records: {'; '.join(result['errors'])}"
+
+                # Generate records using intelligent generator
+                gen_result = generator.generate_data(object_name, record_count)
+                generated_records = gen_result.get('records', [])
+
+                if not generated_records:
+                    gen_errors = [str(e) for e in gen_result.get('errors', [])]
+                    error_msg = f"No records generated for {object_name}: {'; '.join(gen_errors) or 'unknown error'}"
                     results['errors'].append(error_msg)
                     logger.error(error_msg)
-                
+                    continue
+
+                # Insert the generated records into Salesforce
+                insert_result = insert_records(
+                    sf_org.instance_url, sf_org.access_token,
+                    object_name, generated_records
+                )
+
+                inserted = int(insert_result.get('success', 0))
+                failed = int(insert_result.get('failure', 0))
+                insert_errors = [
+                    str(e.get('message', e) if isinstance(e, dict) else e)
+                    for e in insert_result.get('errors', [])
+                ]
+
+                results['objects'][object_name] = {
+                    'created': inserted,
+                    'failed': failed,
+                    'errors': insert_errors,
+                    'created_ids': insert_result.get('created_ids', [])
+                }
+                results['total_created'] += inserted
+
+                if inserted > 0:
+                    logger.info(f"Successfully inserted {inserted} {object_name} records into Salesforce")
+                if insert_errors:
+                    results['errors'].extend(
+                        [f"{object_name}: {e}" for e in insert_errors]
+                    )
+
             except Exception as e:
                 error_msg = f"Error creating {object_name} records: {str(e)}"
                 results['errors'].append(error_msg)
                 logger.error(error_msg)
-        
+
         return results
     
     @app.route('/api/object/<object_name>/details')

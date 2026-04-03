@@ -129,12 +129,13 @@
                                     </div>
                                 {% endif %}
                                 
-                                {% if object_result.records %}
+                                {% set ids = object_result.created_ids or [] %}
+                                {% if ids %}
                                     <div class="accordion" id="accordion{{ loop.index }}">
                                         <div class="accordion-item">
                                             <h2 class="accordion-header" id="heading{{ loop.index }}">
                                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
-                                                    View Created Records ({{ object_result.records|length }})
+                                                    View Created Record IDs ({{ ids|length }})
                                                 </button>
                                             </h2>
                                             <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#accordion{{ loop.index }}">
@@ -143,27 +144,21 @@
                                                         <table class="table table-sm">
                                                             <thead>
                                                                 <tr>
+                                                                    <th>#</th>
                                                                     <th>Record ID</th>
-                                                                    <th>Fields</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
-                                                                {% for record in object_result.records[:10] %}
+                                                                {% for rid in ids[:20] %}
                                                                     <tr>
-                                                                        <td><code>{{ record.id or 'N/A' }}</code></td>
-                                                                        <td>
-                                                                            {% for field, value in record.items() %}
-                                                                                {% if field != 'id' %}
-                                                                                    <small><strong>{{ field }}:</strong> {{ value|truncate(50) }}</small><br>
-                                                                                {% endif %}
-                                                                            {% endfor %}
-                                                                        </td>
+                                                                        <td>{{ loop.index }}</td>
+                                                                        <td><code>{{ rid }}</code></td>
                                                                     </tr>
                                                                 {% endfor %}
-                                                                {% if object_result.records|length > 10 %}
+                                                                {% if ids|length > 20 %}
                                                                     <tr>
                                                                         <td colspan="2" class="text-center text-muted">
-                                                                            ... and {{ object_result.records|length - 10 }} more records
+                                                                            ... and {{ ids|length - 20 }} more records
                                                                         </td>
                                                                     </tr>
                                                                 {% endif %}
