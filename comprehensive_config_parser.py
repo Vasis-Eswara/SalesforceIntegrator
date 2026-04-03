@@ -466,13 +466,10 @@ def _parse_complex_patterns(prompt_lower, actions, seen_objects):
             raw_names = re.split(r',\s*|\s+and\s+', field_list_text)
             for raw in raw_names:
                 fname = raw.strip()
-                # strip any residual leading 'and'/'or' left after comma-split
                 fname = re.sub(r'^(?:and|or)\s+', '', fname, flags=re.IGNORECASE).strip()
                 fname = fname.replace(' ', '_')
-                # skip empty or known stop words
                 if not fname or fname in ('', 'and', 'or', 'the', 'a', 'an'):
                     continue
-                # keep system field "Name" without __c; add __c to everything else
                 is_std_name = fname.lower() == 'name'
                 api_field = fname if is_std_name else (fname if fname.endswith('__c') else fname + '__c')
                 ftype = _infer_field_type(fname)
