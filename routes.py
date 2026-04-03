@@ -1794,6 +1794,13 @@ def init_routes(app):
         # GET request - show form
         org_info = get_org_info()
         return render_template('configure.html', is_logged_in=is_logged_in, has_openai_key=has_openai_key, org_info=org_info)
+
+    @app.route('/configure-alone')
+    def configure_alone():
+        """Standalone configuration page."""
+        is_logged_in = 'salesforce_org_id' in session
+        org_info = get_org_info()
+        return render_template('configure_alone.html', is_logged_in=is_logged_in, org_info=org_info)
     
     @app.route('/excel-template')
     def excel_template():
